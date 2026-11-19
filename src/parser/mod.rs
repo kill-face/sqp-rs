@@ -15739,6 +15739,7 @@ impl<'a> Parser<'a> {
     /// Parse a `DELETE` statement and return `Statement::Delete`.
     pub fn parse_delete(&mut self, delete_token: TokenWithSpan) -> Result<Statement, ParserError> {
         let optimizer_hints = self.maybe_parse_optimizer_hints()?;
+        let mut output = None;
         let (tables, with_from_keyword) = if !self.parse_keyword(Keyword::FROM) {
             // `FROM` keyword is optional in BigQuery SQL.
             // https://cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#delete_statement
@@ -15746,6 +15747,8 @@ impl<'a> Parser<'a> {
                 (vec![], false)
             } else {
                 let tables = self.parse_comma_separated(|p| p.parse_object_name(false))?;
+                // MsSql: `DELETE target OUTPUT ... FROM ...`
+                output = self.maybe_parse_output_clause()?;
                 self.expect_keyword_is(Keyword::FROM)?;
                 (tables, true)
             }
@@ -15756,7 +15759,10 @@ impl<'a> Parser<'a> {
         let from = self.parse_comma_separated(Parser::parse_table_and_joins)?;
         let on_cluster = self.parse_optional_on_cluster()?;
 
-        let output = self.maybe_parse_output_clause()?;
+        let output = match output {
+            Some(output) => Some(output),
+            None => self.maybe_parse_output_clause()?,
+        };
 
         let using = if self.parse_keyword(Keyword::USING) {
             Some(self.parse_comma_separated(Parser::parse_table_and_joins)?)

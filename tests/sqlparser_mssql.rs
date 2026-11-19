@@ -3302,3 +3302,15 @@ fn parse_mssql_alter_table_constraint_check() {
         .parse_sql_statements("ALTER TABLE t WITH CHECK CHECK CONSTRAINT fk")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_delete_output_before_from() {
+    let sql = "DELETE t OUTPUT DELETED.id INTO @ids FROM dbo.tbl AS t JOIN u ON u.id = t.id WHERE u.a = 1";
+    let Statement::Delete(delete) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(delete.tables, vec![ObjectName::from(vec![Ident::new("t")])]);
+    assert!(delete.output.is_some());
+
+    ms().verified_stmt("DELETE FROM t OUTPUT DELETED.* WHERE id = 1");
+}

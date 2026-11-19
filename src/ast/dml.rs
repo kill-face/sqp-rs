@@ -368,8 +368,14 @@ impl Display for Delete {
             f.write_str(" ")?;
             hint.fmt(f)?;
         }
+        // MsSql: `DELETE target OUTPUT ... FROM ...`
+        let output_before_from = !self.tables.is_empty();
         if !self.tables.is_empty() {
             indented_list(f, &self.tables)?;
+        }
+        if let (true, Some(output)) = (output_before_from, &self.output) {
+            SpaceOrNewline.fmt(f)?;
+            write!(f, "{output}")?;
         }
         match &self.from {
             FromTable::WithFromKeyword(from) => {
@@ -383,7 +389,7 @@ impl Display for Delete {
         if let Some(on_cluster) = &self.on_cluster {
             write!(f, " ON CLUSTER {on_cluster}")?;
         }
-        if let Some(output) = &self.output {
+        if let (false, Some(output)) = (output_before_from, &self.output) {
             SpaceOrNewline.fmt(f)?;
             write!(f, "{output}")?;
         }
