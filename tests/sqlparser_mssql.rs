@@ -3314,3 +3314,34 @@ fn parse_mssql_delete_output_before_from() {
 
     ms().verified_stmt("DELETE FROM t OUTPUT DELETED.* WHERE id = 1");
 }
+
+#[test]
+fn parse_mssql_set_compound_assignment() {
+    let sql = "SET @x += 1";
+    let stmt = ms().verified_stmt(sql);
+    assert_eq!(
+        stmt,
+        Statement::Set(Set::CompoundAssignment {
+            set_token: AttachedToken::empty(),
+            variable: ObjectName::from(vec![Ident::new("@x")]),
+            op: BinaryOperator::Plus,
+            value: Expr::value(number("1")),
+        })
+    );
+    for op in ["-", "*", "/", "%", "&", "|", "^"] {
+        ms().verified_stmt(&format!("SET @x {op}= @y + 1"));
+    }
+    ms().verified_stmt("SET @x = 1");
+
+    let span = Parser::new(&MsSqlDialect {})
+        .try_with_sql("SET @s += 'a' + 'b'")
+        .unwrap()
+        .parse_statement()
+        .unwrap()
+        .span();
+    assert_eq!(span, Span::new(Location::new(1, 1), Location::new(1, 20)));
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("SET @x += 1")
+        .unwrap_err();
+}

@@ -1383,6 +1383,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support compound assignment operators such as `+=`
+    /// in `SET`? e.g. `SET @x += 1`
+    fn supports_compound_assignment_operators(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///

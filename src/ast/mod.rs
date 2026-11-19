@@ -3409,6 +3409,19 @@ pub enum Set {
         /// Corresponding values for the variables.
         values: Vec<Expr>,
     },
+    /// [MsSql] compound assignment, e.g. `SET @x += 1`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/compound-operators-transact-sql
+    CompoundAssignment {
+        /// The `SET` token.
+        set_token: AttachedToken,
+        /// Variable to assign.
+        variable: ObjectName,
+        /// The operator applied before assigning, e.g. `+` in `+=`.
+        op: BinaryOperator,
+        /// The right-hand side.
+        value: Expr,
+    },
     /// MySQL-style
     /// SET a = 1, b = 2, ..;
     /// `SET a = 1, b = 2` (MySQL-style comma-separated assignments).
@@ -3556,6 +3569,12 @@ impl Display for Set {
 
                 Ok(())
             }
+            Set::CompoundAssignment {
+                variable,
+                op,
+                value,
+                ..
+            } => write!(f, "SET {variable} {op}= {value}"),
             Set::SingleAssignment {
                 scope,
                 hivevar,

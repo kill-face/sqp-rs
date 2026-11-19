@@ -17165,7 +17165,37 @@ impl<'a> Parser<'a> {
         Ok(SetAssignment { scope, name, value })
     }
 
+    /// Parse `<variable> <op>= <expr>` after `SET`, e.g. `@x += 1`.
+    fn parse_set_compound_assignment(
+        &mut self,
+        set_token: TokenWithSpan,
+    ) -> Result<Set, ParserError> {
+        let variable = self.parse_object_name(false)?;
+        let op = match self.next_token().token {
+            Token::Plus => BinaryOperator::Plus,
+            Token::Minus => BinaryOperator::Minus,
+            Token::Mul => BinaryOperator::Multiply,
+            Token::Div => BinaryOperator::Divide,
+            Token::Mod => BinaryOperator::Modulo,
+            Token::Ampersand => BinaryOperator::BitwiseAnd,
+            Token::Pipe => BinaryOperator::BitwiseOr,
+            Token::Caret => BinaryOperator::BitwiseXor,
+            _ => {
+                return self.expected_ref("compound assignment operator", self.get_current_token())
+            }
+        };
+        self.expect_token(&Token::Eq)?;
+        let value = self.parse_expr()?;
+        Ok(Set::CompoundAssignment {
+            set_token: AttachedToken(set_token),
+            variable,
+            op,
+            value,
+        })
+    }
+
     fn parse_set(&mut self) -> Result<Statement, ParserError> {
+        let set_token = self.get_current_token().clone();
         let hivevar = self.parse_keyword(Keyword::HIVEVAR);
 
         // Modifier is either HIVEVAR: or a ContextModifier (LOCAL, SESSION, etc), not both
@@ -17266,6 +17296,14 @@ impl<'a> Parser<'a> {
                 kind: auth_value,
             })
             .into());
+        }
+
+        if self.dialect.supports_compound_assignment_operators() {
+            if let Some(stmt) =
+                self.maybe_parse(|p| p.parse_set_compound_assignment(set_token.clone()))?
+            {
+                return Ok(stmt.into());
+            }
         }
 
         if self.dialect.supports_comma_separated_set_assignments() {
