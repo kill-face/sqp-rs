@@ -3515,6 +3515,10 @@ pub struct CreateTable {
     ///
     /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
     pub data_space: Option<DataSpace>,
+    /// The `CREATE` keyword.
+    pub create_token: AttachedToken,
+    /// The statement's last token, e.g. the `)` that closes the column list.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for CreateTable {

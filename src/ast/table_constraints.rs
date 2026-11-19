@@ -18,7 +18,7 @@
 //! SQL Abstract Syntax Tree (AST) types for table constraints
 
 use crate::ast::{
-    display_comma_separated, display_separated, ConstraintCharacteristics,
+    display_comma_separated, display_separated, AttachedToken, ConstraintCharacteristics,
     ConstraintReferenceMatchKind, Expr, Ident, IndexClustering, IndexColumn, IndexOption,
     IndexType, KeyOrIndexDisplay, NullsDistinctOption, ObjectName, ReferentialAction,
 };
@@ -209,6 +209,11 @@ pub struct CheckConstraint {
     /// MySQL-specific `ENFORCED` / `NOT ENFORCED` flag.
     /// <https://dev.mysql.com/doc/refman/8.4/en/create-table.html>
     pub enforced: Option<bool>,
+    /// The constraint's first token: `CONSTRAINT` when named, otherwise its
+    /// first keyword.
+    pub start_token: AttachedToken,
+    /// The constraint's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for CheckConstraint {
@@ -232,9 +237,12 @@ impl fmt::Display for CheckConstraint {
 
 impl crate::ast::Spanned for CheckConstraint {
     fn span(&self) -> Span {
-        self.expr
-            .span()
-            .union_opt(&self.name.as_ref().map(|i| i.span))
+        Span::union_iter([
+            self.start_token.0.span,
+            self.name.as_ref().map_or(Span::empty(), |i| i.span),
+            self.expr.span(),
+            self.end_token.0.span,
+        ])
     }
 }
 
@@ -305,6 +313,11 @@ pub struct ForeignKeyConstraint {
     pub match_kind: Option<ConstraintReferenceMatchKind>,
     /// Optional characteristics (e.g., `DEFERRABLE`).
     pub characteristics: Option<ConstraintCharacteristics>,
+    /// The constraint's first token: `CONSTRAINT` when named, otherwise its
+    /// first keyword.
+    pub start_token: AttachedToken,
+    /// The constraint's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for ForeignKeyConstraint {
@@ -344,16 +357,16 @@ impl crate::ast::Spanned for ForeignKeyConstraint {
         }
 
         union_spans(
-            self.name
-                .iter()
-                .map(|i| i.span)
+            core::iter::once(self.start_token.0.span)
+                .chain(self.name.iter().map(|i| i.span))
                 .chain(self.index_name.iter().map(|i| i.span))
                 .chain(self.columns.iter().map(|i| i.span))
                 .chain(core::iter::once(self.foreign_table.span()))
                 .chain(self.referred_columns.iter().map(|i| i.span))
                 .chain(self.on_delete.iter().map(|i| i.span()))
                 .chain(self.on_update.iter().map(|i| i.span()))
-                .chain(self.characteristics.iter().map(|i| i.span())),
+                .chain(self.characteristics.iter().map(|i| i.span()))
+                .chain(core::iter::once(self.end_token.0.span)),
         )
     }
 }
@@ -521,6 +534,11 @@ pub struct PrimaryKeyConstraint {
     pub index_options: Vec<IndexOption>,
     /// Optional characteristics like `DEFERRABLE`.
     pub characteristics: Option<ConstraintCharacteristics>,
+    /// The constraint's first token: `CONSTRAINT` when named, otherwise its
+    /// first keyword.
+    pub start_token: AttachedToken,
+    /// The constraint's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for PrimaryKeyConstraint {
@@ -556,13 +574,13 @@ impl crate::ast::Spanned for PrimaryKeyConstraint {
         }
 
         union_spans(
-            self.name
-                .iter()
-                .map(|i| i.span)
+            core::iter::once(self.start_token.0.span)
+                .chain(self.name.iter().map(|i| i.span))
                 .chain(self.index_name.iter().map(|i| i.span))
                 .chain(self.columns.iter().map(|i| i.span()))
                 .chain(self.include.iter().map(|i| i.span))
-                .chain(self.characteristics.iter().map(|i| i.span())),
+                .chain(self.characteristics.iter().map(|i| i.span()))
+                .chain(core::iter::once(self.end_token.0.span)),
         )
     }
 }
@@ -598,6 +616,11 @@ pub struct UniqueConstraint {
     pub characteristics: Option<ConstraintCharacteristics>,
     /// Optional Postgres nulls handling: `[ NULLS [ NOT ] DISTINCT ]`
     pub nulls_distinct: NullsDistinctOption,
+    /// The constraint's first token: `CONSTRAINT` when named, otherwise its
+    /// first keyword.
+    pub start_token: AttachedToken,
+    /// The constraint's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for UniqueConstraint {
@@ -635,13 +658,13 @@ impl crate::ast::Spanned for UniqueConstraint {
         }
 
         union_spans(
-            self.name
-                .iter()
-                .map(|i| i.span)
+            core::iter::once(self.start_token.0.span)
+                .chain(self.name.iter().map(|i| i.span))
                 .chain(self.index_name.iter().map(|i| i.span))
                 .chain(self.columns.iter().map(|i| i.span()))
                 .chain(self.include.iter().map(|i| i.span))
-                .chain(self.characteristics.iter().map(|i| i.span())),
+                .chain(self.characteristics.iter().map(|i| i.span()))
+                .chain(core::iter::once(self.end_token.0.span)),
         )
     }
 }

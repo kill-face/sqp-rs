@@ -32,6 +32,7 @@ use crate::ast::{
     StorageSerializationPolicy, TableConstraint, TableVersion, Tag, WithData, WrappedCollection,
 };
 
+use crate::ast::helpers::attached_token::AttachedToken;
 use crate::parser::ParserError;
 
 /// Builder for create table statement variant ([1]).
@@ -196,6 +197,10 @@ pub struct CreateTableBuilder {
     pub with_data: Option<WithData>,
     /// MsSql `ON { partition_scheme ( column ) | filegroup }`
     pub data_space: Option<DataSpace>,
+    /// The `CREATE` keyword.
+    pub create_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl CreateTableBuilder {
@@ -266,6 +271,8 @@ impl CreateTableBuilder {
             fallback: None,
             with_data: None,
             data_space: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     }
     /// Set `OR REPLACE` for the CREATE TABLE statement.
@@ -599,6 +606,16 @@ impl CreateTableBuilder {
         self.data_space = data_space;
         self
     }
+    /// Set the `CREATE` keyword's token.
+    pub fn create_token(mut self, create_token: AttachedToken) -> Self {
+        self.create_token = create_token;
+        self
+    }
+    /// Set the statement's last token.
+    pub fn end_token(mut self, end_token: AttachedToken) -> Self {
+        self.end_token = end_token;
+        self
+    }
 
     /// Consume the builder and produce a `CreateTable`.
     pub fn build(self) -> CreateTable {
@@ -667,6 +684,8 @@ impl CreateTableBuilder {
             fallback: self.fallback,
             with_data: self.with_data,
             data_space: self.data_space,
+            create_token: self.create_token,
+            end_token: self.end_token,
         }
     }
 }
@@ -753,6 +772,8 @@ impl From<CreateTable> for CreateTableBuilder {
             fallback: table.fallback,
             with_data: table.with_data,
             data_space: table.data_space,
+            create_token: table.create_token,
+            end_token: table.end_token,
         }
     }
 }

@@ -2025,6 +2025,8 @@ fn parse_create_table_with_valid_options() {
                 fallback: None,
                 with_data: None,
                 data_space: None,
+                create_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             })
         );
     }
@@ -2213,6 +2215,8 @@ fn parse_create_table_with_identity_column() {
                 fallback: None,
                 with_data: None,
                 data_space: None,
+                create_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             }),
         );
     }

@@ -4495,6 +4495,8 @@ fn parse_create_table() {
                                     include: vec![],
                                     index_options: vec![],
                                     characteristics: None,
+                                    start_token: AttachedToken::empty(),
+                                    end_token: AttachedToken::empty(),
                                 }),
                                 start_token: AttachedToken::empty(),
                                 end_token: AttachedToken::empty(),
@@ -4518,6 +4520,8 @@ fn parse_create_table() {
                                     index_options: vec![],
                                     characteristics: None,
                                     nulls_distinct: NullsDistinctOption::None,
+                                    start_token: AttachedToken::empty(),
+                                    end_token: AttachedToken::empty(),
                                 }),
                                 start_token: AttachedToken::empty(),
                                 end_token: AttachedToken::empty(),
@@ -4529,6 +4533,8 @@ fn parse_create_table() {
                                     expr: Box::new(verified_expr("constrained > 0")),
                                     no_inherit: false,
                                     enforced: None,
+                                    start_token: AttachedToken::empty(),
+                                    end_token: AttachedToken::empty(),
                                 }),
                                 start_token: AttachedToken::empty(),
                                 end_token: AttachedToken::empty(),
@@ -4551,6 +4557,8 @@ fn parse_create_table() {
                                 on_update: None,
                                 match_kind: None,
                                 characteristics: None,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }),
                             start_token: AttachedToken::empty(),
                             end_token: AttachedToken::empty(),
@@ -4572,6 +4580,8 @@ fn parse_create_table() {
                                 on_update: Some(ReferentialAction::NoAction),
                                 match_kind: None,
                                 characteristics: None,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }),
                             start_token: AttachedToken::empty(),
                             end_token: AttachedToken::empty(),
@@ -4593,6 +4603,8 @@ fn parse_create_table() {
                         on_update: None,
                         match_kind: None,
                         characteristics: None,
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                     ForeignKeyConstraint {
@@ -4605,6 +4617,8 @@ fn parse_create_table() {
                         on_update: Some(ReferentialAction::Restrict),
                         match_kind: None,
                         characteristics: None,
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                     ForeignKeyConstraint {
@@ -4617,6 +4631,8 @@ fn parse_create_table() {
                         on_update: Some(ReferentialAction::SetDefault),
                         match_kind: None,
                         characteristics: None,
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                     ForeignKeyConstraint {
@@ -4629,6 +4645,8 @@ fn parse_create_table() {
                         on_update: Some(ReferentialAction::SetNull),
                         match_kind: None,
                         characteristics: None,
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                 ]
@@ -4739,6 +4757,8 @@ fn parse_create_table_with_constraint_characteristics() {
                             initially: Some(DeferrableInitial::Deferred),
                             enforced: None
                         }),
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                     ForeignKeyConstraint {
@@ -4755,6 +4775,8 @@ fn parse_create_table_with_constraint_characteristics() {
                             initially: Some(DeferrableInitial::Immediate),
                             enforced: None,
                         }),
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                     ForeignKeyConstraint {
@@ -4771,6 +4793,8 @@ fn parse_create_table_with_constraint_characteristics() {
                             initially: Some(DeferrableInitial::Deferred),
                             enforced: Some(false),
                         }),
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                     ForeignKeyConstraint {
@@ -4787,6 +4811,8 @@ fn parse_create_table_with_constraint_characteristics() {
                             initially: Some(DeferrableInitial::Immediate),
                             enforced: Some(true),
                         }),
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                 ]
@@ -4877,6 +4903,8 @@ fn parse_create_table_column_constraint_characteristics() {
                                 index_options: vec![],
                                 characteristics: expected_value,
                                 nulls_distinct: NullsDistinctOption::None,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }),
                             start_token: AttachedToken::empty(),
                             end_token: AttachedToken::empty(),

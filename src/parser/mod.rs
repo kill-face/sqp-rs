@@ -5651,10 +5651,10 @@ impl<'a> Parser<'a> {
         } else if self.peek_keywords(&[Keyword::TEXT, Keyword::SEARCH]) {
             self.parse_create_text_search().map(Into::into)
         } else if self.parse_keyword(Keyword::TABLE) {
-            self.parse_create_table(
+            let stmt = self.parse_create_table(
                 or_replace, temporary, unlogged, global, transient, volatile, multiset,
-            )
-            .map(Into::into)
+            )?;
+            Ok(self.with_create_token(stmt.into(), create_token))
         } else if self.peek_keyword(Keyword::MATERIALIZED)
             || self.peek_keyword(Keyword::VIEW)
             || self.peek_keywords(&[Keyword::SECURE, Keyword::MATERIALIZED, Keyword::VIEW])
@@ -5808,6 +5808,7 @@ impl<'a> Parser<'a> {
                 t.create_token = create_token;
                 t.end_token = last_token;
             }
+            Statement::CreateTable(t) => t.create_token = create_token,
             _ => {}
         }
         stmt
@@ -9953,6 +9954,7 @@ impl<'a> Parser<'a> {
             .diststyle(diststyle)
             .distkey(distkey)
             .sortkey(sortkey)
+            .end_token(self.last_consumed_token())
             .build())
     }
 
@@ -10690,6 +10692,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_optional_column_option_inner(&mut self) -> Result<Option<ColumnOption>, ParserError> {
+        let start_token = AttachedToken(self.peek_token_ref().clone());
         if self.parse_keywords(&[Keyword::CHARACTER, Keyword::SET]) {
             Ok(Some(ColumnOption::CharacterSet(
                 self.parse_object_name(false)?,
@@ -10747,6 +10750,8 @@ impl<'a> Parser<'a> {
                     index_options: vec![],
                     characteristics,
                     nulls_distinct,
+                    start_token,
+                    end_token: self.last_consumed_token(),
                 }
                 .into(),
             ))
@@ -10766,6 +10771,8 @@ impl<'a> Parser<'a> {
                     include: vec![],
                     index_options: vec![],
                     characteristics,
+                    start_token,
+                    end_token: self.last_consumed_token(),
                 }
                 .into(),
             ))
@@ -10792,6 +10799,8 @@ impl<'a> Parser<'a> {
                     on_update,
                     match_kind,
                     characteristics,
+                    start_token,
+                    end_token: self.last_consumed_token(),
                 }
                 .into(),
             ))
@@ -10816,6 +10825,8 @@ impl<'a> Parser<'a> {
                     expr: Box::new(expr),
                     no_inherit,
                     enforced,
+                    start_token,
+                    end_token: self.last_consumed_token(),
                 }
                 .into(),
             ))
@@ -11175,6 +11186,7 @@ impl<'a> Parser<'a> {
     pub fn parse_optional_table_constraint(
         &mut self,
     ) -> Result<Option<TableConstraint>, ParserError> {
+        let start_token = AttachedToken(self.peek_token_ref().clone());
         let name = if self.parse_keyword(Keyword::CONSTRAINT) {
             if self.dialect.supports_constraint_keyword_without_name()
                 && self
@@ -11238,6 +11250,8 @@ impl<'a> Parser<'a> {
                         index_options,
                         characteristics,
                         nulls_distinct,
+                        start_token,
+                        end_token: self.last_consumed_token(),
                     }
                     .into(),
                 ))
@@ -11274,6 +11288,8 @@ impl<'a> Parser<'a> {
                         include,
                         index_options,
                         characteristics,
+                        start_token,
+                        end_token: self.last_consumed_token(),
                     }
                     .into(),
                 ))
@@ -11304,6 +11320,8 @@ impl<'a> Parser<'a> {
                         on_update,
                         match_kind,
                         characteristics,
+                        start_token,
+                        end_token: self.last_consumed_token(),
                     }
                     .into(),
                 ))
@@ -11328,6 +11346,8 @@ impl<'a> Parser<'a> {
                         expr,
                         no_inherit,
                         enforced,
+                        start_token,
+                        end_token: self.last_consumed_token(),
                     }
                     .into(),
                 ))

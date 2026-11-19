@@ -805,6 +805,8 @@ fn test_duckdb_union_datatype() {
             fallback: Default::default(),
             with_data: Default::default(),
             data_space: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }),
         stmt
     );

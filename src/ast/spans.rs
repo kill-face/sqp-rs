@@ -880,10 +880,13 @@ impl Spanned for CreateTable {
             fallback: _,
             with_data: _,
             data_space,
+            create_token,
+            end_token,
         } = self;
 
         union_spans(
-            core::iter::once(name.span())
+            core::iter::once(create_token.0.span)
+                .chain(core::iter::once(name.span()))
                 .chain(core::iter::once(table_options.span()))
                 .chain(columns.iter().map(|i| i.span()))
                 .chain(constraints.iter().map(|i| i.span()))
@@ -891,7 +894,8 @@ impl Spanned for CreateTable {
                 .chain(clone.iter().map(|i| i.span()))
                 .chain(partition_of.iter().map(|i| i.span()))
                 .chain(for_values.iter().map(|i| i.span()))
-                .chain(data_space.iter().map(|i| i.span())),
+                .chain(data_space.iter().map(|i| i.span()))
+                .chain(core::iter::once(end_token.0.span)),
         )
     }
 }
@@ -3993,10 +3997,7 @@ SETTINGS update_parallel_mode = 'auto'"#;
             "CREATE TABLE t (a INT64) OPTIONS (description = 'd', expiration_timestamp = NULL)";
         let mut test = SpanTest::new(dialect, sql);
         let stmt = test.0.parse_statement().unwrap();
-        assert_eq!(
-            test.get_source(stmt.span()),
-            "t (a INT64) OPTIONS (description = 'd', expiration_timestamp = NULL"
-        );
+        assert_eq!(test.get_source(stmt.span()), sql);
     }
 
     #[test]
@@ -4339,6 +4340,40 @@ SETTINGS update_parallel_mode = 'auto'"#;
                 vec!["AS (a + 1) PERSISTED"],
             ]
         );
+    }
+
+    #[test]
+    fn test_create_table_and_table_constraint_spans() {
+        let sql = "CREATE TABLE dbo.t (\n\
+                   \x20   a INT NOT NULL,\n\
+                   \x20   b INT,\n\
+                   \x20   CONSTRAINT pk_t PRIMARY KEY CLUSTERED (a ASC, b),\n\
+                   \x20   UNIQUE NONCLUSTERED (b),\n\
+                   \x20   CONSTRAINT fk_t FOREIGN KEY (b) REFERENCES u (id) ON DELETE CASCADE,\n\
+                   \x20   CHECK (a > 0)\n\
+                   ) ON [PRIMARY]";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let Statement::CreateTable(create_table) = &stmts[0] else {
+            panic!("expected CREATE TABLE, got {stmts:?}");
+        };
+        let constraints: Vec<_> = create_table
+            .constraints
+            .iter()
+            .map(|c| spanned_text(sql, c.span()))
+            .collect();
+        assert_eq!(
+            constraints,
+            [
+                "CONSTRAINT pk_t PRIMARY KEY CLUSTERED (a ASC, b)",
+                "UNIQUE NONCLUSTERED (b)",
+                "CONSTRAINT fk_t FOREIGN KEY (b) REFERENCES u (id) ON DELETE CASCADE",
+                "CHECK (a > 0)",
+            ]
+        );
+
+        let sql = "CREATE TABLE #t (a INT)";
+        assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);
     }
 
     #[test]

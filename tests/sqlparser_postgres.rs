@@ -7351,6 +7351,8 @@ fn parse_create_domain() {
             }),
             no_inherit: false,
             enforced: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
         .into()],
     });
@@ -7372,6 +7374,8 @@ fn parse_create_domain() {
             }),
             no_inherit: false,
             enforced: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
         .into()],
     });
@@ -7393,6 +7397,8 @@ fn parse_create_domain() {
             }),
             no_inherit: false,
             enforced: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
         .into()],
     });
@@ -7414,6 +7420,8 @@ fn parse_create_domain() {
             }),
             no_inherit: false,
             enforced: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
         .into()],
     });
@@ -7435,6 +7443,8 @@ fn parse_create_domain() {
             }),
             no_inherit: false,
             enforced: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
         .into()],
     });
@@ -7882,6 +7892,8 @@ fn parse_trigger_related_functions() {
             fallback: None,
             with_data: None,
             data_space: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     );
 
@@ -8313,6 +8325,8 @@ fn parse_alter_table_constraint_not_valid() {
                         on_update: None,
                         match_kind: None,
                         characteristics: None,
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                     not_valid: true,
@@ -10992,6 +11006,8 @@ fn parse_alter_table_constraint_check_no_inherit() {
                         }),
                         no_inherit: true,
                         enforced: None,
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }
                     .into(),
                     not_valid: true,

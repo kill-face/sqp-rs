@@ -669,6 +669,8 @@ fn parse_create_table_auto_increment() {
                                 include: vec![],
                                 index_options: vec![],
                                 characteristics: None,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }),
                             start_token: AttachedToken::empty(),
                             end_token: AttachedToken::empty(),
@@ -728,6 +730,8 @@ fn table_constraint_unique_primary_ctor(
             index_options,
             characteristics,
             nulls_distinct: NullsDistinctOption::None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
         .into(),
         None => PrimaryKeyConstraint {
@@ -739,6 +743,8 @@ fn table_constraint_unique_primary_ctor(
             include: vec![],
             index_options,
             characteristics,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
         .into(),
     }
@@ -789,6 +795,8 @@ fn parse_create_table_primary_and_unique_key() {
                                         include: vec![],
                                         index_options: vec![],
                                         characteristics: None,
+                                        start_token: AttachedToken::empty(),
+                                        end_token: AttachedToken::empty(),
                                     }),
                                     start_token: AttachedToken::empty(),
                                     end_token: AttachedToken::empty(),
@@ -1480,6 +1488,8 @@ fn parse_quote_identifiers() {
                             include: vec![],
                             index_options: vec![],
                             characteristics: None,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }),
                         start_token: AttachedToken::empty(),
                         end_token: AttachedToken::empty(),
