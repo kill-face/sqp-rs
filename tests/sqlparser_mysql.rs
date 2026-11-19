@@ -3051,6 +3051,7 @@ fn parse_alter_table_add_column() {
             on_cluster: _,
             with_check: None,
             end_token: _,
+            ..
         }) => {
             assert_eq!(name.to_string(), "tab");
             assert!(!if_exists);
@@ -3068,6 +3069,7 @@ fn parse_alter_table_add_column() {
                         data_type_end_token: AttachedToken::empty(),
                     },
                     column_position: Some(MySQLColumnPosition::First),
+                    add_token: AttachedToken::empty(),
                 },]
             );
         }
@@ -3101,6 +3103,7 @@ fn parse_alter_table_add_column() {
                         quote_style: None,
                         span: Span::empty(),
                     })),
+                    add_token: AttachedToken::empty(),
                 },]
             );
         }
@@ -3136,6 +3139,7 @@ fn parse_alter_table_add_columns() {
                             data_type_end_token: AttachedToken::empty(),
                         },
                         column_position: Some(MySQLColumnPosition::First),
+                        add_token: AttachedToken::empty(),
                     },
                     AlterTableOperation::AddColumn {
                         column_keyword: true,
@@ -3151,6 +3155,7 @@ fn parse_alter_table_add_columns() {
                             quote_style: None,
                             span: Span::empty(),
                         })),
+                        add_token: AttachedToken::empty(),
                     },
                 ]
             );
@@ -3352,6 +3357,7 @@ fn parse_alter_table_with_algorithm() {
                         column_names: vec![Ident::new("password_digest")],
                         if_exists: false,
                         drop_behavior: None,
+                        drop_token: AttachedToken::empty(),
                     },
                     AlterTableOperation::Algorithm {
                         equals: true,
@@ -3400,6 +3406,7 @@ fn parse_alter_table_with_lock() {
                         column_names: vec![Ident::new("password_digest")],
                         if_exists: false,
                         drop_behavior: None,
+                        drop_token: AttachedToken::empty(),
                     },
                     AlterTableOperation::Lock {
                         equals: true,

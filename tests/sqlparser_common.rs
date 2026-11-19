@@ -5547,6 +5547,7 @@ fn parse_alter_table() {
             if_not_exists,
             column_def,
             column_position,
+            ..
         } => {
             assert!(column_keyword);
             assert!(!if_not_exists);
@@ -6104,6 +6105,7 @@ fn parse_alter_table_drop_column() {
                 column_names,
                 if_exists,
                 drop_behavior,
+                ..
             } => {
                 assert_eq!("is_active", column_names.first().unwrap().to_string());
                 assert!(if_exists);
@@ -6209,6 +6211,7 @@ fn parse_alter_table_drop_constraint() {
                 name: constr_name,
                 if_exists,
                 drop_behavior,
+                ..
             } => {
                 assert_eq!("constraint_name", constr_name.to_string());
                 assert!(if_exists);
@@ -9516,6 +9519,7 @@ fn parse_create_view() {
             view_attributes: _,
             secure: _,
             copy_grants: _,
+            ..
         }) => {
             assert_eq!(or_alter, false);
             assert_eq!("myschema.myview", name.to_string());
@@ -9636,6 +9640,7 @@ fn parse_create_view_temporary() {
             view_attributes: _,
             secure: _,
             copy_grants: _,
+            ..
         }) => {
             assert_eq!(or_alter, false);
             assert_eq!("myschema.myview", name.to_string());
@@ -9679,6 +9684,7 @@ fn parse_create_or_replace_view() {
             view_attributes: _,
             secure: _,
             copy_grants: _,
+            ..
         }) => {
             assert_eq!(or_alter, false);
             assert_eq!("v", name.to_string());
@@ -9726,6 +9732,7 @@ fn parse_create_or_replace_materialized_view() {
             view_attributes: _,
             secure: _,
             copy_grants: _,
+            ..
         }) => {
             assert_eq!(or_alter, false);
             assert_eq!("v", name.to_string());
@@ -9769,6 +9776,7 @@ fn parse_create_materialized_view() {
             view_attributes: _,
             secure: _,
             copy_grants: _,
+            ..
         }) => {
             assert_eq!(or_alter, false);
             assert_eq!("myschema.myview", name.to_string());
@@ -9812,6 +9820,7 @@ fn parse_create_materialized_view_with_cluster_by() {
             view_attributes: _,
             secure: _,
             copy_grants: _,
+            ..
         }) => {
             assert_eq!(or_alter, false);
             assert_eq!("myschema.myview", name.to_string());
@@ -10777,6 +10786,7 @@ fn test_create_index_with_using_function() {
             predicate: None,
             index_options,
             alter_options,
+            ..
         }) => {
             assert_eq!("idx_name", name.to_string());
             assert_eq!("test", table_name.to_string());
@@ -10839,6 +10849,7 @@ fn test_create_index_with_with_clause() {
             predicate: None,
             index_options,
             alter_options,
+            ..
         }) => {
             pretty_assertions::assert_eq!("title_idx", name.to_string());
             pretty_assertions::assert_eq!("films", table_name.to_string());
@@ -20843,7 +20854,8 @@ fn parse_invisible_column() {
                         }],
                         data_type_end_token: AttachedToken::empty(),
                     },
-                    column_position: None
+                    column_position: None,
+                    add_token: AttachedToken::empty(),
                 }]
             );
         }

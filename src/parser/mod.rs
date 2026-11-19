@@ -5660,8 +5660,9 @@ impl<'a> Parser<'a> {
             || self.peek_keywords(&[Keyword::SECURE, Keyword::MATERIALIZED, Keyword::VIEW])
             || self.peek_keywords(&[Keyword::SECURE, Keyword::VIEW])
         {
-            self.parse_create_view(or_alter, or_replace, temporary, create_view_params)
-                .map(Into::into)
+            let stmt =
+                self.parse_create_view(or_alter, or_replace, temporary, create_view_params)?;
+            Ok(self.with_create_token(stmt.into(), create_token))
         } else if self.parse_keyword(Keyword::POLICY) {
             self.parse_create_policy().map(Into::into)
         } else if self.parse_keyword(Keyword::RULE) {
@@ -5717,9 +5718,11 @@ impl<'a> Parser<'a> {
         } else if self.parse_keyword(Keyword::EXTENSION) {
             self.parse_create_extension().map(Into::into)
         } else if self.parse_keyword(Keyword::INDEX) {
-            self.parse_create_index(false).map(Into::into)
+            let stmt = self.parse_create_index(false)?;
+            Ok(self.with_create_token(stmt.into(), create_token))
         } else if self.parse_keywords(&[Keyword::UNIQUE, Keyword::INDEX]) {
-            self.parse_create_index(true).map(Into::into)
+            let stmt = self.parse_create_index(true)?;
+            Ok(self.with_create_token(stmt.into(), create_token))
         } else if let Some(prefix) = if self.dialect.supports_index_clustering()
             || self.dialect.supports_create_spatial_index()
         {
@@ -5727,7 +5730,8 @@ impl<'a> Parser<'a> {
         } else {
             None
         } {
-            self.parse_create_index_inner(prefix).map(Into::into)
+            let stmt = self.parse_create_index_inner(prefix)?;
+            Ok(self.with_create_token(stmt.into(), create_token))
         } else if self.dialect.supports_create_partition_function()
             && self.parse_keywords(&[Keyword::PARTITION, Keyword::FUNCTION])
         {
@@ -5809,6 +5813,8 @@ impl<'a> Parser<'a> {
                 t.end_token = last_token;
             }
             Statement::CreateTable(t) => t.create_token = create_token,
+            Statement::CreateIndex(i) => i.create_token = create_token,
+            Statement::CreateView(v) => v.create_token = create_token,
             _ => {}
         }
         stmt
@@ -7338,6 +7344,7 @@ impl<'a> Parser<'a> {
             params: create_view_params,
             name_before_not_exists,
             view_attributes,
+            create_token: AttachedToken::empty(),
         })
     }
 
@@ -9385,6 +9392,8 @@ impl<'a> Parser<'a> {
             predicate,
             index_options,
             alter_options,
+            create_token: AttachedToken::empty(),
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -11887,11 +11896,13 @@ impl<'a> Parser<'a> {
     /// Parse a single `ALTER TABLE` operation and return an `AlterTableOperation`.
     pub fn parse_alter_table_operation(&mut self) -> Result<AlterTableOperation, ParserError> {
         let operation = if self.parse_keyword(Keyword::ADD) {
+            let add_token = self.last_consumed_token();
             if let Some(constraint) = self.parse_optional_table_constraint()? {
                 let not_valid = self.parse_keywords(&[Keyword::NOT, Keyword::VALID]);
                 AlterTableOperation::AddConstraint {
                     constraint,
                     not_valid,
+                    add_token,
                 }
             } else if dialect_of!(self is ClickHouseDialect|GenericDialect)
                 && self.parse_keyword(Keyword::PROJECTION)
@@ -11932,6 +11943,7 @@ impl<'a> Parser<'a> {
                         if_not_exists,
                         column_def,
                         column_position,
+                        add_token,
                     }
                 }
             }
@@ -11939,6 +11951,7 @@ impl<'a> Parser<'a> {
             && (self.peek_keywords(&[Keyword::CHECK, Keyword::CONSTRAINT])
                 || self.peek_keywords(&[Keyword::NOCHECK, Keyword::CONSTRAINT]))
         {
+            let start_token = self.peek_token_ref().clone().into();
             let enabled = self.parse_keyword(Keyword::CHECK);
             if !enabled {
                 self.expect_keyword_is(Keyword::NOCHECK)?;
@@ -11949,7 +11962,12 @@ impl<'a> Parser<'a> {
             } else {
                 Some(self.parse_comma_separated(|p| p.parse_identifier())?)
             };
-            AlterTableOperation::ConstraintCheck { enabled, names }
+            AlterTableOperation::ConstraintCheck {
+                enabled,
+                names,
+                start_token,
+                end_token: self.last_consumed_token(),
+            }
         } else if self.parse_keyword(Keyword::RENAME) {
             if dialect_of!(self is PostgreSqlDialect) && self.parse_keyword(Keyword::CONSTRAINT) {
                 let old_name = self.parse_identifier()?;
@@ -12064,6 +12082,7 @@ impl<'a> Parser<'a> {
                 partition,
             }
         } else if self.parse_keyword(Keyword::DROP) {
+            let drop_token = self.last_consumed_token();
             if self.parse_keywords(&[Keyword::IF, Keyword::EXISTS, Keyword::PARTITION]) {
                 self.expect_token(&Token::LParen)?;
                 let partitions = self.parse_comma_separated(Parser::parse_expr)?;
@@ -12088,6 +12107,7 @@ impl<'a> Parser<'a> {
                     if_exists,
                     name,
                     drop_behavior,
+                    drop_token,
                 }
             } else if self.parse_keywords(&[Keyword::PRIMARY, Keyword::KEY]) {
                 let drop_behavior = self.parse_optional_drop_behavior();
@@ -12124,6 +12144,7 @@ impl<'a> Parser<'a> {
                     column_names,
                     if_exists,
                     drop_behavior,
+                    drop_token,
                 }
             }
         } else if self.parse_keyword(Keyword::PARTITION) {
@@ -12484,14 +12505,19 @@ impl<'a> Parser<'a> {
             Keyword::TYPE => self.parse_alter_type(),
             Keyword::COLLATION => self.parse_alter_collation().map(Into::into),
             Keyword::EXTENSION => self.parse_alter_extension().map(Into::into),
-            Keyword::TABLE => self.parse_alter_table(None),
+            Keyword::TABLE => {
+                let stmt = self.parse_alter_table(None)?;
+                Ok(Self::with_alter_token(stmt, alter_token))
+            }
             Keyword::ICEBERG => {
                 self.expect_keyword(Keyword::TABLE)?;
-                self.parse_alter_table(Some(AlterTableType::Iceberg))
+                let stmt = self.parse_alter_table(Some(AlterTableType::Iceberg))?;
+                Ok(Self::with_alter_token(stmt, alter_token))
             }
             Keyword::FOREIGN => {
                 self.expect_keyword(Keyword::TABLE)?;
-                self.parse_alter_table(Some(AlterTableType::Foreign))
+                let stmt = self.parse_alter_table(Some(AlterTableType::Foreign))?;
+                Ok(Self::with_alter_token(stmt, alter_token))
             }
             Keyword::INDEX => {
                 let index_name = self.parse_object_name(false)?;
@@ -12744,6 +12770,15 @@ impl<'a> Parser<'a> {
         }))
     }
 
+    /// Record the `ALTER` keyword in a statement that [Self::parse_alter]
+    /// dispatched to a parser that doesn't see it.
+    fn with_alter_token(mut stmt: Statement, alter_token: TokenWithSpan) -> Statement {
+        if let Statement::AlterTable(t) = &mut stmt {
+            t.alter_token = AttachedToken(alter_token);
+        }
+        stmt
+    }
+
     /// Parse a [Statement::AlterTable]
     pub fn parse_alter_table(
         &mut self,
@@ -12792,12 +12827,6 @@ impl<'a> Parser<'a> {
             );
         }
 
-        let end_token = if self.peek_token_ref().token == Token::SemiColon {
-            self.peek_token_ref().clone()
-        } else {
-            self.get_current_token().clone()
-        };
-
         Ok(AlterTable {
             name: table_name,
             if_exists,
@@ -12807,7 +12836,8 @@ impl<'a> Parser<'a> {
             on_cluster,
             with_check,
             table_type,
-            end_token: AttachedToken(end_token),
+            alter_token: AttachedToken::empty(),
+            end_token: self.last_consumed_token(),
         }
         .into())
     }

@@ -799,12 +799,6 @@ fn parse_alter_dynamic_table(parser: &mut Parser) -> Result<Statement, ParserErr
         );
     };
 
-    let end_token = if parser.peek_token_ref().token == Token::SemiColon {
-        parser.peek_token_ref().clone()
-    } else {
-        parser.get_current_token().clone()
-    };
-
     Ok(Statement::AlterTable(AlterTable {
         name: table_name,
         if_exists: false,
@@ -814,7 +808,8 @@ fn parse_alter_dynamic_table(parser: &mut Parser) -> Result<Statement, ParserErr
         on_cluster: None,
         with_check: None,
         table_type: Some(AlterTableType::Dynamic),
-        end_token: AttachedToken(end_token),
+        alter_token: AttachedToken::empty(),
+        end_token: parser.last_consumed_token(),
     }))
 }
 
@@ -842,12 +837,6 @@ fn parse_alter_external_table(parser: &mut Parser) -> Result<Statement, ParserEr
         );
     };
 
-    let end_token = if parser.peek_token_ref().token == Token::SemiColon {
-        parser.peek_token_ref().clone()
-    } else {
-        parser.get_current_token().clone()
-    };
-
     Ok(Statement::AlterTable(AlterTable {
         name: table_name,
         if_exists,
@@ -857,7 +846,8 @@ fn parse_alter_external_table(parser: &mut Parser) -> Result<Statement, ParserEr
         on_cluster: None,
         with_check: None,
         table_type: Some(AlterTableType::External),
-        end_token: AttachedToken(end_token),
+        alter_token: AttachedToken::empty(),
+        end_token: parser.last_consumed_token(),
     }))
 }
 

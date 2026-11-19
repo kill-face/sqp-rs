@@ -1001,11 +1001,13 @@ impl Spanned for CreateIndex {
             predicate,
             index_options: _,
             alter_options,
+            create_token,
+            end_token,
         } = self;
 
         union_spans(
-            name.iter()
-                .map(|i| i.span())
+            iter::once(create_token.0.span)
+                .chain(name.iter().map(|i| i.span()))
                 .chain(core::iter::once(table_name.span()))
                 .chain(columns.iter().map(|i| i.column.span()))
                 .chain(columnstore_order.iter().map(|i| i.span))
@@ -1013,7 +1015,8 @@ impl Spanned for CreateIndex {
                 .chain(with.iter().map(|i| i.span()))
                 .chain(predicate.iter().map(|i| i.span()))
                 .chain(alter_options.iter().map(|i| i.span()))
-                .chain(data_space.iter().map(|i| i.span())),
+                .chain(data_space.iter().map(|i| i.span()))
+                .chain(iter::once(end_token.0.span)),
         )
     }
 }
@@ -1504,13 +1507,15 @@ impl Spanned for AlterTableOperation {
             AlterTableOperation::AddConstraint {
                 constraint,
                 not_valid: _,
-            } => constraint.span(),
+                add_token,
+            } => add_token.0.span.union(&constraint.span()),
             AlterTableOperation::AddColumn {
                 column_keyword: _,
                 if_not_exists: _,
                 column_def,
                 column_position: _,
-            } => column_def.span(),
+                add_token,
+            } => add_token.0.span.union(&column_def.span()),
             AlterTableOperation::AddProjection {
                 if_not_exists: _,
                 name,
@@ -1534,13 +1539,17 @@ impl Spanned for AlterTableOperation {
                 if_exists: _,
                 name,
                 drop_behavior: _,
-            } => name.span,
+                drop_token,
+            } => drop_token.0.span.union(&name.span),
             AlterTableOperation::DropColumn {
                 has_column_keyword: _,
                 column_names,
                 if_exists: _,
                 drop_behavior: _,
-            } => union_spans(column_names.iter().map(|i| i.span)),
+                drop_token,
+            } => union_spans(
+                iter::once(drop_token.0.span).chain(column_names.iter().map(|i| i.span)),
+            ),
             AlterTableOperation::AttachPartition { partition } => partition.span(),
             AlterTableOperation::AttachPartitionOf {
                 partition,
@@ -1642,9 +1651,16 @@ impl Spanned for AlterTableOperation {
             AlterTableOperation::Lock { .. } => Span::empty(),
             AlterTableOperation::ReplicaIdentity { .. } => Span::empty(),
             AlterTableOperation::ValidateConstraint { name } => name.span,
-            AlterTableOperation::ConstraintCheck { names, .. } => {
-                union_spans(names.iter().flatten().map(|i| i.span))
-            }
+            AlterTableOperation::ConstraintCheck {
+                enabled: _,
+                names,
+                start_token,
+                end_token,
+            } => union_spans(
+                iter::once(start_token.0.span)
+                    .chain(names.iter().flatten().map(|i| i.span))
+                    .chain(iter::once(end_token.0.span)),
+            ),
             AlterTableOperation::Inherit { parent } | AlterTableOperation::NoInherit { parent } => {
                 parent.span()
             }
@@ -2988,7 +3004,8 @@ impl Spanned for AlterSchema {
 impl Spanned for CreateView {
     fn span(&self) -> Span {
         union_spans(
-            core::iter::once(self.name.span())
+            core::iter::once(self.create_token.0.span)
+                .chain(core::iter::once(self.name.span()))
                 .chain(self.columns.iter().map(|i| i.span()))
                 .chain(core::iter::once(self.query.span()))
                 .chain(core::iter::once(self.options.span()))
@@ -3002,7 +3019,8 @@ impl Spanned for CreateView {
 impl Spanned for AlterTable {
     fn span(&self) -> Span {
         union_spans(
-            core::iter::once(self.name.span())
+            core::iter::once(self.alter_token.0.span)
+                .chain(core::iter::once(self.name.span()))
                 .chain(self.operations.iter().map(|i| i.span()))
                 .chain(self.on_cluster.iter().map(|i| i.span))
                 .chain(core::iter::once(self.end_token.0.span)),
@@ -3479,8 +3497,8 @@ ALTER TABLE users
 
         let stmt_span = r[0].span();
 
-        assert_eq!(stmt_span.start, (2, 13).into());
-        assert_eq!(stmt_span.end, (4, 11).into());
+        assert_eq!(stmt_span.start, (2, 1).into());
+        assert_eq!(stmt_span.end, (4, 10).into());
     }
 
     #[test]
@@ -4374,6 +4392,41 @@ SETTINGS update_parallel_mode = 'auto'"#;
 
         let sql = "CREATE TABLE #t (a INT)";
         assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);
+    }
+
+    #[test]
+    fn test_alter_table_create_index_create_view_spans() {
+        let sql = "ALTER TABLE dbo.t WITH CHECK ADD CONSTRAINT fk_t FOREIGN KEY (b) REFERENCES u (id);\n\
+                   ALTER TABLE dbo.t CHECK CONSTRAINT fk_t;\n\
+                   ALTER TABLE dbo.t NOCHECK CONSTRAINT ALL;\n\
+                   ALTER TABLE dbo.t ADD c INT NULL;\n\
+                   ALTER TABLE dbo.t DROP CONSTRAINT fk_t;\n\
+                   ALTER TABLE dbo.t DROP COLUMN c;\n\
+                   CREATE UNIQUE NONCLUSTERED INDEX ix ON dbo.t (a, b DESC) INCLUDE (c) WHERE a > 0 ON [PRIMARY];\n\
+                   CREATE INDEX ix2 ON dbo.t (a);\n\
+                   CREATE OR ALTER VIEW dbo.v WITH SCHEMABINDING AS SELECT a FROM dbo.t";
+        let stmts = mssql_statements(sql);
+        let expected: Vec<_> = sql.lines().map(|l| l.trim_end_matches(';')).collect();
+        assert_eq!(statement_texts(sql, &stmts), expected);
+
+        let operations: Vec<_> = stmts[..6]
+            .iter()
+            .map(|s| match s {
+                Statement::AlterTable(t) => spanned_text(sql, t.operations[0].span()),
+                other => panic!("expected ALTER TABLE, got {other:?}"),
+            })
+            .collect();
+        assert_eq!(
+            operations,
+            [
+                "ADD CONSTRAINT fk_t FOREIGN KEY (b) REFERENCES u (id)",
+                "CHECK CONSTRAINT fk_t",
+                "NOCHECK CONSTRAINT ALL",
+                "ADD c INT NULL",
+                "DROP CONSTRAINT fk_t",
+                "DROP COLUMN c",
+            ]
+        );
     }
 
     #[test]

@@ -3121,7 +3121,7 @@ fn parse_mssql_create_index_clustering() {
             .unwrap()
             .span()
             .end,
-        Location::new(1, 55)
+        Location::new(1, 56)
     );
 
     TestedDialects::new(vec![Box::new(GenericDialect {})])
@@ -3347,6 +3347,8 @@ fn parse_mssql_alter_table_constraint_check() {
         vec![AlterTableOperation::ConstraintCheck {
             enabled: true,
             names: Some(vec![Ident::new("fk1"), Ident::new("fk2")]),
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }]
     );
 

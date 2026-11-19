@@ -132,6 +132,8 @@ pub enum AlterTableOperation {
         constraint: TableConstraint,
         /// Whether the constraint should be marked `NOT VALID`.
         not_valid: bool,
+        /// The `ADD` keyword.
+        add_token: AttachedToken,
     },
     /// `ADD [COLUMN] [IF NOT EXISTS] <column_def>`
     AddColumn {
@@ -143,6 +145,8 @@ pub enum AlterTableOperation {
         column_def: ColumnDef,
         /// MySQL `ALTER TABLE` only  [FIRST | AFTER column_name]
         column_position: Option<MySQLColumnPosition>,
+        /// The `ADD` keyword.
+        add_token: AttachedToken,
     },
     /// `ADD PROJECTION [IF NOT EXISTS] name ( SELECT <COLUMN LIST EXPR> [GROUP BY] [ORDER BY])`
     ///
@@ -217,6 +221,8 @@ pub enum AlterTableOperation {
         name: Ident,
         /// Optional drop behavior (`CASCADE`/`RESTRICT`).
         drop_behavior: Option<DropBehavior>,
+        /// The `DROP` keyword.
+        drop_token: AttachedToken,
     },
     /// `DROP [ COLUMN ] [ IF EXISTS ] <column_name> [ , <column_name>, ... ] [ CASCADE ]`
     DropColumn {
@@ -228,6 +234,8 @@ pub enum AlterTableOperation {
         if_exists: bool,
         /// Optional drop behavior for the column removal.
         drop_behavior: Option<DropBehavior>,
+        /// The `DROP` keyword.
+        drop_token: AttachedToken,
     },
     /// `ATTACH PART|PARTITION <partition_expr>`
     /// Note: this is a ClickHouse-specific operation, please refer to
@@ -561,6 +569,10 @@ pub enum AlterTableOperation {
         enabled: bool,
         /// The constraint names, or `None` for `ALL`.
         names: Option<Vec<Ident>>,
+        /// The `CHECK` or `NOCHECK` keyword.
+        start_token: AttachedToken,
+        /// The operation's last token.
+        end_token: AttachedToken,
     },
     /// `VALIDATE CONSTRAINT <name>`
     ValidateConstraint {
@@ -829,6 +841,7 @@ impl fmt::Display for AlterTableOperation {
             AlterTableOperation::AddConstraint {
                 not_valid,
                 constraint,
+                ..
             } => {
                 write!(f, "ADD {constraint}")?;
                 if *not_valid {
@@ -841,6 +854,7 @@ impl fmt::Display for AlterTableOperation {
                 if_not_exists,
                 column_def,
                 column_position,
+                ..
             } => {
                 write!(f, "ADD")?;
                 if *column_keyword {
@@ -938,6 +952,7 @@ impl fmt::Display for AlterTableOperation {
                 if_exists,
                 name,
                 drop_behavior,
+                ..
             } => {
                 write!(
                     f,
@@ -973,6 +988,7 @@ impl fmt::Display for AlterTableOperation {
                 column_names: column_name,
                 if_exists,
                 drop_behavior,
+                ..
             } => {
                 write!(
                     f,
@@ -1173,7 +1189,7 @@ impl fmt::Display for AlterTableOperation {
             AlterTableOperation::ReplicaIdentity { identity } => {
                 write!(f, "REPLICA IDENTITY {identity}")
             }
-            AlterTableOperation::ConstraintCheck { enabled, names } => {
+            AlterTableOperation::ConstraintCheck { enabled, names, .. } => {
                 let check = if *enabled { "CHECK" } else { "NOCHECK" };
                 match names {
                     Some(names) => {
@@ -3222,6 +3238,10 @@ pub struct CreateIndex {
     ///
     /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/create-index.html
     pub alter_options: Vec<AlterTableOperation>,
+    /// The `CREATE` keyword.
+    pub create_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for CreateIndex {
@@ -4910,6 +4930,8 @@ pub struct CreateView {
     pub to: Option<ObjectName>,
     /// MySQL: Optional parameters for the view algorithm, definer, and security context
     pub params: Option<CreateViewParams>,
+    /// The `CREATE` keyword.
+    pub create_token: AttachedToken,
 }
 
 impl fmt::Display for CreateView {
@@ -5670,7 +5692,9 @@ pub struct AlterTable {
     pub with_check: Option<bool>,
     /// Table type: None for regular tables, Some(AlterTableType) for Iceberg or Dynamic tables
     pub table_type: Option<AlterTableType>,
-    /// Token that represents the end of the statement (semicolon or EOF)
+    /// The `ALTER` keyword.
+    pub alter_token: AttachedToken,
+    /// The statement's last token (not the `;` that may follow).
     pub end_token: AttachedToken,
 }
 
