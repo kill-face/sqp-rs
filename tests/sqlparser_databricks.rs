@@ -89,7 +89,10 @@ fn test_databricks_exists() {
                         name: Ident::new("x"),
                         data_type: None
                     }),
-                    body: Box::new(Expr::IsNull(Box::new(Expr::Identifier(Ident::new("x"))))),
+                    body: Box::new(Expr::IsNull(
+                        Box::new(Expr::Identifier(Ident::new("x"))),
+                        AttachedToken::empty()
+                    )),
                     syntax: LambdaSyntax::Arrow,
                 })
             ]

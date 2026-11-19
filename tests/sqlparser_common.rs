@@ -2022,7 +2022,10 @@ fn parse_is_null() {
     use self::Expr::*;
     let sql = "a IS NULL";
     assert_eq!(
-        IsNull(Box::new(Identifier(Ident::new("a")))),
+        IsNull(
+            Box::new(Identifier(Ident::new("a"))),
+            AttachedToken::empty()
+        ),
         verified_expr(sql)
     );
 }
@@ -2032,7 +2035,10 @@ fn parse_is_not_null() {
     use self::Expr::*;
     let sql = "a IS NOT NULL";
     assert_eq!(
-        IsNotNull(Box::new(Identifier(Ident::new("a")))),
+        IsNotNull(
+            Box::new(Identifier(Ident::new("a"))),
+            AttachedToken::empty()
+        ),
         verified_expr(sql)
     );
 }
@@ -2150,10 +2156,13 @@ fn parse_is_distinct_from_precedence() {
     // `a IS NULL IS NULL` already parses. Deliberately more permissive than
     // PostgreSQL, which declares IS as %nonassoc and rejects the chain.
     assert_eq!(
-        IsNull(Box::new(IsDistinctFrom(
-            Box::new(Identifier(Ident::new("a"))),
-            Box::new(Identifier(Ident::new("b"))),
-        ))),
+        IsNull(
+            Box::new(IsDistinctFrom(
+                Box::new(Identifier(Ident::new("a"))),
+                Box::new(Identifier(Ident::new("b"))),
+            )),
+            AttachedToken::empty()
+        ),
         verified_expr("a IS DISTINCT FROM b IS NULL")
     );
 
@@ -2426,15 +2435,18 @@ fn parse_ilike() {
         );
         let select = verified_only_select(sql);
         assert_eq!(
-            Expr::IsNull(Box::new(Expr::ILike {
-                expr: Box::new(Expr::Identifier(Ident::new("name"))),
-                negated,
-                pattern: Box::new(Expr::Value(
-                    (Value::SingleQuotedString("%a".to_string())).with_empty_span()
-                )),
-                escape_char: None,
-                any: false,
-            })),
+            Expr::IsNull(
+                Box::new(Expr::ILike {
+                    expr: Box::new(Expr::Identifier(Ident::new("name"))),
+                    negated,
+                    pattern: Box::new(Expr::Value(
+                        (Value::SingleQuotedString("%a".to_string())).with_empty_span()
+                    )),
+                    escape_char: None,
+                    any: false,
+                }),
+                AttachedToken::empty()
+            ),
             select.selection.unwrap()
         );
     }
@@ -2523,15 +2535,18 @@ fn parse_like() {
         );
         let select = verified_only_select(sql);
         assert_eq!(
-            Expr::IsNull(Box::new(Expr::Like {
-                expr: Box::new(Expr::Identifier(Ident::new("name"))),
-                negated,
-                pattern: Box::new(Expr::Value(
-                    (Value::SingleQuotedString("%a".to_string())).with_empty_span()
-                )),
-                escape_char: None,
-                any: false,
-            })),
+            Expr::IsNull(
+                Box::new(Expr::Like {
+                    expr: Box::new(Expr::Identifier(Ident::new("name"))),
+                    negated,
+                    pattern: Box::new(Expr::Value(
+                        (Value::SingleQuotedString("%a".to_string())).with_empty_span()
+                    )),
+                    escape_char: None,
+                    any: false,
+                }),
+                AttachedToken::empty()
+            ),
             select.selection.unwrap()
         );
     }
@@ -2608,16 +2623,19 @@ fn parse_similar_to() {
         );
         let select = verified_only_select(sql);
         assert_eq!(
-            Expr::IsNull(Box::new(Expr::SimilarTo {
-                expr: Box::new(Expr::Identifier(Ident::new("name"))),
-                negated,
-                pattern: Box::new(Expr::Value(
-                    (Value::SingleQuotedString("%a".to_string())).with_empty_span()
-                )),
-                escape_char: Some(Box::new(Expr::value(
-                    Value::SingleQuotedString('^'.to_string()).with_empty_span(),
-                ))),
-            })),
+            Expr::IsNull(
+                Box::new(Expr::SimilarTo {
+                    expr: Box::new(Expr::Identifier(Ident::new("name"))),
+                    negated,
+                    pattern: Box::new(Expr::Value(
+                        (Value::SingleQuotedString("%a".to_string())).with_empty_span()
+                    )),
+                    escape_char: Some(Box::new(Expr::value(
+                        Value::SingleQuotedString('^'.to_string()).with_empty_span(),
+                    ))),
+                }),
+                AttachedToken::empty()
+            ),
             select.selection.unwrap()
         );
     }
@@ -2980,20 +2998,23 @@ fn parse_between_with_expr() {
     let sql = "SELECT * FROM t WHERE 1 BETWEEN 1 + 2 AND 3 + 4 IS NULL";
     let select = verified_only_select(sql);
     assert_eq!(
-        Expr::IsNull(Box::new(Expr::Between {
-            expr: Box::new(Expr::value(number("1"))),
-            low: Box::new(Expr::BinaryOp {
-                left: Box::new(Expr::value(number("1"))),
-                op: Plus,
-                right: Box::new(Expr::value(number("2"))),
+        Expr::IsNull(
+            Box::new(Expr::Between {
+                expr: Box::new(Expr::value(number("1"))),
+                low: Box::new(Expr::BinaryOp {
+                    left: Box::new(Expr::value(number("1"))),
+                    op: Plus,
+                    right: Box::new(Expr::value(number("2"))),
+                }),
+                high: Box::new(Expr::BinaryOp {
+                    left: Box::new(Expr::value(number("3"))),
+                    op: Plus,
+                    right: Box::new(Expr::value(number("4"))),
+                }),
+                negated: false,
             }),
-            high: Box::new(Expr::BinaryOp {
-                left: Box::new(Expr::value(number("3"))),
-                op: Plus,
-                right: Box::new(Expr::value(number("4"))),
-            }),
-            negated: false,
-        })),
+            AttachedToken::empty()
+        ),
         select.selection.unwrap()
     );
 
@@ -8409,7 +8430,10 @@ fn parse_searched_case_expr() {
             operand: None,
             conditions: vec![
                 CaseWhen {
-                    condition: IsNull(Box::new(Identifier(Ident::new("bar")))),
+                    condition: IsNull(
+                        Box::new(Identifier(Ident::new("bar"))),
+                        AttachedToken::empty()
+                    ),
                     result: Expr::value(Value::SingleQuotedString("null".to_string())),
                 },
                 CaseWhen {
@@ -12133,25 +12157,37 @@ fn parse_is_boolean() {
 
     let sql = "a IS TRUE";
     assert_eq!(
-        IsTrue(Box::new(Identifier(Ident::new("a")))),
+        IsTrue(
+            Box::new(Identifier(Ident::new("a"))),
+            AttachedToken::empty()
+        ),
         verified_expr(sql)
     );
 
     let sql = "a IS NOT TRUE";
     assert_eq!(
-        IsNotTrue(Box::new(Identifier(Ident::new("a")))),
+        IsNotTrue(
+            Box::new(Identifier(Ident::new("a"))),
+            AttachedToken::empty()
+        ),
         verified_expr(sql)
     );
 
     let sql = "a IS FALSE";
     assert_eq!(
-        IsFalse(Box::new(Identifier(Ident::new("a")))),
+        IsFalse(
+            Box::new(Identifier(Ident::new("a"))),
+            AttachedToken::empty()
+        ),
         verified_expr(sql)
     );
 
     let sql = "a IS NOT FALSE";
     assert_eq!(
-        IsNotFalse(Box::new(Identifier(Ident::new("a")))),
+        IsNotFalse(
+            Box::new(Identifier(Ident::new("a"))),
+            AttachedToken::empty()
+        ),
         verified_expr(sql)
     );
 
@@ -12199,13 +12235,19 @@ fn parse_is_boolean() {
 
     let sql = "a IS UNKNOWN";
     assert_eq!(
-        IsUnknown(Box::new(Identifier(Ident::new("a")))),
+        IsUnknown(
+            Box::new(Identifier(Ident::new("a"))),
+            AttachedToken::empty()
+        ),
         dialects.verified_expr(sql)
     );
 
     let sql = "a IS NOT UNKNOWN";
     assert_eq!(
-        IsNotUnknown(Box::new(Identifier(Ident::new("a")))),
+        IsNotUnknown(
+            Box::new(Identifier(Ident::new("a"))),
+            AttachedToken::empty()
+        ),
         dialects.verified_expr(sql)
     );
 
@@ -14711,9 +14753,10 @@ fn test_selective_aggregation() {
                     ))],
                     clauses: vec![],
                 }),
-                filter: Some(Box::new(Expr::IsNotNull(Box::new(Expr::Identifier(
-                    Ident::new("name")
-                ))))),
+                filter: Some(Box::new(Expr::IsNotNull(
+                    Box::new(Expr::Identifier(Ident::new("name"))),
+                    AttachedToken::empty()
+                ))),
                 over: None,
                 within_group: vec![],
                 null_treatment: None,
@@ -17731,7 +17774,10 @@ fn parse_composite_access_expr() {
     };
 
     assert_eq!(stmt.projection[0], SelectItem::UnnamedExpr(expr.clone()));
-    assert_eq!(stmt.selection.unwrap(), Expr::IsNotNull(Box::new(expr)));
+    assert_eq!(
+        stmt.selection.unwrap(),
+        Expr::IsNotNull(Box::new(expr), AttachedToken::empty())
+    );
 
     // Compound access with quoted identifier.
     all_dialects_where(|d| d.is_delimited_identifier_start('"'))

@@ -1949,14 +1949,14 @@ impl Spanned for Expr {
             Expr::CompoundFieldAccess { root, access_chain } => {
                 union_spans(iter::once(root.span()).chain(access_chain.iter().map(|i| i.span())))
             }
-            Expr::IsFalse(expr) => expr.span(),
-            Expr::IsNotFalse(expr) => expr.span(),
-            Expr::IsTrue(expr) => expr.span(),
-            Expr::IsNotTrue(expr) => expr.span(),
-            Expr::IsNull(expr) => expr.span(),
-            Expr::IsNotNull(expr) => expr.span(),
-            Expr::IsUnknown(expr) => expr.span(),
-            Expr::IsNotUnknown(expr) => expr.span(),
+            Expr::IsFalse(expr, end_token)
+            | Expr::IsNotFalse(expr, end_token)
+            | Expr::IsTrue(expr, end_token)
+            | Expr::IsNotTrue(expr, end_token)
+            | Expr::IsNull(expr, end_token)
+            | Expr::IsNotNull(expr, end_token)
+            | Expr::IsUnknown(expr, end_token)
+            | Expr::IsNotUnknown(expr, end_token) => expr.span().union(&end_token.0.span),
             Expr::IsJson {
                 expr,
                 kind: _,
@@ -4628,6 +4628,28 @@ SETTINGS update_parallel_mode = 'auto'"#;
             .map(|i| spanned_text(sql, i.span()))
             .collect();
         assert_eq!(items, ["a::NUMERIC(10, 2)", "CAST(b AS TEXT)"]);
+    }
+
+    #[test]
+    fn test_is_null_spans() {
+        let sql = "SELECT * FROM t WHERE a IS NULL AND b IS NOT NULL";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        let Some(Expr::BinaryOp { left, right, .. }) = &select.selection else {
+            panic!("expected AND, got {:?}", select.selection);
+        };
+        assert_eq!(spanned_text(sql, left.span()), "a IS NULL");
+        assert_eq!(spanned_text(sql, right.span()), "b IS NOT NULL");
+
+        let sql = "SELECT a IS TRUE, b IS NOT UNKNOWN FROM t";
+        let stmts = Parser::parse_sql(&GenericDialect, sql).unwrap();
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
     }
 
     #[test]

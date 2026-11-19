@@ -4289,17 +4289,17 @@ impl<'a> Parser<'a> {
             match w.keyword {
                 Keyword::IS => {
                     if self.parse_keyword(Keyword::NULL) {
-                        Ok(Expr::IsNull(Box::new(expr)))
+                        Ok(Expr::IsNull(Box::new(expr), self.last_consumed_token()))
                     } else if self.parse_keywords(&[Keyword::NOT, Keyword::NULL]) {
-                        Ok(Expr::IsNotNull(Box::new(expr)))
+                        Ok(Expr::IsNotNull(Box::new(expr), self.last_consumed_token()))
                     } else if self.parse_keywords(&[Keyword::TRUE]) {
-                        Ok(Expr::IsTrue(Box::new(expr)))
+                        Ok(Expr::IsTrue(Box::new(expr), self.last_consumed_token()))
                     } else if self.parse_keywords(&[Keyword::NOT, Keyword::TRUE]) {
-                        Ok(Expr::IsNotTrue(Box::new(expr)))
+                        Ok(Expr::IsNotTrue(Box::new(expr), self.last_consumed_token()))
                     } else if self.parse_keywords(&[Keyword::FALSE]) {
-                        Ok(Expr::IsFalse(Box::new(expr)))
+                        Ok(Expr::IsFalse(Box::new(expr), self.last_consumed_token()))
                     } else if self.parse_keywords(&[Keyword::NOT, Keyword::FALSE]) {
-                        Ok(Expr::IsNotFalse(Box::new(expr)))
+                        Ok(Expr::IsNotFalse(Box::new(expr), self.last_consumed_token()))
                     } else if self.parse_keywords(&[Keyword::DISTINCT, Keyword::FROM]) {
                         // The right operand binds no more loosely than `IS`
                         // itself, so that e.g. `a IS DISTINCT FROM b AND c`
@@ -4325,9 +4325,12 @@ impl<'a> Parser<'a> {
                             ),
                         })
                     } else if self.parse_keywords(&[Keyword::UNKNOWN]) {
-                        Ok(Expr::IsUnknown(Box::new(expr)))
+                        Ok(Expr::IsUnknown(Box::new(expr), self.last_consumed_token()))
                     } else if self.parse_keywords(&[Keyword::NOT, Keyword::UNKNOWN]) {
-                        Ok(Expr::IsNotUnknown(Box::new(expr)))
+                        Ok(Expr::IsNotUnknown(
+                            Box::new(expr),
+                            self.last_consumed_token(),
+                        ))
                     } else if self.parse_keyword(Keyword::JSON) {
                         self.parse_is_json_predicate(expr, false)
                     } else if self.parse_keywords(&[Keyword::NOT, Keyword::JSON]) {
@@ -4380,7 +4383,7 @@ impl<'a> Parser<'a> {
                             regexp,
                         })
                     } else if negated && null {
-                        Ok(Expr::IsNotNull(Box::new(expr)))
+                        Ok(Expr::IsNotNull(Box::new(expr), self.last_consumed_token()))
                     } else if self.parse_keyword(Keyword::IN) {
                         self.parse_in(expr, negated, false)
                     } else if self.parse_keyword(Keyword::BETWEEN) {
@@ -4419,7 +4422,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 Keyword::NOTNULL if dialect.supports_notnull_operator() => {
-                    Ok(Expr::IsNotNull(Box::new(expr)))
+                    Ok(Expr::IsNotNull(Box::new(expr), self.last_consumed_token()))
                 }
                 Keyword::MEMBER => {
                     if self.parse_keyword(Keyword::OF) {

@@ -994,22 +994,22 @@ pub enum Expr {
         /// The path to the data to extract.
         path: JsonPath,
     },
-    /// `IS FALSE` operator
-    IsFalse(Box<Expr>),
-    /// `IS NOT FALSE` operator
-    IsNotFalse(Box<Expr>),
-    /// `IS TRUE` operator
-    IsTrue(Box<Expr>),
-    /// `IS NOT TRUE` operator
-    IsNotTrue(Box<Expr>),
-    /// `IS NULL` operator
-    IsNull(Box<Expr>),
-    /// `IS NOT NULL` operator
-    IsNotNull(Box<Expr>),
-    /// `IS UNKNOWN` operator
-    IsUnknown(Box<Expr>),
-    /// `IS NOT UNKNOWN` operator
-    IsNotUnknown(Box<Expr>),
+    /// `IS FALSE` operator, with the trailing `FALSE` token
+    IsFalse(Box<Expr>, AttachedToken),
+    /// `IS NOT FALSE` operator, with the trailing `FALSE` token
+    IsNotFalse(Box<Expr>, AttachedToken),
+    /// `IS TRUE` operator, with the trailing `TRUE` token
+    IsTrue(Box<Expr>, AttachedToken),
+    /// `IS NOT TRUE` operator, with the trailing `TRUE` token
+    IsNotTrue(Box<Expr>, AttachedToken),
+    /// `IS NULL` operator, with the trailing `NULL` token
+    IsNull(Box<Expr>, AttachedToken),
+    /// `IS NOT NULL` operator, with the trailing `NULL` token
+    IsNotNull(Box<Expr>, AttachedToken),
+    /// `IS UNKNOWN` operator, with the trailing `UNKNOWN` token
+    IsUnknown(Box<Expr>, AttachedToken),
+    /// `IS NOT UNKNOWN` operator, with the trailing `UNKNOWN` token
+    IsNotUnknown(Box<Expr>, AttachedToken),
     /// `IS DISTINCT FROM` operator
     IsDistinctFrom(Box<Expr>, Box<Expr>),
     /// `IS NOT DISTINCT FROM` operator
@@ -1880,14 +1880,14 @@ impl fmt::Display for Expr {
                 }
                 Ok(())
             }
-            Expr::IsTrue(ast) => write!(f, "{ast} IS TRUE"),
-            Expr::IsNotTrue(ast) => write!(f, "{ast} IS NOT TRUE"),
-            Expr::IsFalse(ast) => write!(f, "{ast} IS FALSE"),
-            Expr::IsNotFalse(ast) => write!(f, "{ast} IS NOT FALSE"),
-            Expr::IsNull(ast) => write!(f, "{ast} IS NULL"),
-            Expr::IsNotNull(ast) => write!(f, "{ast} IS NOT NULL"),
-            Expr::IsUnknown(ast) => write!(f, "{ast} IS UNKNOWN"),
-            Expr::IsNotUnknown(ast) => write!(f, "{ast} IS NOT UNKNOWN"),
+            Expr::IsTrue(ast, _) => write!(f, "{ast} IS TRUE"),
+            Expr::IsNotTrue(ast, _) => write!(f, "{ast} IS NOT TRUE"),
+            Expr::IsFalse(ast, _) => write!(f, "{ast} IS FALSE"),
+            Expr::IsNotFalse(ast, _) => write!(f, "{ast} IS NOT FALSE"),
+            Expr::IsNull(ast, _) => write!(f, "{ast} IS NULL"),
+            Expr::IsNotNull(ast, _) => write!(f, "{ast} IS NOT NULL"),
+            Expr::IsUnknown(ast, _) => write!(f, "{ast} IS UNKNOWN"),
+            Expr::IsNotUnknown(ast, _) => write!(f, "{ast} IS NOT UNKNOWN"),
             Expr::IsJson {
                 expr,
                 kind,
