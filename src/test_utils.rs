@@ -377,6 +377,7 @@ pub fn table_alias(explicit: bool, name: impl Into<String>) -> Option<TableAlias
         name: Ident::new(name),
         columns: vec![],
         at: None,
+        end_token: AttachedToken::empty(),
     })
 }
 

@@ -2534,9 +2534,17 @@ impl Spanned for TableFactor {
                 subquery,
                 alias,
                 sample: _,
-            } => subquery
-                .span()
-                .union_opt(&alias.as_ref().map(|alias| alias.span())),
+                opening_paren_token,
+                closing_paren_token,
+            } => union_spans(
+                [
+                    opening_paren_token.0.span,
+                    subquery.span(),
+                    closing_paren_token.0.span,
+                ]
+                .into_iter()
+                .chain(alias.as_ref().map(|alias| alias.span())),
+            ),
             TableFactor::TableFunction { expr, alias } => expr
                 .span()
                 .union_opt(&alias.as_ref().map(|alias| alias.span())),
@@ -2765,11 +2773,13 @@ impl Spanned for TableAlias {
             name,
             columns,
             at,
+            end_token,
         } = self;
         union_spans(
             core::iter::once(name.span)
                 .chain(columns.iter().map(Spanned::span))
-                .chain(at.iter().map(|at| at.span)),
+                .chain(at.iter().map(|at| at.span))
+                .chain(core::iter::once(end_token.0.span)),
         )
     }
 }
@@ -3444,10 +3454,9 @@ pub mod tests {
 
         let subquery_span = query.from[0].span();
 
-        // left paren missing
         assert_eq!(
             test.get_source(subquery_span),
-            "SELECT a FROM postgres.public.source) AS b"
+            "(SELECT a FROM postgres.public.source) AS b"
         );
     }
 
@@ -4725,6 +4734,26 @@ SETTINGS update_parallel_mode = 'auto'"#;
         };
         assert_eq!(spanned_text(sql, left.span()), "EXISTS (SELECT 1 FROM u)");
         assert_eq!(spanned_text(sql, right.span()), "NOT EXISTS (SELECT 2)");
+    }
+
+    #[test]
+    fn test_derived_table_spans() {
+        let sql = "SELECT * FROM (SELECT 1 AS a) AS t JOIN (VALUES (1, 'x'), (2, 'y')) AS v (a, b) ON 1 = 1";
+        let stmts = mssql_statements(sql);
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        assert_eq!(
+            spanned_text(sql, select.from[0].relation.span()),
+            "(SELECT 1 AS a) AS t"
+        );
+        assert_eq!(
+            spanned_text(sql, select.from[0].joins[0].relation.span()),
+            "(VALUES (1, 'x'), (2, 'y')) AS v (a, b)"
+        );
     }
 
     #[test]

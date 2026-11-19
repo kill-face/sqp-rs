@@ -586,6 +586,8 @@ fn parse_update_set_from() {
                     }),
                     alias: table_alias(true, "t2"),
                     sample: None,
+                    opening_paren_token: AttachedToken::empty(),
+                    closing_paren_token: AttachedToken::empty(),
                 },
                 joins: vec![]
             }])),
@@ -739,6 +741,7 @@ fn parse_select_with_table_alias() {
                         TableAliasColumnDef::from_name("C"),
                     ],
                     at: None,
+                    end_token: AttachedToken::empty(),
                 }),
                 args: None,
                 with_hints: vec![],
@@ -9108,6 +9111,7 @@ fn parse_recursive_cte() {
             },
             columns: vec![TableAliasColumnDef::from_name("val")],
             at: None,
+            end_token: AttachedToken::empty(),
         },
         query: Box::new(cte_query),
         from: None,
@@ -9176,6 +9180,8 @@ fn parse_derived_tables() {
                     subquery: Box::new(verified_query("(SELECT 1) UNION (SELECT 2)")),
                     alias: table_alias(true, "t1"),
                     sample: None,
+                    opening_paren_token: AttachedToken::empty(),
+                    closing_paren_token: AttachedToken::empty(),
                 },
                 joins: vec![Join {
                     relation: table_from_name(ObjectName::from(vec!["t2".into()])),
@@ -10275,6 +10281,7 @@ fn lateral_derived() {
             ref subquery,
             alias: Some(ref alias),
             sample: _,
+            ..
         } = join.relation
         {
             assert_eq!(lateral_in, lateral);
@@ -11497,6 +11504,8 @@ fn parse_merge() {
                     }),
                     alias: table_alias(true, "stg"),
                     sample: None,
+                    opening_paren_token: AttachedToken::empty(),
+                    closing_paren_token: AttachedToken::empty(),
                 }
             );
             assert_eq!(source, source_no_into);
@@ -12982,6 +12991,7 @@ fn parse_pivot_table() {
                     TableAliasColumnDef::from_name("d"),
                 ],
                 at: None,
+                end_token: AttachedToken::empty(),
             })
         }
     );
@@ -13130,6 +13140,7 @@ fn parse_unpivot_table() {
                 .map(TableAliasColumnDef::from_name)
                 .collect(),
             at: None,
+            end_token: AttachedToken::empty(),
         }),
     };
     pretty_assertions::assert_eq!(verified_only_select(sql).from[0].relation, base_unpivot);

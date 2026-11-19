@@ -1616,6 +1616,10 @@ pub enum TableFactor {
         alias: Option<TableAlias>,
         /// Optional table sample modifier
         sample: Option<TableSampleKind>,
+        /// The opening `(`; empty for unparenthesized `VALUES`.
+        opening_paren_token: AttachedToken,
+        /// The closing `)`; empty for unparenthesized `VALUES`.
+        closing_paren_token: AttachedToken,
     },
     /// `TABLE(<expr>)[ AS <alias> ]`
     TableFunction {
@@ -2403,6 +2407,7 @@ impl fmt::Display for TableFactor {
                 subquery,
                 alias,
                 sample,
+                ..
             } => {
                 if *lateral {
                     write!(f, "LATERAL ")?;
@@ -2695,6 +2700,8 @@ pub struct TableAlias {
     /// ```
     /// See: <https://docs.aws.amazon.com/redshift/latest/dg/query-super.html>
     pub at: Option<Ident>,
+    /// The alias's last token, e.g. the `)` closing `columns`.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for TableAlias {

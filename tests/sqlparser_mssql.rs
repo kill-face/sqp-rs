@@ -114,6 +114,7 @@ fn parse_mssql_delimited_identifiers() {
                             name: Ident::with_quote('[', "WHERE"),
                             columns: vec![],
                             at: None,
+                            end_token: AttachedToken::empty(),
                         })
                     );
                 }

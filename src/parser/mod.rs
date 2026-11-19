@@ -15138,6 +15138,7 @@ impl<'a> Parser<'a> {
                     name,
                     columns,
                     at,
+                    end_token: self.last_consumed_token(),
                 }))
             }
             None => Ok(None),
@@ -16908,6 +16909,7 @@ impl<'a> Parser<'a> {
                         name,
                         columns: vec![],
                         at: None,
+                        end_token: AttachedToken::empty(),
                     },
                     query,
                     from: None,
@@ -16953,6 +16955,7 @@ impl<'a> Parser<'a> {
                 name,
                 columns,
                 at: None,
+                end_token: AttachedToken::empty(),
             },
             query,
             from: None,
@@ -18645,6 +18648,8 @@ impl<'a> Parser<'a> {
                 }),
                 alias,
                 sample: None,
+                opening_paren_token: AttachedToken::empty(),
+                closing_paren_token: AttachedToken::empty(),
             })
         } else if dialect_of!(self is BigQueryDialect | PostgreSqlDialect | GenericDialect)
             && self.parse_keyword(Keyword::UNNEST)
@@ -19552,12 +19557,15 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a derived table factor (a parenthesized subquery), handling optional LATERAL.
+    ///
+    /// The opening `(` must be the token just consumed.
     pub fn parse_derived_table_factor(
         &mut self,
         lateral: IsLateral,
     ) -> Result<TableFactor, ParserError> {
+        let opening_paren_token = self.last_consumed_token();
         let subquery = self.parse_query()?;
-        self.expect_token(&Token::RParen)?;
+        let closing_paren_token = self.expect_token(&Token::RParen)?.into();
         let alias = self.maybe_parse_table_alias()?;
 
         // Parse optional SAMPLE clause after alias
@@ -19573,6 +19581,8 @@ impl<'a> Parser<'a> {
             subquery,
             alias,
             sample,
+            opening_paren_token,
+            closing_paren_token,
         })
     }
 
