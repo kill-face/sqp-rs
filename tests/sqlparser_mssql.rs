@@ -31,7 +31,7 @@ use sqlparser::ast::DataType::{Int, Text, Varbinary};
 use sqlparser::ast::DeclareAssignment::MsSqlAssignment;
 use sqlparser::ast::Value::SingleQuotedString;
 use sqlparser::ast::*;
-use sqlparser::dialect::{GenericDialect, MsSqlDialect};
+use sqlparser::dialect::{GenericDialect, MsSqlDialect, PostgreSqlDialect};
 use sqlparser::parser::{Parser, ParserError, ParserOptions};
 
 #[test]
@@ -3191,4 +3191,41 @@ fn parse_mssql_create_table_trailing_comma() {
         "CREATE TABLE t (a INT, b INT NOT NULL,)",
         "CREATE TABLE t (a INT, b INT NOT NULL)",
     );
+}
+
+#[test]
+fn parse_mssql_computed_columns() {
+    let sql = "CREATE TABLE t (a INT, b AS a + 1, c AS CONVERT(DATE, d) PERSISTED NOT NULL, e AS (a * 2) PERSISTED)";
+    let Statement::CreateTable(create) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(create.columns[1].data_type, DataType::Unspecified);
+    let ColumnOption::Computed(computed) = &create.columns[1].options[0].option else {
+        panic!("expected computed column, got {:?}", create.columns[1]);
+    };
+    assert_eq!(computed.expr.to_string(), "a + 1");
+    assert!(computed.persisted.is_none());
+    let ColumnOption::Computed(computed) = &create.columns[2].options[0].option else {
+        panic!("expected computed column, got {:?}", create.columns[2]);
+    };
+    assert!(computed.persisted.is_some());
+    assert_eq!(create.columns[2].options[1].option, ColumnOption::NotNull);
+
+    let sql = "CREATE TABLE t (b AS a + 1 PERSISTED)";
+    let Statement::CreateTable(create) = Parser::new(&MsSqlDialect {})
+        .try_with_sql(sql)
+        .unwrap()
+        .parse_statement()
+        .unwrap()
+    else {
+        unreachable!()
+    };
+    assert_eq!(
+        create.columns[0].options[0].option.span(),
+        Span::new(Location::new(1, 19), Location::new(1, 37))
+    );
+
+    TestedDialects::new(vec![Box::new(PostgreSqlDialect {})])
+        .parse_sql_statements("CREATE TABLE t (a INT, b AS a + 1)")
+        .unwrap_err();
 }

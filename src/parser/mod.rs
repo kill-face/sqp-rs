@@ -10333,7 +10333,9 @@ impl<'a> Parser<'a> {
         optional_data_type: bool,
     ) -> Result<ColumnDef, ParserError> {
         let col_name = self.parse_identifier()?;
-        let data_type = if self.is_column_type_sqlite_unspecified() {
+        let data_type = if self.is_column_type_sqlite_unspecified()
+            || (self.dialect.supports_computed_columns() && self.peek_keyword(Keyword::AS))
+        {
             DataType::Unspecified
         } else if optional_data_type {
             self.maybe_parse(|parser| parser.parse_data_type())?
@@ -10582,6 +10584,19 @@ impl<'a> Parser<'a> {
             Ok(Some(ColumnOption::Options(
                 self.parse_options(Keyword::OPTIONS)?,
             )))
+        } else if self.dialect.supports_computed_columns() && self.peek_keyword(Keyword::AS) {
+            let as_token = AttachedToken(self.next_token());
+            let expr = self.parse_expr()?;
+            let persisted = if self.parse_keyword(Keyword::PERSISTED) {
+                Some(AttachedToken(self.get_current_token().clone()))
+            } else {
+                None
+            };
+            Ok(Some(ColumnOption::Computed(ComputedColumn {
+                as_token,
+                expr,
+                persisted,
+            })))
         } else if self.parse_keyword(Keyword::AS)
             && dialect_of!(self is MySqlDialect | SQLiteDialect | DuckDbDialect | GenericDialect)
         {

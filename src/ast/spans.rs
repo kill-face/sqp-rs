@@ -922,6 +922,11 @@ impl Spanned for ColumnOption {
             ColumnOption::Tags(..) => Span::empty(),
             ColumnOption::Srid(..) => Span::empty(),
             ColumnOption::Invisible => Span::empty(),
+            ColumnOption::Computed(computed) => union_spans(
+                iter::once(computed.as_token.0.span)
+                    .chain(iter::once(computed.expr.span()))
+                    .chain(computed.persisted.iter().map(|t| t.0.span)),
+            ),
         }
     }
 }

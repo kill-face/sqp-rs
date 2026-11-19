@@ -1365,6 +1365,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support computed columns without a data type?
+    /// e.g. `CREATE TABLE t (a INT, b AS a + 1 PERSISTED)`
+    fn supports_computed_columns(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///

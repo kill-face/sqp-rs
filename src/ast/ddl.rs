@@ -2213,6 +2213,35 @@ pub enum ColumnOption {
     /// ```
     /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/invisible-columns.html
     Invisible,
+    /// [MsSql] computed column: `AS <expr> [PERSISTED]`, without a data type.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+    Computed(ComputedColumn),
+}
+
+/// [MsSql] computed column definition: `AS <expr> [PERSISTED]`
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql#computed_column_expression
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct ComputedColumn {
+    /// The `AS` token.
+    pub as_token: AttachedToken,
+    /// The computed column expression.
+    pub expr: Expr,
+    /// The `PERSISTED` token, if present.
+    pub persisted: Option<AttachedToken>,
+}
+
+impl fmt::Display for ComputedColumn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "AS {}", self.expr)?;
+        if self.persisted.is_some() {
+            write!(f, " PERSISTED")?;
+        }
+        Ok(())
+    }
 }
 
 impl From<UniqueConstraint> for ColumnOption {
@@ -2374,6 +2403,7 @@ impl fmt::Display for ColumnOption {
             Invisible => {
                 write!(f, "INVISIBLE")
             }
+            Computed(computed) => write!(f, "{computed}"),
         }
     }
 }
