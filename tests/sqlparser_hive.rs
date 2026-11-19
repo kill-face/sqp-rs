@@ -389,7 +389,8 @@ fn set_statement_with_minus() {
             ]),
             values: vec![Expr::UnaryOp {
                 op: UnaryOperator::Minus,
-                expr: Box::new(Expr::Identifier(Ident::new("Xmx4g")))
+                expr: Box::new(Expr::Identifier(Ident::new("Xmx4g"))),
+                op_token: AttachedToken::empty(),
             }],
             set_token: AttachedToken::empty(),
         })

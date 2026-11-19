@@ -2286,6 +2286,7 @@ fn parse_map_access_expr() {
                 index: Expr::UnaryOp {
                     op: UnaryOperator::Minus,
                     expr: Expr::value(number("1")).into(),
+                    op_token: AttachedToken::empty(),
                 },
             }),
             AccessExpr::Subscript(Subscript::Index {

@@ -1144,6 +1144,8 @@ pub enum Expr {
         op: UnaryOperator,
         /// Operand expression.
         expr: Box<Expr>,
+        /// The operator's token.
+        op_token: AttachedToken,
     },
     /// CONVERT a value to a different data type or character encoding. e.g. `CONVERT(foo USING utf8mb4)`
     Convert {
@@ -2044,7 +2046,7 @@ impl fmt::Display for Expr {
                     if add_parens { ")" } else { "" },
                 )
             }
-            Expr::UnaryOp { op, expr } => match op {
+            Expr::UnaryOp { op, expr, .. } => match op {
                 UnaryOperator::PGPostfixFactorial => {
                     if matches!(
                         expr.as_ref(),

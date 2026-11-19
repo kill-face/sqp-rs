@@ -162,7 +162,8 @@ fn test_databricks_lambdas() {
                                 },
                                 result: Expr::UnaryOp {
                                     op: UnaryOperator::Minus,
-                                    expr: Box::new(Expr::value(number("1")))
+                                    expr: Box::new(Expr::value(number("1"))),
+                                    op_token: AttachedToken::empty(),
                                 }
                             },
                         ],

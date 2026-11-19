@@ -1472,6 +1472,7 @@ fn parse_select_count_distinct() {
                 args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::UnaryOp {
                     op: UnaryOperator::Plus,
                     expr: Box::new(Expr::Identifier(Ident::new("x"))),
+                    op_token: AttachedToken::empty(),
                 }))],
                 clauses: vec![],
             }),
@@ -1728,11 +1729,13 @@ fn parse_unary_math_with_plus() {
             left: Box::new(UnaryOp {
                 op: UnaryOperator::Minus,
                 expr: Box::new(Identifier(Ident::new("a"))),
+                op_token: AttachedToken::empty(),
             }),
             op: BinaryOperator::Plus,
             right: Box::new(UnaryOp {
                 op: UnaryOperator::Minus,
                 expr: Box::new(Identifier(Ident::new("b"))),
+                op_token: AttachedToken::empty(),
             }),
         },
         verified_expr(sql)
@@ -1748,11 +1751,13 @@ fn parse_unary_math_with_multiply() {
             left: Box::new(UnaryOp {
                 op: UnaryOperator::Minus,
                 expr: Box::new(Identifier(Ident::new("a"))),
+                op_token: AttachedToken::empty(),
             }),
             op: BinaryOperator::Multiply,
             right: Box::new(UnaryOp {
                 op: UnaryOperator::Minus,
                 expr: Box::new(Identifier(Ident::new("b"))),
+                op_token: AttachedToken::empty(),
             }),
         },
         verified_expr(sql)
@@ -2185,6 +2190,7 @@ fn parse_is_distinct_from_precedence() {
                 Box::new(Identifier(Ident::new("a"))),
                 Box::new(Identifier(Ident::new("b"))),
             )),
+            op_token: AttachedToken::empty(),
         },
         verified_expr("NOT a IS DISTINCT FROM b")
     );
@@ -2283,6 +2289,7 @@ fn parse_not_precedence() {
                 high: Box::new(Expr::value(number("2"))),
                 negated: true,
             }),
+            op_token: AttachedToken::empty(),
         },
     );
 
@@ -2303,6 +2310,7 @@ fn parse_not_precedence() {
                 escape_char: None,
                 any: false,
             }),
+            op_token: AttachedToken::empty(),
         },
     );
 
@@ -2320,6 +2328,7 @@ fn parse_not_precedence() {
                 negated: true,
                 global: false,
             }),
+            op_token: AttachedToken::empty(),
         },
     );
 }
@@ -4354,11 +4363,13 @@ fn gen_sign_number_case(value: &str, op: UnaryOperator) -> (Vec<String>, Vec<Sel
         SelectItem::UnnamedExpr(Expr::UnaryOp {
             op,
             expr: Box::new(Expr::value(number(value))),
+            op_token: AttachedToken::empty(),
         }),
         SelectItem::ExprWithAlias {
             expr: Expr::UnaryOp {
                 op,
                 expr: Box::new(Expr::value(number(value))),
+                op_token: AttachedToken::empty(),
             },
             alias: Ident::new("col_alias"),
         },
@@ -4366,6 +4377,7 @@ fn gen_sign_number_case(value: &str, op: UnaryOperator) -> (Vec<String>, Vec<Sel
             expr: Expr::UnaryOp {
                 op,
                 expr: Box::new(Expr::value(number(value))),
+                op_token: AttachedToken::empty(),
             },
             alias: Ident::new("col_alias"),
         },
@@ -7164,7 +7176,8 @@ fn parse_literal_integer() {
     assert_eq!(
         &UnaryOp {
             op: UnaryOperator::Minus,
-            expr: Box::new(Expr::value(number("10")))
+            expr: Box::new(Expr::value(number("10"))),
+            op_token: AttachedToken::empty(),
         },
         expr_from_projection(&select.projection[1]),
     );
@@ -7172,7 +7185,8 @@ fn parse_literal_integer() {
     assert_eq!(
         &UnaryOp {
             op: UnaryOperator::Plus,
-            expr: Box::new(Expr::value(number("20")))
+            expr: Box::new(Expr::value(number("20"))),
+            op_token: AttachedToken::empty(),
         },
         expr_from_projection(&select.projection[2]),
     )
@@ -12232,7 +12246,8 @@ fn parse_is_json_predicate() {
         dialects.verified_expr("NOT a IS JSON"),
         Expr::UnaryOp {
             op: UnaryOperator::Not,
-            expr
+            expr,
+            ..
         } if matches!(&*expr, Expr::IsJson { .. })
     );
 }
@@ -14310,6 +14325,7 @@ fn parse_map_access_expr() {
                 index: Expr::UnaryOp {
                     op: UnaryOperator::Minus,
                     expr: Expr::value(number("1")).into(),
+                    op_token: AttachedToken::empty(),
                 },
             }),
             AccessExpr::Subscript(Subscript::Index {
@@ -15820,6 +15836,7 @@ fn parse_explain_with_option_list() {
                     expr: Box::new(Expr::Value(
                         (Value::Number("10.1".parse().unwrap(), false)).with_empty_span(),
                     )),
+                    op_token: AttachedToken::empty(),
                 }),
             },
             UtilityOption {
@@ -15829,6 +15846,7 @@ fn parse_explain_with_option_list() {
                     expr: Box::new(Expr::Value(
                         (Value::Number("10.2".parse().unwrap(), false)).with_empty_span(),
                     )),
+                    op_token: AttachedToken::empty(),
                 }),
             },
         ]),
@@ -15858,6 +15876,7 @@ fn parse_explain_with_option_list() {
                 expr: Box::new(Expr::Value(
                     (Value::Number("100.1".parse().unwrap(), false)).with_empty_span(),
                 )),
+                op_token: AttachedToken::empty(),
             }),
         },
     ];
@@ -17141,7 +17160,8 @@ fn parse_bang_not() {
         assert_eq!(
             SelectItem::UnnamedExpr(Expr::UnaryOp {
                 op: UnaryOperator::BangNot,
-                expr
+                expr,
+                op_token: AttachedToken::empty(),
             }),
             projection[i]
         )
@@ -17187,7 +17207,8 @@ fn parse_factorial_operator() {
         assert_eq!(
             SelectItem::UnnamedExpr(Expr::UnaryOp {
                 op: UnaryOperator::PGPostfixFactorial,
-                expr
+                expr,
+                op_token: AttachedToken::empty(),
             }),
             projection[i]
         )
@@ -18326,7 +18347,8 @@ fn test_lambdas() {
                                 },
                                 result: Expr::UnaryOp {
                                     op: UnaryOperator::Minus,
-                                    expr: Box::new(Expr::value(number("1")))
+                                    expr: Box::new(Expr::value(number("1"))),
+                                    op_token: AttachedToken::empty(),
                                 }
                             },
                         ],
@@ -21176,6 +21198,7 @@ fn parse_generic_unary_ops() {
             UnnamedExpr(UnaryOp {
                 op: *op,
                 expr: Box::new(Identifier(Ident::new("expr"))),
+                op_token: AttachedToken::empty(),
             }),
             select.projection[0]
         );
@@ -21186,6 +21209,7 @@ fn parse_generic_unary_ops() {
         UnnamedExpr(UnaryOp {
             op: UnaryOperator::BitwiseNot,
             expr: Box::new(Identifier(Ident::new("expr"))),
+            op_token: AttachedToken::empty(),
         }),
         select.projection[0]
     );
@@ -22483,6 +22507,7 @@ fn unary_prefix_operator_renders_apart_from_cast_operand() {
             expr: Box::new(UnaryOp {
                 op,
                 expr: Box::new(Identifier(Ident::new("x"))),
+                op_token: AttachedToken::empty(),
             }),
             data_type: DataType::Int(None),
             format: None,
@@ -22490,6 +22515,7 @@ fn unary_prefix_operator_renders_apart_from_cast_operand() {
         let expr = UnaryOp {
             op,
             expr: Box::new(cast),
+            op_token: AttachedToken::empty(),
         };
         assert_eq!(expr.to_string(), expected);
     }

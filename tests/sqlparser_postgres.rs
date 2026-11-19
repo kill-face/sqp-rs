@@ -3061,6 +3061,7 @@ fn parse_pg_unary_ops() {
             SelectItem::UnnamedExpr(Expr::UnaryOp {
                 op: *op,
                 expr: Box::new(Expr::Identifier(Ident::new("a"))),
+                op_token: AttachedToken::empty(),
             }),
             select.projection[0]
         );
@@ -3075,6 +3076,7 @@ fn parse_pg_unary_ops() {
             SelectItem::UnnamedExpr(Expr::UnaryOp {
                 op,
                 expr: Box::new(Expr::Identifier(Ident::new("a"))),
+                op_token: AttachedToken::empty(),
             }),
             select.projection[0]
         );
@@ -3092,6 +3094,7 @@ fn parse_pg_postfix_factorial() {
             SelectItem::UnnamedExpr(Expr::UnaryOp {
                 op: *op,
                 expr: Box::new(Expr::Identifier(Ident::new("a"))),
+                op_token: AttachedToken::empty(),
             }),
             select.projection[0]
         );
@@ -11668,6 +11671,7 @@ fn parse_role_signed_connection_limit() {
     let minus_one = Expr::UnaryOp {
         op: UnaryOperator::Minus,
         expr: Box::new(Expr::value(number("1"))),
+        op_token: AttachedToken::empty(),
     };
 
     match pg().verified_stmt("CREATE ROLE a CONNECTION LIMIT -1") {

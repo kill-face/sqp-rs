@@ -2056,7 +2056,11 @@ impl Spanned for Expr {
                 compare_op: _,
                 right,
             } => left.span().union(&right.span()),
-            Expr::UnaryOp { op: _, expr } => expr.span(),
+            Expr::UnaryOp {
+                op: _,
+                expr,
+                op_token,
+            } => op_token.0.span.union(&expr.span()),
             Expr::Convert {
                 expr,
                 data_type: _,
@@ -4506,6 +4510,28 @@ SETTINGS update_parallel_mode = 'auto'"#;
         assert_eq!(statement_texts(sql, &stmts), expected);
 
         let sql = "SELECT a FROM t FOR UPDATE SKIP LOCKED";
+        let stmts = Parser::parse_sql(&crate::dialect::PostgreSqlDialect {}, sql).unwrap();
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+    }
+
+    #[test]
+    fn test_unary_operator_spans() {
+        let sql = "SELECT -1, - a, NOT a = 1, ~b, isnull(x, -1) FROM t WHERE NOT EXISTS (SELECT 1)";
+        let stmts = mssql_statements(sql);
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        let items: Vec<_> = select
+            .projection
+            .iter()
+            .map(|i| spanned_text(sql, i.span()))
+            .collect();
+        assert_eq!(items, ["-1", "- a", "NOT a = 1", "~b", "isnull(x, -1)"]);
+
+        let sql = "SELECT 5!";
         let stmts = Parser::parse_sql(&crate::dialect::PostgreSqlDialect {}, sql).unwrap();
         assert_eq!(statement_texts(sql, &stmts), [sql]);
     }

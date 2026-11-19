@@ -3033,7 +3033,8 @@ fn parse_comma_outer_join() {
                 "myudf",
                 [Expr::UnaryOp {
                     op: UnaryOperator::Plus,
-                    expr: Box::new(Expr::value(number("42")))
+                    expr: Box::new(Expr::value(number("42"))),
+                    op_token: AttachedToken::empty(),
                 }]
             )),
         })

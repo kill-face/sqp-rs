@@ -2073,6 +2073,7 @@ impl<'a> Parser<'a> {
                 };
                 Ok(Expr::UnaryOp {
                     op,
+                    op_token: self.last_consumed_token(),
                     expr: Box::new(
                         self.parse_subexpr(self.dialect.prec_value(Precedence::MulDivModOp))?,
                     ),
@@ -2080,6 +2081,7 @@ impl<'a> Parser<'a> {
             }
             Token::ExclamationMark if dialect.supports_bang_not_operator() => Ok(Expr::UnaryOp {
                 op: UnaryOperator::BangNot,
+                op_token: self.last_consumed_token(),
                 expr: Box::new(self.parse_subexpr(self.dialect.prec_value(Precedence::UnaryNot))?),
             }),
             tok @ Token::DoubleExclamationMark
@@ -2101,6 +2103,7 @@ impl<'a> Parser<'a> {
                 };
                 Ok(Expr::UnaryOp {
                     op,
+                    op_token: self.last_consumed_token(),
                     expr: Box::new(
                         self.parse_subexpr(self.dialect.prec_value(Precedence::PlusMinus))?,
                     ),
@@ -2108,6 +2111,7 @@ impl<'a> Parser<'a> {
             }
             Token::Tilde => Ok(Expr::UnaryOp {
                 op: UnaryOperator::BitwiseNot,
+                op_token: self.last_consumed_token(),
                 expr: Box::new(self.parse_subexpr(self.dialect.prec_value(Precedence::PlusMinus))?),
             }),
             tok @ Token::Sharp
@@ -2131,6 +2135,7 @@ impl<'a> Parser<'a> {
                 };
                 Ok(Expr::UnaryOp {
                     op,
+                    op_token: self.last_consumed_token(),
                     expr: Box::new(
                         self.parse_subexpr(self.dialect.prec_value(Precedence::PlusMinus))?,
                     ),
@@ -3499,6 +3504,7 @@ impl<'a> Parser<'a> {
                 }
                 _ => Ok(Expr::UnaryOp {
                     op: UnaryOperator::Not,
+                    op_token: self.last_consumed_token(),
                     expr: Box::new(
                         self.parse_subexpr(self.dialect.prec_value(Precedence::UnaryNot))?,
                     ),
@@ -3506,6 +3512,7 @@ impl<'a> Parser<'a> {
             },
             _ => Ok(Expr::UnaryOp {
                 op: UnaryOperator::Not,
+                op_token: self.last_consumed_token(),
                 expr: Box::new(self.parse_subexpr(self.dialect.prec_value(Precedence::UnaryNot))?),
             }),
         }
@@ -4429,6 +4436,7 @@ impl<'a> Parser<'a> {
         } else if Token::ExclamationMark == *tok && self.dialect.supports_factorial_operator() {
             Ok(Expr::UnaryOp {
                 op: UnaryOperator::PGPostfixFactorial,
+                op_token: self.last_consumed_token(),
                 expr: Box::new(expr),
             })
         } else if Token::LBracket == *tok && self.dialect.supports_partiql()
@@ -14160,10 +14168,12 @@ impl<'a> Parser<'a> {
         match next_token.token {
             Token::Plus => Ok(Expr::UnaryOp {
                 op: UnaryOperator::Plus,
+                op_token: self.last_consumed_token(),
                 expr: Box::new(Expr::Value(self.parse_number_value()?)),
             }),
             Token::Minus => Ok(Expr::UnaryOp {
                 op: UnaryOperator::Minus,
+                op_token: self.last_consumed_token(),
                 expr: Box::new(Expr::Value(self.parse_number_value()?)),
             }),
             _ => {
