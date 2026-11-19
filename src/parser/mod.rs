@@ -10840,7 +10840,7 @@ impl<'a> Parser<'a> {
         if self.parse_keywords(&[Keyword::ALWAYS, Keyword::AS, Keyword::IDENTITY]) {
             let mut sequence_options = vec![];
             if self.expect_token(&Token::LParen).is_ok() {
-                sequence_options = self.parse_sequence_options(false)?;
+                sequence_options = self.parse_sequence_options(false, false)?;
                 self.expect_token(&Token::RParen)?;
             }
             Ok(Some(ColumnOption::Generated {
@@ -10858,7 +10858,7 @@ impl<'a> Parser<'a> {
         ]) {
             let mut sequence_options = vec![];
             if self.expect_token(&Token::LParen).is_ok() {
-                sequence_options = self.parse_sequence_options(false)?;
+                sequence_options = self.parse_sequence_options(false, false)?;
                 self.expect_token(&Token::RParen)?;
             }
             Ok(Some(ColumnOption::Generated {
@@ -12099,7 +12099,7 @@ impl<'a> Parser<'a> {
 
                 if self.peek_token_ref().token == Token::LParen {
                     self.expect_token(&Token::LParen)?;
-                    sequence_options = Some(self.parse_sequence_options(false)?);
+                    sequence_options = Some(self.parse_sequence_options(false, false)?);
                     self.expect_token(&Token::RParen)?;
                 }
 
@@ -12331,6 +12331,7 @@ impl<'a> Parser<'a> {
 
     /// Parse an `ALTER <object>` statement and dispatch to the appropriate alter handler.
     pub fn parse_alter(&mut self) -> Result<Statement, ParserError> {
+        let alter_token = self.get_current_token().clone();
         if self.peek_keywords(&[Keyword::TEXT, Keyword::SEARCH]) {
             return self.parse_alter_text_search().map(Into::into);
         }
@@ -12352,6 +12353,7 @@ impl<'a> Parser<'a> {
                 self.parse_alter_schema()
             }
             Keyword::VIEW => self.parse_alter_view(false),
+            Keyword::SEQUENCE => self.parse_alter_sequence(alter_token),
             Keyword::MATERIALIZED => {
                 self.expect_keyword_is(Keyword::VIEW)?;
                 self.parse_alter_view(true)
@@ -22302,6 +22304,23 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parse the rest of an `ALTER SEQUENCE` statement.
+    fn parse_alter_sequence(
+        &mut self,
+        alter_token: TokenWithSpan,
+    ) -> Result<Statement, ParserError> {
+        let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+        let name = self.parse_object_name(false)?;
+        let sequence_options = self.parse_sequence_options(true, true)?;
+        Ok(Statement::AlterSequence(AlterSequence {
+            alter_token: AttachedToken(alter_token),
+            if_exists,
+            name,
+            sequence_options,
+            end_token: AttachedToken(self.get_current_token().clone()),
+        }))
+    }
+
     /// ```sql
     /// CREATE [ { TEMPORARY | TEMP } ] SEQUENCE [ IF NOT EXISTS ] <sequence_name>
     /// ```
@@ -22312,7 +22331,7 @@ impl<'a> Parser<'a> {
         let if_not_exists = self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         //name
         let name = self.parse_object_name(false)?;
-        let sequence_options = self.parse_sequence_options(true)?;
+        let sequence_options = self.parse_sequence_options(true, false)?;
         Ok(Statement::CreateSequence {
             temporary,
             if_not_exists,
@@ -22329,6 +22348,7 @@ impl<'a> Parser<'a> {
     fn parse_sequence_options(
         &mut self,
         allow_type_and_owner: bool,
+        allow_restart: bool,
     ) -> Result<Vec<SequenceOptions>, ParserError> {
         let mut sequence_options: Vec<SequenceOptions> = vec![];
         loop {
@@ -22370,6 +22390,15 @@ impl<'a> Parser<'a> {
                 (SequenceOptions::Cycle(true), "CYCLE | NO CYCLE")
             } else if self.parse_keyword(Keyword::CYCLE) {
                 (SequenceOptions::Cycle(false), "CYCLE | NO CYCLE")
+            } else if allow_restart && self.parse_keyword(Keyword::RESTART) {
+                //[ RESTART [ [ WITH ] restart ] ]
+                let with = self.parse_keyword(Keyword::WITH);
+                let value = if with || matches!(self.peek_token_ref().token, Token::Number(..)) {
+                    Some(self.parse_number()?)
+                } else {
+                    None
+                };
+                (SequenceOptions::Restart(value, with), "RESTART")
             } else if allow_type_and_owner && self.parse_keyword(Keyword::AS) {
                 //[ AS data_type ]
                 (SequenceOptions::DataType(self.parse_data_type()?), "AS")

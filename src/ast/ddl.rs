@@ -7648,3 +7648,48 @@ impl Spanned for CreatePartitionScheme {
         self.create_token.0.span.union(&self.filegroups.span())
     }
 }
+
+/// `ALTER SEQUENCE` statement.
+///
+/// ```sql
+/// ALTER SEQUENCE [ IF EXISTS ] name [ sequence_options ]
+/// ```
+///
+/// See [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-sequence-transact-sql)
+/// and [PostgreSQL](https://www.postgresql.org/docs/current/sql-altersequence.html).
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct AlterSequence {
+    /// The `ALTER` token.
+    pub alter_token: AttachedToken,
+    /// Whether `IF EXISTS` was specified.
+    pub if_exists: bool,
+    /// Sequence name.
+    pub name: ObjectName,
+    /// Sequence options, in the order they were written.
+    pub sequence_options: Vec<SequenceOptions>,
+    /// The last token of the statement.
+    pub end_token: AttachedToken,
+}
+
+impl fmt::Display for AlterSequence {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "ALTER SEQUENCE {}{}",
+            if self.if_exists { "IF EXISTS " } else { "" },
+            self.name
+        )?;
+        for option in &self.sequence_options {
+            write!(f, "{option}")?;
+        }
+        Ok(())
+    }
+}
+
+impl Spanned for AlterSequence {
+    fn span(&self) -> Span {
+        self.alter_token.0.span.union(&self.end_token.0.span)
+    }
+}

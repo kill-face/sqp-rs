@@ -70,8 +70,8 @@ pub use self::ddl::{
     AlterFunctionOperation, AlterFunctionSignature, AlterGenericOption, AlterIndexOperation,
     AlterOperator, AlterOperatorClass, AlterOperatorClassOperation, AlterOperatorFamily,
     AlterOperatorFamilyOperation, AlterOperatorOperation, AlterPolicy, AlterPolicyOperation,
-    AlterSchema, AlterSchemaOperation, AlterTable, AlterTableAlgorithm, AlterTableLock,
-    AlterTableOperation, AlterTableType, AlterTextSearch, AlterTextSearchOperation,
+    AlterSchema, AlterSchemaOperation, AlterSequence, AlterTable, AlterTableAlgorithm,
+    AlterTableLock, AlterTableOperation, AlterTableType, AlterTextSearch, AlterTextSearchOperation,
     AlterTextSearchOption, AlterTrigger, AlterTriggerOperation, AlterType, AlterTypeAddValue,
     AlterTypeAddValuePosition, AlterTypeOperation, AlterTypeRename, AlterTypeRenameValue,
     AlterView, AlterViewOperation, ClusteredBy, ColumnDef, ColumnOption, ColumnOptionDef,
@@ -3901,6 +3901,8 @@ pub enum Statement {
     CreatePartitionFunction(CreatePartitionFunction),
     /// [MsSql] `CREATE PARTITION SCHEME`
     CreatePartitionScheme(CreatePartitionScheme),
+    /// `ALTER SEQUENCE`
+    AlterSequence(AlterSequence),
     /// ```sql
     /// CREATE ROLE
     /// ```
@@ -5806,6 +5808,7 @@ impl fmt::Display for Statement {
             Statement::CreateIndex(create_index) => create_index.fmt(f),
             Statement::CreatePartitionFunction(s) => s.fmt(f),
             Statement::CreatePartitionScheme(s) => s.fmt(f),
+            Statement::AlterSequence(s) => s.fmt(f),
             Statement::CreateExtension(create_extension) => write!(f, "{create_extension}"),
             Statement::CreateCollation(create_collation) => write!(f, "{create_collation}"),
             Statement::DropExtension(drop_extension) => write!(f, "{drop_extension}"),
@@ -6758,6 +6761,9 @@ pub enum SequenceOptions {
     Cache(Expr),
     /// `CYCLE` or `NO CYCLE` option.
     Cycle(bool),
+    /// `RESTART [ [ WITH ] <expr> ]`, only in `ALTER SEQUENCE`; the second value
+    /// indicates presence of `WITH`.
+    Restart(Option<Expr>, bool),
     /// `OWNED BY <object_name>`, or `OWNED BY NONE` when no target is given.
     OwnedBy(Option<ObjectName>),
 }
@@ -6804,6 +6810,16 @@ impl fmt::Display for SequenceOptions {
             }
             SequenceOptions::OwnedBy(Some(object_name)) => {
                 write!(f, " OWNED BY {object_name}")
+            }
+            SequenceOptions::Restart(value, with) => {
+                write!(f, " RESTART")?;
+                if *with {
+                    write!(f, " WITH")?;
+                }
+                if let Some(value) = value {
+                    write!(f, " {value}")?;
+                }
+                Ok(())
             }
             SequenceOptions::OwnedBy(None) => {
                 write!(f, " OWNED BY NONE")

@@ -23665,3 +23665,36 @@ fn parse_only_table_name() {
         dialects.verified_stmt(sql);
     }
 }
+
+#[test]
+fn parse_alter_sequence() {
+    let sql = "ALTER SEQUENCE dbo.seq RESTART WITH 3";
+    let Statement::AlterSequence(alter) = verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(alter.name.to_string(), "dbo.seq");
+    assert_eq!(
+        alter.sequence_options,
+        vec![SequenceOptions::Restart(
+            Some(Expr::value(number("3"))),
+            true
+        )]
+    );
+    verified_stmt("ALTER SEQUENCE IF EXISTS seq RESTART");
+    verified_stmt("ALTER SEQUENCE seq INCREMENT BY 2 MINVALUE 1 NO MAXVALUE CACHE 10 CYCLE");
+
+    let span = Parser::new(&GenericDialect {})
+        .try_with_sql("ALTER SEQUENCE s RESTART WITH 3")
+        .unwrap()
+        .parse_statement()
+        .unwrap()
+        .span();
+    assert_eq!(span, Span::new(Location::new(1, 1), Location::new(1, 32)));
+
+    assert_eq!(
+        all_dialects()
+            .parse_sql_statements("CREATE SEQUENCE s RESTART WITH 3")
+            .unwrap_err(),
+        ParserError::ParserError("Expected: end of statement, found: RESTART".to_string())
+    );
+}
