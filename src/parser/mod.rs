@@ -2198,7 +2198,7 @@ impl<'a> Parser<'a> {
                                     .to_string(),
                             )),
                             1 => Expr::Nested(Parens {
-                                opening_token,
+                                opening_token: opening_token.clone(),
                                 content: Box::new(exprs.into_iter().next().unwrap()),
                                 closing_token: AttachedToken::empty(),
                             }),
@@ -2206,8 +2206,13 @@ impl<'a> Parser<'a> {
                         }
                     };
                 let closing_token = self.expect_token(&Token::RParen)?;
-                if let Expr::Nested(parens) = &mut expr {
-                    parens.closing_token = closing_token.into();
+                match &mut expr {
+                    Expr::Nested(parens) => parens.closing_token = closing_token.into(),
+                    Expr::Subquery(parens) => {
+                        parens.opening_token = opening_token;
+                        parens.closing_token = closing_token.into();
+                    }
+                    _ => {}
                 }
                 Ok(expr)
             }
@@ -2565,7 +2570,9 @@ impl<'a> Parser<'a> {
             return Ok(None);
         }
 
-        Ok(Some(Expr::Subquery(self.parse_query()?)))
+        Ok(Some(Expr::Subquery(Parens::with_empty_span(
+            self.parse_query()?,
+        ))))
     }
 
     fn try_parse_lambda(&mut self) -> Result<Option<Expr>, ParserError> {

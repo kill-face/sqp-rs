@@ -2135,7 +2135,7 @@ impl Spanned for Expr {
                     .chain(iter::once(end_token.0.span)),
             ),
             Expr::Exists { subquery, .. } => subquery.span(),
-            Expr::Subquery(query) => query.span(),
+            Expr::Subquery(parens) => parens.span().union(&parens.content.span()),
             Expr::Struct { .. } => Span::empty(),
             Expr::Named { .. } => Span::empty(),
             Expr::Dictionary(_) => Span::empty(),
@@ -4561,6 +4561,26 @@ SETTINGS update_parallel_mode = 'auto'"#;
             panic!("expected OR, got {outer:?}");
         };
         assert_eq!(spanned_text(sql, left.span()), "(b = 2 AND c = 3)");
+    }
+
+    #[test]
+    fn test_subquery_expression_spans() {
+        let sql = "SELECT (SELECT max(a) FROM u), x FROM t WHERE (SELECT 1) = y";
+        let stmts = mssql_statements(sql);
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        assert_eq!(
+            spanned_text(sql, select.projection[0].span()),
+            "(SELECT max(a) FROM u)"
+        );
+        assert_eq!(
+            spanned_text(sql, select.selection.as_ref().unwrap().span()),
+            "(SELECT 1) = y"
+        );
     }
 
     #[test]

@@ -1338,8 +1338,8 @@ pub enum Expr {
         negated: bool,
     },
     /// A parenthesized subquery `(SELECT ...)`, used in expression like
-    /// `SELECT (subquery) AS x` or `WHERE (subquery) = x`
-    Subquery(Box<Query>),
+    /// `SELECT (subquery) AS x` or `WHERE (subquery) = x`, with its parentheses
+    Subquery(Parens<Box<Query>>),
     /// The `GROUPING SETS` expr.
     GroupingSets(Vec<Vec<Expr>>),
     /// The `CUBE` expr.
@@ -2203,7 +2203,7 @@ impl fmt::Display for Expr {
                 if *negated { "NOT " } else { "" },
                 subquery
             ),
-            Expr::Subquery(s) => write!(f, "({s})"),
+            Expr::Subquery(s) => write!(f, "({})", s.content),
             Expr::GroupingSets(sets) => {
                 write!(f, "GROUPING SETS (")?;
                 let mut sep = "";

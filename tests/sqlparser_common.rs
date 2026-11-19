@@ -22235,7 +22235,11 @@ fn parse_quoted_placeholders_roundtrip() {
 #[test]
 fn parse_in_list_leading_subquery() {
     let x = || Box::new(Expr::Identifier(Ident::new("x")));
-    let subquery = || Expr::Subquery(Box::new(verified_query("SELECT a FROM u")));
+    let subquery = || {
+        Expr::Subquery(Parens::with_empty_span(Box::new(verified_query(
+            "SELECT a FROM u",
+        ))))
+    };
 
     let select = verified_only_select("SELECT * FROM t WHERE x IN ((SELECT a FROM u), 1)");
     assert_eq!(
