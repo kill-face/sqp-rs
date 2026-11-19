@@ -97,6 +97,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// SQL Server accepts a trailing comma after the last column definition.
+    fn supports_column_definition_trailing_commas(&self) -> bool {
+        true
+    }
+
     /// In MSSQL, there is no boolean type, and `true` and `false` are valid column names
     fn supports_boolean_literals(&self) -> bool {
         false

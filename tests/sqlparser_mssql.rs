@@ -3184,3 +3184,11 @@ fn parse_mssql_next_value_for() {
         .parse_sql_statements("SELECT NEXT VALUE FOR s")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_create_table_trailing_comma() {
+    ms().one_statement_parses_to(
+        "CREATE TABLE t (a INT, b INT NOT NULL,)",
+        "CREATE TABLE t (a INT, b INT NOT NULL)",
+    );
+}
