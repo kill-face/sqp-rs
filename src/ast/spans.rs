@@ -753,7 +753,10 @@ impl Spanned for CreateIndex {
             table_name,
             using: _,
             columns,
-            unique: _,        // bool
+            unique: _,      // bool
+            clustering: _,  // enum
+            columnstore: _, // bool
+            columnstore_order,
             concurrently: _,  // bool
             r#async: _,       // bool
             if_not_exists: _, // bool
@@ -770,6 +773,7 @@ impl Spanned for CreateIndex {
                 .map(|i| i.span())
                 .chain(core::iter::once(table_name.span()))
                 .chain(columns.iter().map(|i| i.column.span()))
+                .chain(columnstore_order.iter().map(|i| i.span))
                 .chain(include.iter().map(|i| i.span))
                 .chain(with.iter().map(|i| i.span()))
                 .chain(predicate.iter().map(|i| i.span()))

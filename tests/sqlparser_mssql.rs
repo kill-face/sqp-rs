@@ -3024,3 +3024,49 @@ fn parse_mssql_constraint_clustering() {
         .parse_sql_statements("CREATE TABLE t (id INT PRIMARY KEY CLUSTERED)")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_create_index_clustering() {
+    let sql =
+        "CREATE UNIQUE NONCLUSTERED INDEX ix ON t(a ASC, b DESC) INCLUDE (c) WHERE a IS NOT NULL";
+    let Statement::CreateIndex(index) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert!(index.unique);
+    assert_eq!(index.clustering, Some(IndexClustering::NonClustered));
+    assert!(!index.columnstore);
+
+    ms().verified_stmt("CREATE CLUSTERED INDEX ix ON dbo.t(a)");
+    ms().verified_stmt("CREATE NONCLUSTERED INDEX ix ON t(a)");
+    ms().verified_stmt("CREATE UNIQUE CLUSTERED INDEX ix ON t(a)");
+    ms().verified_stmt("CREATE NONCLUSTERED COLUMNSTORE INDEX ix ON t(a, b)");
+    ms().verified_stmt("CREATE COLUMNSTORE INDEX ix ON t(a, b)");
+    ms().verified_stmt("CREATE CLUSTERED COLUMNSTORE INDEX ix ON t");
+
+    let sql = "CREATE CLUSTERED COLUMNSTORE INDEX ix ON t ORDER (a, b)";
+    let stmt = ms().verified_stmt(sql);
+    let Statement::CreateIndex(index) = &stmt else {
+        unreachable!()
+    };
+    assert_eq!(index.clustering, Some(IndexClustering::Clustered));
+    assert!(index.columnstore);
+    assert!(index.columns.is_empty());
+    assert_eq!(
+        index.columnstore_order,
+        vec![Ident::new("a"), Ident::new("b")]
+    );
+    assert_eq!(
+        Parser::new(&MsSqlDialect {})
+            .try_with_sql(sql)
+            .unwrap()
+            .parse_statement()
+            .unwrap()
+            .span()
+            .end,
+        Location::new(1, 55)
+    );
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("CREATE CLUSTERED INDEX ix ON t(a)")
+        .unwrap_err();
+}

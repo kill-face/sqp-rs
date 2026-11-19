@@ -5610,6 +5610,15 @@ impl<'a> Parser<'a> {
             self.parse_create_index(false).map(Into::into)
         } else if self.parse_keywords(&[Keyword::UNIQUE, Keyword::INDEX]) {
             self.parse_create_index(true).map(Into::into)
+        } else if let Some((unique, clustering, columnstore)) =
+            if self.dialect.supports_index_clustering() {
+                self.maybe_parse(|p| p.parse_create_index_prefix())?
+            } else {
+                None
+            }
+        {
+            self.parse_create_index_inner(unique, clustering, columnstore)
+                .map(Into::into)
         } else if self.parse_keyword(Keyword::VIRTUAL) {
             self.parse_create_virtual_table()
         } else if self.parse_keyword(Keyword::DATABASE) {
@@ -8946,6 +8955,27 @@ impl<'a> Parser<'a> {
 
     /// Parse a `CREATE INDEX` statement.
     pub fn parse_create_index(&mut self, unique: bool) -> Result<CreateIndex, ParserError> {
+        self.parse_create_index_inner(unique, None, false)
+    }
+
+    /// Parse `[UNIQUE] [CLUSTERED | NONCLUSTERED] [COLUMNSTORE] INDEX` after `CREATE`.
+    fn parse_create_index_prefix(
+        &mut self,
+    ) -> Result<(bool, Option<IndexClustering>, bool), ParserError> {
+        let unique = self.parse_keyword(Keyword::UNIQUE);
+        let clustering = self.parse_optional_index_clustering();
+        let columnstore =
+            self.dialect.supports_index_clustering() && self.parse_keyword(Keyword::COLUMNSTORE);
+        self.expect_keyword_is(Keyword::INDEX)?;
+        Ok((unique, clustering, columnstore))
+    }
+
+    fn parse_create_index_inner(
+        &mut self,
+        unique: bool,
+        clustering: Option<IndexClustering>,
+        columnstore: bool,
+    ) -> Result<CreateIndex, ParserError> {
         let concurrently = self.parse_keyword(Keyword::CONCURRENTLY);
         let r#async = self.parse_keyword(Keyword::ASYNC);
         let if_not_exists = self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
@@ -8968,7 +8998,17 @@ impl<'a> Parser<'a> {
         // In that case, the second clause overwrites the first.
         using = self.parse_optional_using_then_index_type()?.or(using);
 
-        let columns = self.parse_parenthesized_index_column_list()?;
+        let columns = if columnstore && self.peek_token_ref().token != Token::LParen {
+            vec![]
+        } else {
+            self.parse_parenthesized_index_column_list()?
+        };
+
+        let columnstore_order = if columnstore && self.parse_keyword(Keyword::ORDER) {
+            self.parse_parenthesized_column_list(Mandatory, false)?
+        } else {
+            vec![]
+        };
 
         let include = if self.parse_keyword(Keyword::INCLUDE) {
             self.expect_token(&Token::LParen)?;
@@ -9026,6 +9066,9 @@ impl<'a> Parser<'a> {
             using,
             columns,
             unique,
+            clustering,
+            columnstore,
+            columnstore_order,
             concurrently,
             r#async,
             if_not_exists,

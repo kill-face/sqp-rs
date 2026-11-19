@@ -3060,6 +3060,18 @@ pub struct CreateIndex {
     pub columns: Vec<IndexColumn>,
     /// whether the index is unique
     pub unique: bool,
+    /// [MsSql] `CLUSTERED` or `NONCLUSTERED`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-index-transact-sql
+    pub clustering: Option<IndexClustering>,
+    /// [MsSql] `COLUMNSTORE` index.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-columnstore-index-transact-sql
+    pub columnstore: bool,
+    /// [MsSql] `ORDER (column, ...)` of a columnstore index.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-columnstore-index-transact-sql
+    pub columnstore_order: Vec<Ident>,
     /// whether the index is created concurrently
     pub concurrently: bool,
     /// whether the index is created asynchronously ([DSQL]).
@@ -3091,8 +3103,10 @@ impl fmt::Display for CreateIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "CREATE {unique}INDEX {concurrently}{async_}{if_not_exists}",
+            "CREATE {unique}{clustering}{columnstore}INDEX {concurrently}{async_}{if_not_exists}",
             unique = if self.unique { "UNIQUE " } else { "" },
+            clustering = display_option("", " ", &self.clustering),
+            columnstore = if self.columnstore { "COLUMNSTORE " } else { "" },
             concurrently = if self.concurrently {
                 "CONCURRENTLY "
             } else {
@@ -3112,7 +3126,16 @@ impl fmt::Display for CreateIndex {
         if let Some(value) = &self.using {
             write!(f, " USING {value} ")?;
         }
-        write!(f, "({})", display_comma_separated(&self.columns))?;
+        if !self.columnstore || !self.columns.is_empty() {
+            write!(f, "({})", display_comma_separated(&self.columns))?;
+        }
+        if !self.columnstore_order.is_empty() {
+            write!(
+                f,
+                " ORDER ({})",
+                display_comma_separated(&self.columnstore_order)
+            )?;
+        }
         if !self.include.is_empty() {
             write!(f, " INCLUDE ({})", display_comma_separated(&self.include))?;
         }
