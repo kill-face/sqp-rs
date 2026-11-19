@@ -797,6 +797,7 @@ fn test_duckdb_union_datatype() {
             multiset: Default::default(),
             fallback: Default::default(),
             with_data: Default::default(),
+            data_space: None,
         }),
         stmt
     );

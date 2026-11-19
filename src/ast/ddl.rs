@@ -47,9 +47,9 @@ use crate::ast::{
     FunctionCalledOnNull, FunctionDefinitionSetParam, FunctionDesc, FunctionDeterminismSpecifier,
     FunctionParallel, FunctionSecurity, HiveDistributionStyle, HiveFormat, HiveIOFormat,
     HiveRowFormat, HiveSetLocation, Ident, InitializeKind, MySQLColumnPosition, ObjectName,
-    OnCommit, OneOrManyWithParens, OperateFunctionArg, OrderByExpr, ProjectionSelect, Query,
-    RefreshModeKind, ResetConfig, RowAccessPolicy, SequenceOptions, Spanned, SqlOption, Statement,
-    StorageLifecyclePolicy, StorageSerializationPolicy, TableVersion, Tag, TriggerEvent,
+    OnCommit, OneOrManyWithParens, OperateFunctionArg, OrderByExpr, Parens, ProjectionSelect,
+    Query, RefreshModeKind, ResetConfig, RowAccessPolicy, SequenceOptions, Spanned, SqlOption,
+    Statement, StorageLifecyclePolicy, StorageSerializationPolicy, TableVersion, Tag, TriggerEvent,
     TriggerExecBody, TriggerObject, TriggerPeriod, TriggerReferencing, Value, ValueWithSpan,
     WrappedCollection,
 };
@@ -3124,6 +3124,32 @@ impl fmt::Display for ClusteredBy {
     }
 }
 
+/// [MsSql] storage location of a table or index:
+/// `ON { partition_scheme ( column ) | filegroup | "default" }`
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct DataSpace {
+    /// The `ON` token.
+    pub on_token: AttachedToken,
+    /// The partition scheme or filegroup name.
+    pub name: Ident,
+    /// The partitioning column, if `name` is a partition scheme.
+    pub partition_column: Option<Parens<Ident>>,
+}
+
+impl fmt::Display for DataSpace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ON {}", self.name)?;
+        if let Some(column) = &self.partition_column {
+            write!(f, " ({})", column.content)?;
+        }
+        Ok(())
+    }
+}
+
 /// CREATE INDEX statement.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -3157,6 +3183,8 @@ pub struct CreateIndex {
     ///
     /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-spatial-index-transact-sql
     pub spatial: bool,
+    /// [MsSql] partition scheme or filegroup: `ON { partition_scheme ( column ) | filegroup }`
+    pub data_space: Option<DataSpace>,
     /// whether the index is created concurrently
     pub concurrently: bool,
     /// whether the index is created asynchronously ([DSQL]).
@@ -3243,6 +3271,9 @@ impl fmt::Display for CreateIndex {
         }
         if !self.alter_options.is_empty() {
             write!(f, " {}", display_separated(&self.alter_options, " "))?;
+        }
+        if let Some(data_space) = &self.data_space {
+            write!(f, " {data_space}")?;
         }
         Ok(())
     }
@@ -3468,6 +3499,10 @@ pub struct CreateTable {
     ///
     /// [Teradata](https://docs.teradata.com/r/Enterprise_IntelliFlex_VMware/SQL-Data-Definition-Language-Syntax-and-Examples/Table-Statements/CREATE-TABLE-and-CREATE-TABLE-AS/Syntax-Elements/AS_clause/WITH-Clause-Phrase)
     pub with_data: Option<WithData>,
+    /// [MsSql] partition scheme or filegroup: `ON { partition_scheme ( column ) | filegroup }`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+    pub data_space: Option<DataSpace>,
 }
 
 impl fmt::Display for CreateTable {
@@ -3536,6 +3571,9 @@ impl fmt::Display for CreateTable {
             f.write_str(" ()")?;
         } else if let Some(CreateTableLikeKind::Parenthesized(like_in_columns_list)) = &self.like {
             write!(f, " ({like_in_columns_list})")?;
+        }
+        if let Some(data_space) = &self.data_space {
+            write!(f, " {data_space}")?;
         }
         if let Some(for_values) = &self.for_values {
             write!(f, " {for_values}")?;

@@ -81,7 +81,7 @@ pub use self::ddl::{
     CreateForeignDataWrapper, CreateForeignTable, CreateFunction, CreateIndex, CreateOperator,
     CreateOperatorClass, CreateOperatorFamily, CreatePolicy, CreatePolicyCommand, CreatePolicyType,
     CreateRule, CreateRuleAction, CreateRuleDoKind, CreateRuleEvent, CreateTable, CreateTextSearch,
-    CreateTrigger, CreateUserMapping, CreateView, Deduplicate, DeferrableInitial,
+    CreateTrigger, CreateUserMapping, CreateView, DataSpace, Deduplicate, DeferrableInitial,
     DetachPartitionMode, DistStyle, DropBehavior, DropExtension, DropFunction, DropOperator,
     DropOperatorClass, DropOperatorFamily, DropOperatorSignature, DropPolicy, DropRule,
     DropTrigger, ForValues, ForeignDataWrapperRoutineClause, FunctionReturnType, GeneratedAs,

@@ -9081,6 +9081,36 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parse an MsSql partition scheme or filegroup:
+    /// `ON { partition_scheme ( column ) | filegroup | "default" }`
+    fn parse_optional_data_space(&mut self) -> Result<Option<DataSpace>, ParserError> {
+        if !self.dialect.supports_data_space_clause()
+            || !self.peek_keyword(Keyword::ON)
+            || self.peek_keywords(&[Keyword::ON, Keyword::COMMIT])
+        {
+            return Ok(None);
+        }
+        let on_token = self.expect_keyword(Keyword::ON)?;
+        let name = self.parse_identifier()?;
+        let partition_column = if self.peek_token_ref().token == Token::LParen {
+            let opening_token = self.expect_token(&Token::LParen)?;
+            let content = self.parse_identifier()?;
+            let closing_token = self.expect_token(&Token::RParen)?;
+            Some(Parens {
+                opening_token: AttachedToken(opening_token),
+                content,
+                closing_token: AttachedToken(closing_token),
+            })
+        } else {
+            None
+        };
+        Ok(Some(DataSpace {
+            on_token: AttachedToken(on_token),
+            name,
+            partition_column,
+        }))
+    }
+
     fn parse_create_index_inner(
         &mut self,
         prefix: CreateIndexPrefix,
@@ -9175,6 +9205,8 @@ impl<'a> Parser<'a> {
             alter_options.push(self.parse_alter_table_operation()?)
         }
 
+        let data_space = self.parse_optional_data_space()?;
+
         Ok(CreateIndex {
             name: index_name,
             table_name,
@@ -9185,6 +9217,7 @@ impl<'a> Parser<'a> {
             columnstore,
             columnstore_order,
             spatial,
+            data_space,
             concurrently,
             r#async,
             if_not_exists,
@@ -9610,6 +9643,7 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_columns()?
         };
+        let data_space = self.parse_optional_data_space()?;
         let comment_after_column_def =
             if dialect_of!(self is HiveDialect) && self.parse_keyword(Keyword::COMMENT) {
                 let next_token = self.next_token();
@@ -9757,6 +9791,7 @@ impl<'a> Parser<'a> {
             .table_options(create_table_config.table_options)
             .primary_key(primary_key)
             .with_data(with_data)
+            .data_space(data_space)
             .backup(backup)
             .diststyle(diststyle)
             .distkey(distkey)

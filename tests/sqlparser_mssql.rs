@@ -1994,6 +1994,7 @@ fn parse_create_table_with_valid_options() {
                 multiset: None,
                 fallback: None,
                 with_data: None,
+                data_space: None,
             })
         );
     }
@@ -2172,6 +2173,7 @@ fn parse_create_table_with_identity_column() {
                 multiset: None,
                 fallback: None,
                 with_data: None,
+                data_space: None,
             }),
         );
     }
@@ -3468,5 +3470,42 @@ fn parse_mssql_create_table_type() {
 
     TestedDialects::new(vec![Box::new(GenericDialect {})])
         .parse_sql_statements("CREATE TYPE t AS TABLE (a INT)")
+        .unwrap_err();
+}
+
+#[test]
+fn parse_mssql_data_space() {
+    let sql = "CREATE TABLE t (id INT, ts DATETIME2) ON ps_monthly (ts)";
+    let Statement::CreateTable(create) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    let data_space = create.data_space.expect("data space");
+    assert_eq!(data_space.name, Ident::new("ps_monthly"));
+    assert_eq!(
+        data_space.partition_column.unwrap().content,
+        Ident::new("ts")
+    );
+
+    ms().verified_stmt("CREATE TABLE t (id INT) ON [PRIMARY]");
+    ms().verified_stmt("CREATE NONCLUSTERED INDEX ix ON t(a) INCLUDE (b) ON ps (a)");
+    ms().verified_stmt("CREATE CLUSTERED COLUMNSTORE INDEX ix ON t ORDER (a) ON ps (a)");
+    ms().verified_stmt("CREATE INDEX ix ON t(a) WHERE a > 0 ON [PRIMARY]");
+
+    let sql = "CREATE TABLE t (id INT) ON ps (id)";
+    let Statement::CreateTable(create) = Parser::new(&MsSqlDialect {})
+        .try_with_sql(sql)
+        .unwrap()
+        .parse_statement()
+        .unwrap()
+    else {
+        unreachable!()
+    };
+    assert_eq!(
+        create.data_space.unwrap().span(),
+        Span::new(Location::new(1, 25), Location::new(1, 35))
+    );
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("CREATE TABLE t (id INT) ON ps (id)")
         .unwrap_err();
 }

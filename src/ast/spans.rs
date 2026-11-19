@@ -35,7 +35,7 @@ use super::{
     ClusteredIndex, ColumnDef, ColumnOption, ColumnOptionDef, ConditionalStatementBlock,
     ConditionalStatements, ConflictTarget, ConnectByKind, ConstraintCharacteristics, CopySource,
     CreateIndex, CreateRule, CreateRuleAction, CreateTable, CreateTableOptions, CreateUserMapping,
-    Cte, Delete, DoOption, DoStatement, DoUpdate, DropRule, ExceptSelectItem,
+    Cte, DataSpace, Delete, DoOption, DoStatement, DoUpdate, DropRule, ExceptSelectItem,
     ExcludeConstraintElement, ExcludeSelectItem, Expr, ExprWithAlias, Fetch, ForValues, FromTable,
     Function, FunctionArg, FunctionArgExpr, FunctionArgumentClause, FunctionArgumentList,
     FunctionArguments, GroupByExpr, HavingBound, IfStatement, IlikeSelectItem, InTarget,
@@ -692,6 +692,7 @@ impl Spanned for CreateTable {
             multiset: _,
             fallback: _,
             with_data: _,
+            data_space,
         } = self;
 
         union_spans(
@@ -702,7 +703,8 @@ impl Spanned for CreateTable {
                 .chain(query.iter().map(|i| i.span()))
                 .chain(clone.iter().map(|i| i.span()))
                 .chain(partition_of.iter().map(|i| i.span()))
-                .chain(for_values.iter().map(|i| i.span())),
+                .chain(for_values.iter().map(|i| i.span()))
+                .chain(data_space.iter().map(|i| i.span())),
         )
     }
 }
@@ -782,7 +784,8 @@ impl Spanned for CreateIndex {
             clustering: _,  // enum
             columnstore: _, // bool
             columnstore_order,
-            spatial: _,       // bool
+            spatial: _, // bool
+            data_space,
             concurrently: _,  // bool
             r#async: _,       // bool
             if_not_exists: _, // bool
@@ -803,11 +806,26 @@ impl Spanned for CreateIndex {
                 .chain(include.iter().map(|i| i.span))
                 .chain(with.iter().map(|i| i.span()))
                 .chain(predicate.iter().map(|i| i.span()))
-                .chain(alter_options.iter().map(|i| i.span())),
+                .chain(alter_options.iter().map(|i| i.span()))
+                .chain(data_space.iter().map(|i| i.span())),
         )
     }
 }
 
+impl Spanned for DataSpace {
+    fn span(&self) -> Span {
+        let DataSpace {
+            on_token,
+            name,
+            partition_column,
+        } = self;
+        union_spans(
+            iter::once(on_token.0.span)
+                .chain(iter::once(name.span))
+                .chain(partition_column.iter().map(|c| c.span())),
+        )
+    }
+}
 impl Spanned for IndexColumn {
     fn span(&self) -> Span {
         self.column.span()

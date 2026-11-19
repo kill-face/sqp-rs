@@ -1423,6 +1423,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support a partition scheme or filegroup after
+    /// `CREATE TABLE` and `CREATE INDEX`? e.g. `CREATE TABLE t (a INT) ON ps (a)`
+    fn supports_data_space_clause(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///

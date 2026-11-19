@@ -26,7 +26,7 @@ use sqlparser_derive::{Visit, VisitMut};
 
 use crate::ast::{
     ClusteredBy, ColumnDef, CommentDef, CreateTable, CreateTableLikeKind, CreateTableOptions,
-    DistStyle, Expr, FileFormat, ForValues, HiveDistributionStyle, HiveFormat, Ident,
+    DataSpace, DistStyle, Expr, FileFormat, ForValues, HiveDistributionStyle, HiveFormat, Ident,
     InitializeKind, ObjectName, OnCommit, OneOrManyWithParens, Query, RefreshModeKind,
     RowAccessPolicy, SqliteTableOptions, Statement, StorageLifecyclePolicy,
     StorageSerializationPolicy, TableConstraint, TableVersion, Tag, WithData, WrappedCollection,
@@ -192,6 +192,8 @@ pub struct CreateTableBuilder {
     pub fallback: Option<bool>,
     /// `WITH DATA` clause.
     pub with_data: Option<WithData>,
+    /// MsSql `ON { partition_scheme ( column ) | filegroup }`
+    pub data_space: Option<DataSpace>,
 }
 
 impl CreateTableBuilder {
@@ -261,6 +263,7 @@ impl CreateTableBuilder {
             multiset: None,
             fallback: None,
             with_data: None,
+            data_space: None,
         }
     }
     /// Set `OR REPLACE` for the CREATE TABLE statement.
@@ -589,6 +592,12 @@ impl CreateTableBuilder {
         self.with_data = with_data;
         self
     }
+    /// Set the MsSql partition scheme or filegroup.
+    pub fn data_space(mut self, data_space: Option<DataSpace>) -> Self {
+        self.data_space = data_space;
+        self
+    }
+
     /// Consume the builder and produce a `CreateTable`.
     pub fn build(self) -> CreateTable {
         CreateTable {
@@ -655,6 +664,7 @@ impl CreateTableBuilder {
             multiset: self.multiset,
             fallback: self.fallback,
             with_data: self.with_data,
+            data_space: self.data_space,
         }
     }
 }
@@ -740,6 +750,7 @@ impl From<CreateTable> for CreateTableBuilder {
             multiset: table.multiset,
             fallback: table.fallback,
             with_data: table.with_data,
+            data_space: table.data_space,
         }
     }
 }
