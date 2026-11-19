@@ -9413,6 +9413,7 @@ fn parse_create_view() {
             to,
             params,
             name_before_not_exists: _,
+            view_attributes: _,
             secure: _,
             copy_grants: _,
         }) => {
@@ -9532,6 +9533,7 @@ fn parse_create_view_temporary() {
             to,
             params,
             name_before_not_exists: _,
+            view_attributes: _,
             secure: _,
             copy_grants: _,
         }) => {
@@ -9574,6 +9576,7 @@ fn parse_create_or_replace_view() {
             to,
             params,
             name_before_not_exists: _,
+            view_attributes: _,
             secure: _,
             copy_grants: _,
         }) => {
@@ -9620,6 +9623,7 @@ fn parse_create_or_replace_materialized_view() {
             to,
             params,
             name_before_not_exists: _,
+            view_attributes: _,
             secure: _,
             copy_grants: _,
         }) => {
@@ -9662,6 +9666,7 @@ fn parse_create_materialized_view() {
             to,
             params,
             name_before_not_exists: _,
+            view_attributes: _,
             secure: _,
             copy_grants: _,
         }) => {
@@ -9704,6 +9709,7 @@ fn parse_create_materialized_view_with_cluster_by() {
             to,
             params,
             name_before_not_exists: _,
+            view_attributes: _,
             secure: _,
             copy_grants: _,
         }) => {

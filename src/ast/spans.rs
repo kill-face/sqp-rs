@@ -2731,6 +2731,7 @@ impl Spanned for CreateView {
                 .chain(self.columns.iter().map(|i| i.span()))
                 .chain(core::iter::once(self.query.span()))
                 .chain(core::iter::once(self.options.span()))
+                .chain(self.view_attributes.iter().map(|i| i.span))
                 .chain(self.cluster_by.iter().map(|i| i.span))
                 .chain(self.to.iter().map(|i| i.span())),
         )

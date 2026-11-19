@@ -4797,6 +4797,11 @@ pub struct CreateView {
     /// CREATE VIEW IF NOT EXISTS myview AS SELECT 1`
     ///  ```
     pub name_before_not_exists: bool,
+    /// [MsSql] view attributes such as `SCHEMABINDING`, in `WITH <attribute>, ...`
+    /// before `AS`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql
+    pub view_attributes: Vec<Ident>,
     /// Optional column definitions
     pub columns: Vec<ViewColumnDef>,
     /// The query that defines the view.
@@ -4865,6 +4870,13 @@ impl fmt::Display for CreateView {
         }
         if !self.columns.is_empty() {
             write!(f, " ({})", display_comma_separated(&self.columns))?;
+        }
+        if !self.view_attributes.is_empty() {
+            write!(
+                f,
+                " WITH {}",
+                display_comma_separated(&self.view_attributes)
+            )?;
         }
         if matches!(self.options, CreateTableOptions::With(_)) {
             write!(f, " {}", self.options)?;

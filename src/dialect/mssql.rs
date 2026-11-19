@@ -132,6 +132,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql>
+    fn supports_create_view_attributes(&self) -> bool {
+        true
+    }
+
     /// SQL Server accepts a trailing comma after the last column definition.
     fn supports_column_definition_trailing_commas(&self) -> bool {
         true

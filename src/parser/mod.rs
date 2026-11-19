@@ -7161,6 +7161,15 @@ impl<'a> Parser<'a> {
         if !copy_grants {
             copy_grants = self.parse_keywords(&[Keyword::COPY, Keyword::GRANTS]);
         }
+        let view_attributes = if self.dialect.supports_create_view_attributes()
+            && self.peek_keyword(Keyword::WITH)
+            && self.peek_nth_token_ref(1).token != Token::LParen
+        {
+            self.expect_keyword_is(Keyword::WITH)?;
+            self.parse_comma_separated(|p| p.parse_identifier())?
+        } else {
+            vec![]
+        };
         let mut options = CreateTableOptions::None;
         let with_options = self.parse_options(Keyword::WITH)?;
         if !with_options.is_empty() {
@@ -7229,6 +7238,7 @@ impl<'a> Parser<'a> {
             to,
             params: create_view_params,
             name_before_not_exists,
+            view_attributes,
         })
     }
 

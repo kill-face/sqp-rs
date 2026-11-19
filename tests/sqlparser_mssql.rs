@@ -3393,3 +3393,20 @@ fn parse_mssql_readonly_procedure_params() {
         .parse_sql_statements("CREATE PROCEDURE p (@rows t READONLY) AS BEGIN SELECT 1; END")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_create_view_attributes() {
+    let sql = "CREATE VIEW dbo.v WITH SCHEMABINDING, VIEW_METADATA AS SELECT a FROM dbo.t";
+    let Statement::CreateView(view) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(
+        view.view_attributes,
+        vec![Ident::new("SCHEMABINDING"), Ident::new("VIEW_METADATA")]
+    );
+    ms().verified_stmt("CREATE OR ALTER VIEW v (a) WITH SCHEMABINDING AS SELECT 1 AS a");
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("CREATE VIEW v WITH SCHEMABINDING AS SELECT 1")
+        .unwrap_err();
+}

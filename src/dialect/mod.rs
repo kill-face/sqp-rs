@@ -1406,6 +1406,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support view attributes in `CREATE VIEW`?
+    /// e.g. `CREATE VIEW v WITH SCHEMABINDING AS SELECT 1`
+    fn supports_create_view_attributes(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///
