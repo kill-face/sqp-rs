@@ -224,6 +224,15 @@ struct ReferenceClauses {
 /// See [Parser::parse_data_type] for details
 struct MatchedTrailingBracket(bool);
 
+/// Keywords between `CREATE` and `INDEX`.
+#[derive(Default)]
+struct CreateIndexPrefix {
+    unique: bool,
+    clustering: Option<IndexClustering>,
+    columnstore: bool,
+    spatial: bool,
+}
+
 impl From<bool> for MatchedTrailingBracket {
     fn from(value: bool) -> Self {
         Self(value)
@@ -5659,15 +5668,14 @@ impl<'a> Parser<'a> {
             self.parse_create_index(false).map(Into::into)
         } else if self.parse_keywords(&[Keyword::UNIQUE, Keyword::INDEX]) {
             self.parse_create_index(true).map(Into::into)
-        } else if let Some((unique, clustering, columnstore)) =
-            if self.dialect.supports_index_clustering() {
-                self.maybe_parse(|p| p.parse_create_index_prefix())?
-            } else {
-                None
-            }
+        } else if let Some(prefix) = if self.dialect.supports_index_clustering()
+            || self.dialect.supports_create_spatial_index()
         {
-            self.parse_create_index_inner(unique, clustering, columnstore)
-                .map(Into::into)
+            self.maybe_parse(|p| p.parse_create_index_prefix())?
+        } else {
+            None
+        } {
+            self.parse_create_index_inner(prefix).map(Into::into)
         } else if self.parse_keyword(Keyword::VIRTUAL) {
             self.parse_create_virtual_table()
         } else if self.parse_keyword(Keyword::DATABASE) {
@@ -9004,27 +9012,46 @@ impl<'a> Parser<'a> {
 
     /// Parse a `CREATE INDEX` statement.
     pub fn parse_create_index(&mut self, unique: bool) -> Result<CreateIndex, ParserError> {
-        self.parse_create_index_inner(unique, None, false)
+        self.parse_create_index_inner(CreateIndexPrefix {
+            unique,
+            ..Default::default()
+        })
     }
 
-    /// Parse `[UNIQUE] [CLUSTERED | NONCLUSTERED] [COLUMNSTORE] INDEX` after `CREATE`.
-    fn parse_create_index_prefix(
-        &mut self,
-    ) -> Result<(bool, Option<IndexClustering>, bool), ParserError> {
+    /// Parse the MsSql `[UNIQUE] [CLUSTERED | NONCLUSTERED] [COLUMNSTORE] INDEX`
+    /// or `SPATIAL INDEX` after `CREATE`.
+    fn parse_create_index_prefix(&mut self) -> Result<CreateIndexPrefix, ParserError> {
+        if self.dialect.supports_create_spatial_index()
+            && self.parse_keywords(&[Keyword::SPATIAL, Keyword::INDEX])
+        {
+            return Ok(CreateIndexPrefix {
+                spatial: true,
+                ..Default::default()
+            });
+        }
         let unique = self.parse_keyword(Keyword::UNIQUE);
         let clustering = self.parse_optional_index_clustering();
         let columnstore =
             self.dialect.supports_index_clustering() && self.parse_keyword(Keyword::COLUMNSTORE);
         self.expect_keyword_is(Keyword::INDEX)?;
-        Ok((unique, clustering, columnstore))
+        Ok(CreateIndexPrefix {
+            unique,
+            clustering,
+            columnstore,
+            spatial: false,
+        })
     }
 
     fn parse_create_index_inner(
         &mut self,
-        unique: bool,
-        clustering: Option<IndexClustering>,
-        columnstore: bool,
+        prefix: CreateIndexPrefix,
     ) -> Result<CreateIndex, ParserError> {
+        let CreateIndexPrefix {
+            unique,
+            clustering,
+            columnstore,
+            spatial,
+        } = prefix;
         let concurrently = self.parse_keyword(Keyword::CONCURRENTLY);
         let r#async = self.parse_keyword(Keyword::ASYNC);
         let if_not_exists = self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
@@ -9118,6 +9145,7 @@ impl<'a> Parser<'a> {
             clustering,
             columnstore,
             columnstore_order,
+            spatial,
             concurrently,
             r#async,
             if_not_exists,

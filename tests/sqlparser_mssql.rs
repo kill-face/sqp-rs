@@ -3345,3 +3345,18 @@ fn parse_mssql_set_compound_assignment() {
         .parse_sql_statements("SET @x += 1")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_create_spatial_index() {
+    let Statement::CreateIndex(index) = ms().verified_stmt("CREATE SPATIAL INDEX ix ON dbo.t(geo)")
+    else {
+        unreachable!()
+    };
+    assert!(index.spatial);
+    assert!(!index.unique);
+    assert_eq!(index.clustering, None);
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("CREATE SPATIAL INDEX ix ON t(geo)")
+        .unwrap_err();
+}

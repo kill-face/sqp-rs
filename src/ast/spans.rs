@@ -782,6 +782,7 @@ impl Spanned for CreateIndex {
             clustering: _,  // enum
             columnstore: _, // bool
             columnstore_order,
+            spatial: _,       // bool
             concurrently: _,  // bool
             r#async: _,       // bool
             if_not_exists: _, // bool

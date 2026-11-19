@@ -1360,6 +1360,11 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support `CREATE SPATIAL INDEX`?
+    fn supports_create_spatial_index(&self) -> bool {
+        false
+    }
+
     /// Does the dialect support the `NEXT VALUE FOR <sequence>` expression?
     fn supports_next_value_for(&self) -> bool {
         false

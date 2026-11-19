@@ -3120,6 +3120,10 @@ pub struct CreateIndex {
     ///
     /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-columnstore-index-transact-sql
     pub columnstore_order: Vec<Ident>,
+    /// [MsSql] `SPATIAL` index.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-spatial-index-transact-sql
+    pub spatial: bool,
     /// whether the index is created concurrently
     pub concurrently: bool,
     /// whether the index is created asynchronously ([DSQL]).
@@ -3151,10 +3155,11 @@ impl fmt::Display for CreateIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "CREATE {unique}{clustering}{columnstore}INDEX {concurrently}{async_}{if_not_exists}",
+            "CREATE {unique}{clustering}{columnstore}{spatial}INDEX {concurrently}{async_}{if_not_exists}",
             unique = if self.unique { "UNIQUE " } else { "" },
             clustering = display_option("", " ", &self.clustering),
             columnstore = if self.columnstore { "COLUMNSTORE " } else { "" },
+            spatial = if self.spatial { "SPATIAL " } else { "" },
             concurrently = if self.concurrently {
                 "CONCURRENTLY "
             } else {

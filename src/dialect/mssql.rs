@@ -92,6 +92,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-spatial-index-transact-sql>
+    fn supports_create_spatial_index(&self) -> bool {
+        true
+    }
+
     /// See <https://learn.microsoft.com/en-us/sql/t-sql/functions/next-value-for-transact-sql>
     fn supports_next_value_for(&self) -> bool {
         true
