@@ -290,7 +290,6 @@ impl Spanned for Values {
 /// - [Statement::AttachDatabase]
 /// - [Statement::AttachDuckDBDatabase]
 /// - [Statement::DetachDuckDBDatabase]
-/// - [Statement::Drop]
 /// - [Statement::DropFunction]
 /// - [Statement::DropProcedure]
 /// - [Statement::DropSecret]
@@ -310,14 +309,12 @@ impl Spanned for Values {
 /// - [Statement::ShowTables]
 /// - [Statement::ShowCollation]
 /// - [Statement::Comment]
-/// - [Statement::CreateSchema]
 /// - [Statement::CreateDatabase]
 /// - [Statement::DropTrigger]
 /// - [Statement::CreateMacro]
 /// - [Statement::CreateStage]
 /// - [Statement::CreateFileFormat]
 /// - [Statement::Assert]
-/// - [Statement::Grant]
 /// - [Statement::Revoke]
 /// - [Statement::GrantRole]
 /// - [Statement::RevokeRole]
@@ -330,8 +327,6 @@ impl Spanned for Values {
 /// - [Statement::ReleaseSavepoint]
 /// - [Statement::Cache]
 /// - [Statement::UNCache]
-/// - [Statement::CreateSequence]
-/// - [Statement::CreateType]
 /// - [Statement::Pragma]
 /// - [Statement::Lock]
 /// - [Statement::LockTables]
@@ -443,7 +438,18 @@ impl Spanned for Statement {
             Statement::AttachDatabase { .. } => Span::empty(),
             Statement::AttachDuckDBDatabase { .. } => Span::empty(),
             Statement::DetachDuckDBDatabase { .. } => Span::empty(),
-            Statement::Drop { .. } => Span::empty(),
+            Statement::Drop {
+                names,
+                table,
+                drop_token,
+                end_token,
+                ..
+            } => union_spans(
+                iter::once(drop_token.0.span)
+                    .chain(names.iter().map(|n| n.span()))
+                    .chain(table.iter().map(|t| t.span()))
+                    .chain(iter::once(end_token.0.span)),
+            ),
             Statement::DropFunction(drop_function) => drop_function.span(),
             Statement::DropDomain { .. } => Span::empty(),
             Statement::DropProcedure { .. } => Span::empty(),
@@ -490,7 +496,11 @@ impl Spanned for Statement {
                 end_token,
                 ..
             } => rollback_token.0.span.union(&end_token.0.span),
-            Statement::CreateSchema { .. } => Span::empty(),
+            Statement::CreateSchema {
+                create_token,
+                end_token,
+                ..
+            } => create_token.0.span.union(&end_token.0.span),
             Statement::CreateDatabase { .. } => Span::empty(),
             Statement::CreateFunction(create_function) => create_function.span(),
             Statement::CreateDomain { .. } => Span::empty(),
@@ -515,7 +525,7 @@ impl Spanned for Statement {
             Statement::CreateFileFormat { .. } => Span::empty(),
             Statement::CreateWarehouse(..) => Span::empty(),
             Statement::Assert { .. } => Span::empty(),
-            Statement::Grant { .. } => Span::empty(),
+            Statement::Grant(grant) => grant.grant_token.0.span.union(&grant.end_token.0.span),
             Statement::Deny { .. } => Span::empty(),
             Statement::Revoke { .. } => Span::empty(),
             Statement::GrantRole { .. } => Span::empty(),
@@ -536,8 +546,18 @@ impl Spanned for Statement {
             Statement::Merge(merge) => merge.span(),
             Statement::Cache { .. } => Span::empty(),
             Statement::UNCache { .. } => Span::empty(),
-            Statement::CreateSequence { .. } => Span::empty(),
-            Statement::CreateType { .. } => Span::empty(),
+            Statement::CreateSequence {
+                name,
+                create_token,
+                end_token,
+                ..
+            }
+            | Statement::CreateType {
+                name,
+                create_token,
+                end_token,
+                ..
+            } => union_spans([create_token.0.span, name.span(), end_token.0.span].into_iter()),
             Statement::Pragma { .. } => Span::empty(),
             Statement::Lock(_) => Span::empty(),
             Statement::LockTables { .. } => Span::empty(),
@@ -4427,6 +4447,20 @@ SETTINGS update_parallel_mode = 'auto'"#;
                 "DROP COLUMN c",
             ]
         );
+    }
+
+    #[test]
+    fn test_drop_grant_and_create_misc_spans() {
+        let sql = "DROP TABLE IF EXISTS dbo.t, dbo.u;\n\
+                   DROP VIEW dbo.v;\n\
+                   DROP TABLE t CASCADE;\n\
+                   CREATE SEQUENCE dbo.s AS INT START WITH 1 INCREMENT BY 1;\n\
+                   CREATE TYPE dbo.T AS TABLE (a INT NOT NULL);\n\
+                   CREATE SCHEMA s AUTHORIZATION dbo;\n\
+                   GRANT EXECUTE ON dbo.p TO r";
+        let stmts = mssql_statements(sql);
+        let expected: Vec<_> = sql.lines().map(|l| l.trim_end_matches(';')).collect();
+        assert_eq!(statement_texts(sql, &stmts), expected);
     }
 
     #[test]

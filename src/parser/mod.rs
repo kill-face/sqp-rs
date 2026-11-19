@@ -5707,7 +5707,8 @@ impl<'a> Parser<'a> {
         } else if self.parse_keyword(Keyword::AGGREGATE) {
             self.parse_create_aggregate(or_replace).map(Into::into)
         } else if self.parse_keyword(Keyword::SCHEMA) {
-            self.parse_create_schema(or_replace)
+            let stmt = self.parse_create_schema(or_replace)?;
+            Ok(self.with_create_token(stmt, create_token))
         } else if self.parse_keyword(Keyword::WAREHOUSE) {
             self.parse_create_warehouse(or_replace).map(Into::into)
         } else if or_replace {
@@ -5749,11 +5750,13 @@ impl<'a> Parser<'a> {
         } else if self.dialect.supports_create_group() && self.parse_keyword(Keyword::GROUP) {
             self.parse_create_role(RoleKeyword::Group).map(Into::into)
         } else if self.parse_keyword(Keyword::SEQUENCE) {
-            self.parse_create_sequence(temporary)
+            let stmt = self.parse_create_sequence(temporary)?;
+            Ok(self.with_create_token(stmt, create_token))
         } else if self.parse_keyword(Keyword::COLLATION) {
             self.parse_create_collation().map(Into::into)
         } else if self.parse_keyword(Keyword::TYPE) {
-            self.parse_create_type()
+            let stmt = self.parse_create_type()?;
+            Ok(self.with_create_token(stmt, create_token))
         } else if self.parse_keyword(Keyword::PROCEDURE)
             || self.dialect.supports_create_proc_syntax() && self.parse_keyword(Keyword::PROC)
         {
@@ -5815,6 +5818,24 @@ impl<'a> Parser<'a> {
             Statement::CreateTable(t) => t.create_token = create_token,
             Statement::CreateIndex(i) => i.create_token = create_token,
             Statement::CreateView(v) => v.create_token = create_token,
+            Statement::CreateSchema {
+                create_token: token,
+                end_token,
+                ..
+            }
+            | Statement::CreateSequence {
+                create_token: token,
+                end_token,
+                ..
+            }
+            | Statement::CreateType {
+                create_token: token,
+                end_token,
+                ..
+            } => {
+                *token = create_token;
+                *end_token = last_token;
+            }
             _ => {}
         }
         stmt
@@ -6113,6 +6134,8 @@ impl<'a> Parser<'a> {
             options,
             default_collate_spec,
             clone,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 
@@ -8408,6 +8431,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a `DROP` statement.
     pub fn parse_drop(&mut self) -> Result<Statement, ParserError> {
+        let drop_token = self.last_consumed_token();
         // MySQL dialect supports `TEMPORARY`
         let temporary = dialect_of!(self is MySqlDialect | GenericDialect | DuckDbDialect)
             && self.parse_keyword(Keyword::TEMPORARY);
@@ -8519,6 +8543,8 @@ impl<'a> Parser<'a> {
             purge,
             temporary,
             table,
+            drop_token,
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -19664,6 +19690,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a GRANT statement.
     pub fn parse_grant(&mut self) -> Result<Grant, ParserError> {
+        let grant_token = self.last_consumed_token();
         let (privileges, objects) = self.parse_grant_deny_revoke_privileges_objects()?;
 
         self.expect_keyword_is(Keyword::TO)?;
@@ -19701,6 +19728,8 @@ impl<'a> Parser<'a> {
             as_grantor,
             granted_by,
             current_grants,
+            grant_token,
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -22588,6 +22617,8 @@ impl<'a> Parser<'a> {
             if_not_exists,
             name,
             sequence_options,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 
@@ -23011,6 +23042,8 @@ impl<'a> Parser<'a> {
                 return Ok(Statement::CreateType {
                     name,
                     representation: Some(UserDefinedTypeRepresentation::SqlDefinition { options }),
+                    create_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 });
             }
 
@@ -23018,6 +23051,8 @@ impl<'a> Parser<'a> {
             return Ok(Statement::CreateType {
                 name,
                 representation: None,
+                create_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             });
         }
 
@@ -23037,6 +23072,8 @@ impl<'a> Parser<'a> {
                     columns,
                     constraints,
                 }),
+                create_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             })
         } else if self.consume_token(&Token::LParen) {
             // CREATE TYPE name AS (attributes) - Composite
@@ -23057,6 +23094,8 @@ impl<'a> Parser<'a> {
                 representation: Some(UserDefinedTypeRepresentation::Composite {
                     attributes: vec![],
                 }),
+                create_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             });
         }
 
@@ -23084,6 +23123,8 @@ impl<'a> Parser<'a> {
         Ok(Statement::CreateType {
             name,
             representation: Some(UserDefinedTypeRepresentation::Composite { attributes }),
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 
@@ -23098,6 +23139,8 @@ impl<'a> Parser<'a> {
         Ok(Statement::CreateType {
             name,
             representation: Some(UserDefinedTypeRepresentation::Enum { labels }),
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 
@@ -23112,6 +23155,8 @@ impl<'a> Parser<'a> {
         Ok(Statement::CreateType {
             name,
             representation: Some(UserDefinedTypeRepresentation::Range { options }),
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 

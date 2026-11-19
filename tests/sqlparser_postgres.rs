@@ -1223,6 +1223,8 @@ fn parse_drop_and_comment_collation_ast() {
             purge: false,
             temporary: false,
             table: None,
+            drop_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     );
 
@@ -1237,6 +1239,8 @@ fn parse_drop_and_comment_collation_ast() {
             purge: false,
             temporary: false,
             table: None,
+            drop_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     );
 
@@ -8093,6 +8097,7 @@ fn parse_create_type_as_enum() {
         Statement::CreateType {
             name,
             representation: Some(UserDefinedTypeRepresentation::Enum { labels }),
+            ..
         } => {
             assert_eq!("public.my_type", name.to_string());
             assert_eq!(

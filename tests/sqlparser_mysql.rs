@@ -4200,6 +4200,7 @@ fn parse_grant() {
         as_grantor: _,
         granted_by,
         current_grants: _,
+        ..
     }) = stmt
     {
         assert_eq!(
@@ -4909,6 +4910,7 @@ fn parse_drop_index() {
             purge,
             temporary,
             table,
+            ..
         } => {
             assert!(!if_exists);
             assert_eq!(ObjectType::Index, object_type);

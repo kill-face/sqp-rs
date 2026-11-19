@@ -13463,6 +13463,7 @@ fn parse_create_type() {
         Statement::CreateType {
             name,
             representation,
+            ..
         } => {
             assert_eq!(name.to_string(), "mytype");
             assert!(representation.is_none());
@@ -13475,6 +13476,7 @@ fn parse_create_type() {
         Statement::CreateType {
             name,
             representation,
+            ..
         } => {
             assert_eq!(name.to_string(), "address");
             match representation {
@@ -13509,6 +13511,7 @@ fn parse_create_type() {
         Statement::CreateType {
             name,
             representation,
+            ..
         } => {
             assert_eq!(name.to_string(), "mood");
             match representation {
@@ -13527,6 +13530,7 @@ fn parse_create_type() {
         Statement::CreateType {
             name,
             representation,
+            ..
         } => {
             assert_eq!(name.to_string(), "int4range");
             match representation {
@@ -13555,6 +13559,7 @@ fn parse_create_type() {
         Statement::CreateType {
             name,
             representation,
+            ..
         } => {
             assert_eq!(name.to_string(), "int4range");
             match representation {
@@ -13583,6 +13588,7 @@ fn parse_create_type() {
         Statement::CreateType {
             name,
             representation,
+            ..
         } => {
             assert_eq!(name.to_string(), "int4range");
             match representation {
@@ -13611,6 +13617,7 @@ fn parse_create_type() {
         Statement::CreateType {
             name,
             representation,
+            ..
         } => {
             assert_eq!(name.to_string(), "int4range");
             match representation {
@@ -13649,6 +13656,7 @@ fn parse_create_type() {
         Statement::CreateType {
             name,
             representation,
+            ..
         } => {
             assert_eq!(name.to_string(), "mytype");
             match representation {

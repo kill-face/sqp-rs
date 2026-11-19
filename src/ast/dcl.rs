@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "visitor")]
 use sqlparser_derive::{Visit, VisitMut};
 
-use super::{display_comma_separated, Expr, Ident, Password, Spanned};
+use super::{display_comma_separated, AttachedToken, Expr, Ident, Password, Spanned};
 use crate::ast::{
     display_separated, CascadeOption, CurrentGrantsKind, GrantObjects, Grantee, GranteeName,
     ObjectName, Privileges,
@@ -478,6 +478,10 @@ pub struct Grant {
     ///
     /// [Snowflake](https://docs.snowflake.com/en/sql-reference/sql/grant-privilege)
     pub current_grants: Option<CurrentGrantsKind>,
+    /// The `GRANT` keyword.
+    pub grant_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for Grant {

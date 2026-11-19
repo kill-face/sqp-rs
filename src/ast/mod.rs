@@ -4180,6 +4180,10 @@ pub enum Statement {
         /// MySQL-specific drop index syntax, which requires table specification
         /// See <https://dev.mysql.com/doc/refman/8.4/en/drop-index.html>
         table: Option<ObjectName>,
+        /// The `DROP` keyword.
+        drop_token: AttachedToken,
+        /// The statement's last token.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// DROP FUNCTION
@@ -4639,6 +4643,10 @@ pub enum Statement {
         ///
         /// [Snowflake](https://docs.snowflake.com/en/sql-reference/sql/create-clone#databases-schemas)
         clone: Option<ObjectName>,
+        /// The `CREATE` keyword.
+        create_token: AttachedToken,
+        /// The statement's last token.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// CREATE DATABASE
@@ -5006,6 +5014,10 @@ pub enum Statement {
         name: ObjectName,
         /// Sequence options, in the order they were written.
         sequence_options: Vec<SequenceOptions>,
+        /// The `CREATE` keyword.
+        create_token: AttachedToken,
+        /// The statement's last token.
+        end_token: AttachedToken,
     },
     /// A `CREATE DOMAIN` statement.
     CreateDomain(CreateDomain),
@@ -5017,6 +5029,10 @@ pub enum Statement {
         name: ObjectName,
         /// Optional type representation details.
         representation: Option<UserDefinedTypeRepresentation>,
+        /// The `CREATE` keyword.
+        create_token: AttachedToken,
+        /// The statement's last token.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// PRAGMA <schema-name>.<pragma-name> = <pragma-value>
@@ -5996,6 +6012,7 @@ impl fmt::Display for Statement {
                 purge,
                 temporary,
                 table,
+                ..
             } => {
                 write!(
                     f,
@@ -6330,6 +6347,7 @@ impl fmt::Display for Statement {
                 options,
                 default_collate_spec,
                 clone,
+                ..
             } => {
                 write!(
                     f,
@@ -6490,6 +6508,7 @@ impl fmt::Display for Statement {
                 if_not_exists,
                 name,
                 sequence_options,
+                ..
             } => {
                 write!(
                     f,
@@ -6636,6 +6655,7 @@ impl fmt::Display for Statement {
             Statement::CreateType {
                 name,
                 representation,
+                ..
             } => {
                 write!(f, "CREATE TYPE {name}")?;
                 if let Some(repr) = representation {
