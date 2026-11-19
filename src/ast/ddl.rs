@@ -2688,6 +2688,15 @@ pub enum UserDefinedTypeRepresentation {
         /// Options for the range type definition.
         options: Vec<UserDefinedTypeRangeOption>,
     },
+    /// [MsSql] table type: `CREATE TYPE name AS TABLE (columns, constraints)`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-type-transact-sql
+    Table {
+        /// Column definitions.
+        columns: Vec<ColumnDef>,
+        /// Table constraints.
+        constraints: Vec<TableConstraint>,
+    },
     /// Base type (SQL definition): `CREATE TYPE name (options)`
     ///
     /// Note the lack of `AS` keyword
@@ -2710,6 +2719,16 @@ impl fmt::Display for UserDefinedTypeRepresentation {
             }
             Self::Range { options } => {
                 write!(f, "AS RANGE ({})", display_comma_separated(options))
+            }
+            Self::Table {
+                columns,
+                constraints,
+            } => {
+                write!(f, "AS TABLE ({}", display_comma_separated(columns))?;
+                if !constraints.is_empty() {
+                    write!(f, ", {}", display_comma_separated(constraints))?;
+                }
+                write!(f, ")")
             }
             Self::SqlDefinition { options } => {
                 write!(f, "({})", display_comma_separated(options))

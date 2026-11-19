@@ -22633,6 +22633,16 @@ impl<'a> Parser<'a> {
         } else if self.parse_keyword(Keyword::RANGE) {
             // CREATE TYPE name AS RANGE (options)
             self.parse_create_type_range(name)
+        } else if self.dialect.supports_create_table_type() && self.parse_keyword(Keyword::TABLE) {
+            // CREATE TYPE name AS TABLE (columns)
+            let (columns, constraints) = self.parse_columns()?;
+            Ok(Statement::CreateType {
+                name,
+                representation: Some(UserDefinedTypeRepresentation::Table {
+                    columns,
+                    constraints,
+                }),
+            })
         } else if self.consume_token(&Token::LParen) {
             // CREATE TYPE name AS (attributes) - Composite
             self.parse_create_type_composite(name)

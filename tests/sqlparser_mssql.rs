@@ -3446,3 +3446,27 @@ fn parse_mssql_static_method_call() {
         Expr::Cast { .. }
     ));
 }
+
+#[test]
+fn parse_mssql_create_table_type() {
+    let sql = "CREATE TYPE dbo.RowTable AS TABLE (id INT NOT NULL, name NVARCHAR(50) NULL, PRIMARY KEY (id))";
+    let Statement::CreateType {
+        representation:
+            Some(UserDefinedTypeRepresentation::Table {
+                columns,
+                constraints,
+            }),
+        ..
+    } = ms().verified_stmt(sql)
+    else {
+        panic!("expected CREATE TYPE ... AS TABLE");
+    };
+    assert_eq!(columns.len(), 2);
+    assert_eq!(constraints.len(), 1);
+
+    ms().verified_stmt("CREATE TYPE t AS TABLE (a INT)");
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("CREATE TYPE t AS TABLE (a INT)")
+        .unwrap_err();
+}

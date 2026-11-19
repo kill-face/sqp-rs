@@ -142,6 +142,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-type-transact-sql>
+    fn supports_create_table_type(&self) -> bool {
+        true
+    }
+
     /// SQL Server accepts a trailing comma after the last column definition.
     fn supports_column_definition_trailing_commas(&self) -> bool {
         true

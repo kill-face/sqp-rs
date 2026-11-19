@@ -1418,6 +1418,11 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support `CREATE TYPE name AS TABLE (...)`?
+    fn supports_create_table_type(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///
