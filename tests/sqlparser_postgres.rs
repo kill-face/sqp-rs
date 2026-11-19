@@ -2531,7 +2531,9 @@ fn parse_execute() {
                             (Value::Number("1337".parse().unwrap(), false)).with_empty_span()
                         )),
                         data_type: DataType::SmallInt(None),
-                        format: None
+                        format: None,
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     },
                     alias: None
                 },
@@ -2542,7 +2544,9 @@ fn parse_execute() {
                             (Value::Number("7331".parse().unwrap(), false)).with_empty_span()
                         )),
                         data_type: DataType::SmallInt(None),
-                        format: None
+                        format: None,
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     },
                     alias: None
                 },
@@ -3270,6 +3274,8 @@ fn parse_array_index_expr() {
                         None
                     )),
                     format: None,
+                    start_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 }
             )))),
             access_chain: vec![
@@ -7196,6 +7202,8 @@ fn parse_at_time_zone() {
                 )),
                 data_type: DataType::Text,
                 format: None,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             }),
         }),
         op: BinaryOperator::Plus,
@@ -8099,6 +8107,8 @@ fn arrow_cast_precedence() {
                 )),
                 data_type: DataType::Text,
                 format: None,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             }),
         }
     )

@@ -926,6 +926,8 @@ fn test_functional_key_part() {
             }),
             data_type: DataType::Unsigned,
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }))),
     );
     assert_eq!(
@@ -946,6 +948,8 @@ fn test_functional_key_part() {
                 None,
             )),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }))),
     );
 }

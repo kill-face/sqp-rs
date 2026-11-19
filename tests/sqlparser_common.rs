@@ -3686,6 +3686,8 @@ fn parse_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("id"))),
             data_type: DataType::BigInt(None),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3698,6 +3700,8 @@ fn parse_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("id"))),
             data_type: DataType::TinyInt(None),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3729,6 +3733,8 @@ fn parse_cast() {
                 unit: None,
             })),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3741,6 +3747,8 @@ fn parse_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("id"))),
             data_type: DataType::Clob(None),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3753,6 +3761,8 @@ fn parse_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("id"))),
             data_type: DataType::Clob(Some(50)),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3765,6 +3775,8 @@ fn parse_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("id"))),
             data_type: DataType::Binary(Some(50)),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3777,6 +3789,8 @@ fn parse_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("id"))),
             data_type: DataType::Varbinary(Some(BinaryLength::IntegerLength { length: 50 })),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3789,6 +3803,8 @@ fn parse_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("id"))),
             data_type: DataType::Blob(None),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3801,6 +3817,8 @@ fn parse_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("id"))),
             data_type: DataType::Blob(Some(50)),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3813,6 +3831,8 @@ fn parse_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("details"))),
             data_type: DataType::JSONB,
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -3828,6 +3848,8 @@ fn parse_try_cast() {
             expr: Box::new(Expr::Identifier(Ident::new("id"))),
             data_type: DataType::BigInt(None),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -7694,6 +7716,8 @@ fn interval_disallow_interval_expr_double_colon() {
             })),
             data_type: DataType::Text,
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     )
 }
@@ -7713,6 +7737,8 @@ fn parse_text_type_modifier_double_colon_cast() {
                 vec![TypeModifier::Number("16777216".to_string(), false)]
             ),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     );
 }
@@ -10566,7 +10592,9 @@ fn parse_double_colon_cast_at_timezone() {
                         .with_empty_span()
                 )),
                 data_type: DataType::Timestamp(None, TimezoneInfo::None),
-                format: None
+                format: None,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             }),
             time_zone: Box::new(Expr::Value(
                 (Value::SingleQuotedString("Europe/Brussels".to_string())).with_empty_span()
@@ -15317,6 +15345,8 @@ fn test_dictionary_syntax() {
                     )),
                     data_type: DataType::Timestamp(None, TimezoneInfo::None),
                     format: None,
+                    start_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 }),
             },
             DictionaryField {
@@ -15328,6 +15358,8 @@ fn test_dictionary_syntax() {
                     )),
                     data_type: DataType::Timestamp(None, TimezoneInfo::None),
                     format: None,
+                    start_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 }),
             },
         ]),
@@ -15624,6 +15656,8 @@ fn test_extract_seconds_ok() {
                     precision: None
                 },
                 format: None,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             }),
         }
     );
@@ -15654,6 +15688,8 @@ fn test_extract_seconds_ok() {
                         precision: None,
                     },
                     format: None,
+                    start_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 }),
             })],
             exclude: None,
@@ -15713,6 +15749,8 @@ fn test_extract_seconds_single_quote_ok() {
                     precision: None
                 },
                 format: None,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             }),
         }
     )
@@ -22519,6 +22557,8 @@ fn unary_prefix_operator_renders_apart_from_cast_operand() {
             }),
             data_type: DataType::Int(None),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         };
         let expr = UnaryOp {
             op,

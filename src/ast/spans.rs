@@ -2068,17 +2068,23 @@ impl Spanned for Expr {
                 target_before_value: _,
                 styles,
                 is_try: _,
+                start_token,
+                end_token,
             } => union_spans(
-                core::iter::once(expr.span())
+                core::iter::once(start_token.0.span)
+                    .chain(core::iter::once(expr.span()))
                     .chain(charset.as_ref().map(|i| i.span()))
-                    .chain(styles.iter().map(|i| i.span())),
+                    .chain(styles.iter().map(|i| i.span()))
+                    .chain(core::iter::once(end_token.0.span)),
             ),
             Expr::Cast {
                 kind: _,
                 expr,
                 data_type: _,
                 format: _,
-            } => expr.span(),
+                start_token,
+                end_token,
+            } => union_spans([start_token.0.span, expr.span(), end_token.0.span].into_iter()),
             Expr::AtTimeZone {
                 timestamp,
                 time_zone,
@@ -4581,6 +4587,47 @@ SETTINGS update_parallel_mode = 'auto'"#;
             spanned_text(sql, select.selection.as_ref().unwrap().span()),
             "(SELECT 1) = y"
         );
+    }
+
+    #[test]
+    fn test_cast_and_convert_spans() {
+        let sql = "SELECT CAST(a AS NVARCHAR(24)), TRY_CAST(b AS INT), CONVERT(DATE, c, 120), TRY_CONVERT(INT, d) FROM t";
+        let stmts = mssql_statements(sql);
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        let items: Vec<_> = select
+            .projection
+            .iter()
+            .map(|i| spanned_text(sql, i.span()))
+            .collect();
+        assert_eq!(
+            items,
+            [
+                "CAST(a AS NVARCHAR(24))",
+                "TRY_CAST(b AS INT)",
+                "CONVERT(DATE, c, 120)",
+                "TRY_CONVERT(INT, d)",
+            ]
+        );
+
+        let sql = "SELECT a::NUMERIC(10, 2), CAST(b AS TEXT) FROM t";
+        let stmts = Parser::parse_sql(&crate::dialect::PostgreSqlDialect {}, sql).unwrap();
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        let items: Vec<_> = select
+            .projection
+            .iter()
+            .map(|i| spanned_text(sql, i.span()))
+            .collect();
+        assert_eq!(items, ["a::NUMERIC(10, 2)", "CAST(b AS TEXT)"]);
     }
 
     #[test]

@@ -392,6 +392,8 @@ fn test_duckdb_specific_int_types() {
                 )),
                 data_type: data_type.clone(),
                 format: None,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             },
             expr_from_projection(&select.projection[0])
         );

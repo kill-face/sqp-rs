@@ -435,7 +435,9 @@ fn data_type_timestamp_ntz() {
                 Expr::Identifier("created_at".into())
             )))),
             data_type: DataType::TimestampNtz(None),
-            format: None
+            format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     );
 

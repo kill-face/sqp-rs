@@ -1155,7 +1155,9 @@ pub enum Expr {
         /// The expression to convert.
         expr: Box<Expr>,
         /// The target data type, if provided.
-        data_type: Option<DataType>,
+        ///
+        /// Boxed to keep [Expr] small.
+        data_type: Option<Box<DataType>>,
         /// Optional target character encoding (e.g., `utf8mb4`).
         charset: Option<ObjectName>,
         /// `true` when target precedes the value (MSSQL syntax).
@@ -1164,6 +1166,10 @@ pub enum Expr {
         ///
         /// [MSSQL]: https://learn.microsoft.com/en-us/sql/t-sql/functions/cast-and-convert-transact-sql?view=sql-server-ver16#style
         styles: Vec<Expr>,
+        /// The `CONVERT` or `TRY_CONVERT` keyword.
+        start_token: AttachedToken,
+        /// The closing `)`.
+        end_token: AttachedToken,
     },
     /// `CAST` an expression to a different data type e.g. `CAST(foo AS VARCHAR(123))`
     Cast {
@@ -1176,7 +1182,14 @@ pub enum Expr {
         /// Optional CAST(string_expression AS type FORMAT format_string_expression) as used by [BigQuery]
         ///
         /// [BigQuery]: https://cloud.google.com/bigquery/docs/reference/standard-sql/format-elements#formatting_syntax
-        format: Option<CastFormat>,
+        ///
+        /// Boxed to keep [Expr] small.
+        format: Option<Box<CastFormat>>,
+        /// The `CAST`, `TRY_CAST` or `SAFE_CAST` keyword; empty for `expr::type`.
+        start_token: AttachedToken,
+        /// The last token: the closing `)`, or the data type's last token for
+        /// `expr::type`.
+        end_token: AttachedToken,
     },
     /// AT a timestamp to a different timezone e.g. `FROM_UNIXTIME(0) AT TIME ZONE 'UTC-06:00'`
     AtTimeZone {
@@ -2088,6 +2101,7 @@ impl fmt::Display for Expr {
                 data_type,
                 charset,
                 styles,
+                ..
             } => {
                 write!(f, "{}CONVERT(", if *is_try { "TRY_" } else { "" })?;
                 if let Some(data_type) = data_type {
@@ -2113,6 +2127,7 @@ impl fmt::Display for Expr {
                 expr,
                 data_type,
                 format,
+                ..
             } => match kind {
                 CastKind::Cast => {
                     if matches!(data_type, DataType::Unspecified) {

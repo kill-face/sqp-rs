@@ -1328,6 +1328,8 @@ fn parse_array() {
             expr: Box::new(Expr::Identifier(Ident::new("a"))),
             data_type: DataType::Array(ArrayElemTypeDef::None),
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -1437,6 +1439,8 @@ fn parse_semi_structured_data_traversal() {
                 }),
                 data_type: DataType::Array(ArrayElemTypeDef::None),
                 format: None,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             }),
             path: JsonPath {
                 path: vec![JsonPathElem::Bracket {

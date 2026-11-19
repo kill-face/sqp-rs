@@ -1294,13 +1294,14 @@ fn parse_convert() {
         charset,
         target_before_value,
         styles,
+        ..
     } = ms().verified_expr(sql)
     else {
         unreachable!()
     };
     assert!(!is_try);
     assert_eq!(Expr::value(number("1")), *expr);
-    assert_eq!(Some(DataType::Int(None)), data_type);
+    assert_eq!(Some(Box::new(DataType::Int(None))), data_type);
     assert!(charset.is_none());
     assert!(target_before_value);
     assert_eq!(

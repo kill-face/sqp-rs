@@ -1988,6 +1988,8 @@ impl<'a> Parser<'a> {
                         expr: Box::new(parser.parse_expr()?),
                         data_type: DataType::Binary(None),
                         format: None,
+                        start_token: AttachedToken::empty(),
+                        end_token: parser.last_consumed_token(),
                     })
                 }
                 data_type => Ok(Expr::TypedString(TypedString {
@@ -3059,6 +3061,7 @@ impl<'a> Parser<'a> {
 
     /// mssql-like convert function
     fn parse_mssql_convert(&mut self, is_try: bool) -> Result<Expr, ParserError> {
+        let start_token = self.last_consumed_token();
         self.expect_token(&Token::LParen)?;
         let data_type = self.parse_data_type()?;
         self.expect_token(&Token::Comma)?;
@@ -3072,10 +3075,12 @@ impl<'a> Parser<'a> {
         Ok(Expr::Convert {
             is_try,
             expr: Box::new(expr),
-            data_type: Some(data_type),
+            data_type: Some(Box::new(data_type)),
             charset: None,
             target_before_value: true,
             styles,
+            start_token: start_token.clone(),
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -3087,6 +3092,7 @@ impl<'a> Parser<'a> {
         if self.dialect.convert_type_before_value() {
             return self.parse_mssql_convert(is_try);
         }
+        let start_token = self.last_consumed_token();
         self.expect_token(&Token::LParen)?;
         let expr = self.parse_expr()?;
         if self.parse_keyword(Keyword::USING) {
@@ -3099,6 +3105,8 @@ impl<'a> Parser<'a> {
                 charset: Some(charset),
                 target_before_value: false,
                 styles: vec![],
+                start_token: start_token.clone(),
+                end_token: self.last_consumed_token(),
             });
         }
         self.expect_token(&Token::Comma)?;
@@ -3112,15 +3120,18 @@ impl<'a> Parser<'a> {
         Ok(Expr::Convert {
             is_try,
             expr: Box::new(expr),
-            data_type: Some(data_type),
+            data_type: Some(Box::new(data_type)),
             charset,
             target_before_value: false,
             styles: vec![],
+            start_token: start_token.clone(),
+            end_token: self.last_consumed_token(),
         })
     }
 
     /// Parse a SQL CAST function e.g. `CAST(expr AS FLOAT)`
     pub fn parse_cast_expr(&mut self, kind: CastKind) -> Result<Expr, ParserError> {
+        let start_token = self.last_consumed_token();
         self.expect_token(&Token::LParen)?;
         let expr = self.parse_expr()?;
         self.expect_keyword_is(Keyword::AS)?;
@@ -3131,13 +3142,15 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_data_type()?
         };
-        let format = self.parse_optional_cast_format()?;
+        let format = self.parse_optional_cast_format()?.map(Box::new);
         self.expect_token(&Token::RParen)?;
         Ok(Expr::Cast {
             kind,
             expr: Box::new(expr),
             data_type,
             format,
+            start_token,
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -4447,6 +4460,8 @@ impl<'a> Parser<'a> {
                 expr: Box::new(expr),
                 data_type: self.parse_data_type()?,
                 format: None,
+                start_token: AttachedToken::empty(),
+                end_token: self.last_consumed_token(),
             })
         } else if Token::ExclamationMark == *tok && self.dialect.supports_factorial_operator() {
             Ok(Expr::UnaryOp {
@@ -4775,6 +4790,8 @@ impl<'a> Parser<'a> {
             expr: Box::new(expr),
             data_type: self.parse_data_type()?,
             format: None,
+            start_token: AttachedToken::empty(),
+            end_token: self.last_consumed_token(),
         })
     }
 
