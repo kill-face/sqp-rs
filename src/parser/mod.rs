@@ -5589,6 +5589,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a SQL CREATE statement
     pub fn parse_create(&mut self) -> Result<Statement, ParserError> {
+        let create_token = self.get_current_token().clone();
         let modifier_loc = self.peek_token_ref().span.start;
         let or_replace = self.parse_keywords(&[Keyword::OR, Keyword::REPLACE]);
         let or_alter = self.parse_keywords(&[Keyword::OR, Keyword::ALTER]);
@@ -5705,6 +5706,14 @@ impl<'a> Parser<'a> {
             None
         } {
             self.parse_create_index_inner(prefix).map(Into::into)
+        } else if self.dialect.supports_create_partition_function()
+            && self.parse_keywords(&[Keyword::PARTITION, Keyword::FUNCTION])
+        {
+            self.parse_create_partition_function(create_token)
+        } else if self.dialect.supports_create_partition_function()
+            && self.parse_keywords(&[Keyword::PARTITION, Keyword::SCHEME])
+        {
+            self.parse_create_partition_scheme(create_token)
         } else if self.parse_keyword(Keyword::VIRTUAL) {
             self.parse_create_virtual_table()
         } else if self.parse_keyword(Keyword::DATABASE) {
@@ -9047,6 +9056,70 @@ impl<'a> Parser<'a> {
             );
         };
         Ok(Statement::Discard { object_type })
+    }
+
+    /// Parse the rest of an MsSql `CREATE PARTITION FUNCTION` statement.
+    fn parse_create_partition_function(
+        &mut self,
+        create_token: TokenWithSpan,
+    ) -> Result<Statement, ParserError> {
+        let name = self.parse_object_name(false)?;
+        self.expect_token(&Token::LParen)?;
+        let input_type = self.parse_data_type()?;
+        self.expect_token(&Token::RParen)?;
+        self.expect_keywords(&[Keyword::AS, Keyword::RANGE])?;
+        let range_direction = match self.parse_one_of_keywords(&[Keyword::LEFT, Keyword::RIGHT]) {
+            Some(Keyword::LEFT) => Some(PartitionRangeDirection::Left),
+            Some(Keyword::RIGHT) => Some(PartitionRangeDirection::Right),
+            _ => None,
+        };
+        self.expect_keywords(&[Keyword::FOR, Keyword::VALUES])?;
+        let opening_token = self.expect_token(&Token::LParen)?;
+        let content = if self.peek_token_ref().token == Token::RParen {
+            vec![]
+        } else {
+            self.parse_comma_separated(Parser::parse_expr)?
+        };
+        let closing_token = self.expect_token(&Token::RParen)?;
+        Ok(Statement::CreatePartitionFunction(
+            CreatePartitionFunction {
+                create_token: AttachedToken(create_token),
+                name,
+                input_type,
+                range_direction,
+                values: Parens {
+                    opening_token: AttachedToken(opening_token),
+                    content,
+                    closing_token: AttachedToken(closing_token),
+                },
+            },
+        ))
+    }
+
+    /// Parse the rest of an MsSql `CREATE PARTITION SCHEME` statement.
+    fn parse_create_partition_scheme(
+        &mut self,
+        create_token: TokenWithSpan,
+    ) -> Result<Statement, ParserError> {
+        let name = self.parse_object_name(false)?;
+        self.expect_keywords(&[Keyword::AS, Keyword::PARTITION])?;
+        let function_name = self.parse_object_name(false)?;
+        let all = self.parse_keyword(Keyword::ALL);
+        self.expect_keyword_is(Keyword::TO)?;
+        let opening_token = self.expect_token(&Token::LParen)?;
+        let content = self.parse_comma_separated(|p| p.parse_identifier())?;
+        let closing_token = self.expect_token(&Token::RParen)?;
+        Ok(Statement::CreatePartitionScheme(CreatePartitionScheme {
+            create_token: AttachedToken(create_token),
+            name,
+            function_name,
+            all,
+            filegroups: Parens {
+                opening_token: AttachedToken(opening_token),
+                content,
+                closing_token: AttachedToken(closing_token),
+            },
+        }))
     }
 
     /// Parse a `CREATE INDEX` statement.

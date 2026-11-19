@@ -410,6 +410,8 @@ impl Spanned for Statement {
                     .chain(module_args.iter().map(|i| i.span)),
             ),
             Statement::CreateIndex(create_index) => create_index.span(),
+            Statement::CreatePartitionFunction(s) => s.span(),
+            Statement::CreatePartitionScheme(s) => s.span(),
             Statement::CreateRole(create_role) => create_role.span(),
             Statement::CreateExtension(create_extension) => create_extension.span(),
             Statement::CreateCollation(create_collation) => create_collation.span(),

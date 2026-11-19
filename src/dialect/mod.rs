@@ -1429,6 +1429,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support `CREATE PARTITION FUNCTION` and
+    /// `CREATE PARTITION SCHEME`?
+    fn supports_create_partition_function(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///

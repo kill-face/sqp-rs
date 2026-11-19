@@ -3509,3 +3509,38 @@ fn parse_mssql_data_space() {
         .parse_sql_statements("CREATE TABLE t (id INT) ON ps (id)")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_create_partition_function_and_scheme() {
+    let sql = "CREATE PARTITION FUNCTION pf (DATETIME2(0)) AS RANGE RIGHT FOR VALUES ('2020-01-01', '2021-01-01')";
+    let Statement::CreatePartitionFunction(pf) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(pf.range_direction, Some(PartitionRangeDirection::Right));
+    assert_eq!(pf.values.content.len(), 2);
+    ms().verified_stmt("CREATE PARTITION FUNCTION pf (INT) AS RANGE FOR VALUES ()");
+    ms().verified_stmt("CREATE PARTITION FUNCTION pf (INT) AS RANGE LEFT FOR VALUES (1, 100)");
+
+    let sql = "CREATE PARTITION SCHEME ps AS PARTITION pf ALL TO ([PRIMARY])";
+    let Statement::CreatePartitionScheme(ps) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert!(ps.all);
+    assert_eq!(
+        ps.filegroups.content,
+        vec![Ident::with_quote('[', "PRIMARY")]
+    );
+    ms().verified_stmt("CREATE PARTITION SCHEME ps AS PARTITION pf TO (fg1, fg2, fg3)");
+
+    let span = Parser::new(&MsSqlDialect {})
+        .try_with_sql("CREATE PARTITION SCHEME ps AS PARTITION pf TO (fg1)")
+        .unwrap()
+        .parse_statement()
+        .unwrap()
+        .span();
+    assert_eq!(span, Span::new(Location::new(1, 1), Location::new(1, 52)));
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("CREATE PARTITION SCHEME ps AS PARTITION pf TO (fg1)")
+        .unwrap_err();
+}

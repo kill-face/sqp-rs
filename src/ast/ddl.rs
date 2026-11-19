@@ -47,11 +47,11 @@ use crate::ast::{
     FunctionCalledOnNull, FunctionDefinitionSetParam, FunctionDesc, FunctionDeterminismSpecifier,
     FunctionParallel, FunctionSecurity, HiveDistributionStyle, HiveFormat, HiveIOFormat,
     HiveRowFormat, HiveSetLocation, Ident, InitializeKind, MySQLColumnPosition, ObjectName,
-    OnCommit, OneOrManyWithParens, OperateFunctionArg, OrderByExpr, Parens, ProjectionSelect,
-    Query, RefreshModeKind, ResetConfig, RowAccessPolicy, SequenceOptions, Spanned, SqlOption,
-    Statement, StorageLifecyclePolicy, StorageSerializationPolicy, TableVersion, Tag, TriggerEvent,
-    TriggerExecBody, TriggerObject, TriggerPeriod, TriggerReferencing, Value, ValueWithSpan,
-    WrappedCollection,
+    OnCommit, OneOrManyWithParens, OperateFunctionArg, OrderByExpr, Parens,
+    PartitionRangeDirection, ProjectionSelect, Query, RefreshModeKind, ResetConfig,
+    RowAccessPolicy, SequenceOptions, Spanned, SqlOption, Statement, StorageLifecyclePolicy,
+    StorageSerializationPolicy, TableVersion, Tag, TriggerEvent, TriggerExecBody, TriggerObject,
+    TriggerPeriod, TriggerReferencing, Value, ValueWithSpan, WrappedCollection,
 };
 use crate::display_utils::{DisplayCommaSeparated, Indent, NewLine, SpaceOrNewline};
 use crate::keywords::Keyword;
@@ -7553,5 +7553,98 @@ impl fmt::Display for CreateUserMapping {
 impl From<CreateUserMapping> for crate::ast::Statement {
     fn from(v: CreateUserMapping) -> Self {
         crate::ast::Statement::CreateUserMapping(v)
+    }
+}
+
+/// [MsSql] `CREATE PARTITION FUNCTION` statement.
+///
+/// ```sql
+/// CREATE PARTITION FUNCTION name ( input_type )
+/// AS RANGE [ LEFT | RIGHT ] FOR VALUES ( [ boundary_value [ , ...n ] ] )
+/// ```
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct CreatePartitionFunction {
+    /// The `CREATE` token.
+    pub create_token: AttachedToken,
+    /// Partition function name.
+    pub name: ObjectName,
+    /// Data type of the partitioning column.
+    pub input_type: DataType,
+    /// `LEFT` or `RIGHT`, if specified.
+    pub range_direction: Option<PartitionRangeDirection>,
+    /// Boundary values.
+    pub values: Parens<Vec<Expr>>,
+}
+
+impl fmt::Display for CreatePartitionFunction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "CREATE PARTITION FUNCTION {} ({}) AS RANGE",
+            self.name, self.input_type
+        )?;
+        match self.range_direction {
+            Some(PartitionRangeDirection::Left) => write!(f, " LEFT")?,
+            Some(PartitionRangeDirection::Right) => write!(f, " RIGHT")?,
+            None => {}
+        }
+        write!(
+            f,
+            " FOR VALUES ({})",
+            display_comma_separated(&self.values.content)
+        )
+    }
+}
+
+impl Spanned for CreatePartitionFunction {
+    fn span(&self) -> Span {
+        self.create_token.0.span.union(&self.values.span())
+    }
+}
+
+/// [MsSql] `CREATE PARTITION SCHEME` statement.
+///
+/// ```sql
+/// CREATE PARTITION SCHEME name AS PARTITION function_name
+/// [ ALL ] TO ( filegroup [ , ...n ] )
+/// ```
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-scheme-transact-sql
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct CreatePartitionScheme {
+    /// The `CREATE` token.
+    pub create_token: AttachedToken,
+    /// Partition scheme name.
+    pub name: ObjectName,
+    /// The partition function the scheme maps.
+    pub function_name: ObjectName,
+    /// Whether `ALL` was specified, mapping every partition to one filegroup.
+    pub all: bool,
+    /// Filegroups the partitions map to.
+    pub filegroups: Parens<Vec<Ident>>,
+}
+
+impl fmt::Display for CreatePartitionScheme {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "CREATE PARTITION SCHEME {} AS PARTITION {} {}TO ({})",
+            self.name,
+            self.function_name,
+            if self.all { "ALL " } else { "" },
+            display_comma_separated(&self.filegroups.content)
+        )
+    }
+}
+
+impl Spanned for CreatePartitionScheme {
+    fn span(&self) -> Span {
+        self.create_token.0.span.union(&self.filegroups.span())
     }
 }

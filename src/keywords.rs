@@ -963,6 +963,7 @@ define_keywords!(
     SCALAR,
     SCHEMA,
     SCHEMAS,
+    SCHEME,
     SCOPE,
     SCROLL,
     SEARCH,

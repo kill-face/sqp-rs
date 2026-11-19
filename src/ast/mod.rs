@@ -79,22 +79,22 @@ pub use self::ddl::{
     CreateAggregate, CreateAggregateArgs, CreateAggregateOption, CreateCollation,
     CreateCollationDefinition, CreateConnector, CreateDomain, CreateExtension,
     CreateForeignDataWrapper, CreateForeignTable, CreateFunction, CreateIndex, CreateOperator,
-    CreateOperatorClass, CreateOperatorFamily, CreatePolicy, CreatePolicyCommand, CreatePolicyType,
-    CreateRule, CreateRuleAction, CreateRuleDoKind, CreateRuleEvent, CreateTable, CreateTextSearch,
-    CreateTrigger, CreateUserMapping, CreateView, DataSpace, Deduplicate, DeferrableInitial,
-    DetachPartitionMode, DistStyle, DropBehavior, DropExtension, DropFunction, DropOperator,
-    DropOperatorClass, DropOperatorFamily, DropOperatorSignature, DropPolicy, DropRule,
-    DropTrigger, ForValues, ForeignDataWrapperRoutineClause, FunctionReturnType, GeneratedAs,
-    GeneratedExpressionMode, IdentityParameters, IdentityProperty, IdentityPropertyFormatKind,
-    IdentityPropertyKind, IdentityPropertyOrder, IndexClustering, IndexColumn, IndexOption,
-    IndexType, KeyOrIndexDisplay, Msck, NullsDistinctOption, OperatorArgTypes, OperatorClassItem,
-    OperatorFamilyDropItem, OperatorFamilyItem, OperatorOption, OperatorPurpose, Owner, Partition,
-    PartitionBoundValue, ProcedureParam, ReferentialAction, RenameTableNameKind, ReplicaIdentity,
-    SqliteTableOption, SqliteTableOptions, TagsColumnOption, TextSearchObjectType,
-    TriggerObjectKind, Truncate, UserDefinedTypeCompositeAttributeDef,
-    UserDefinedTypeInternalLength, UserDefinedTypeRangeOption, UserDefinedTypeRepresentation,
-    UserDefinedTypeSqlDefinitionOption, UserDefinedTypeStorage, UserMappingUser, ViewColumnDef,
-    WithData,
+    CreateOperatorClass, CreateOperatorFamily, CreatePartitionFunction, CreatePartitionScheme,
+    CreatePolicy, CreatePolicyCommand, CreatePolicyType, CreateRule, CreateRuleAction,
+    CreateRuleDoKind, CreateRuleEvent, CreateTable, CreateTextSearch, CreateTrigger,
+    CreateUserMapping, CreateView, DataSpace, Deduplicate, DeferrableInitial, DetachPartitionMode,
+    DistStyle, DropBehavior, DropExtension, DropFunction, DropOperator, DropOperatorClass,
+    DropOperatorFamily, DropOperatorSignature, DropPolicy, DropRule, DropTrigger, ForValues,
+    ForeignDataWrapperRoutineClause, FunctionReturnType, GeneratedAs, GeneratedExpressionMode,
+    IdentityParameters, IdentityProperty, IdentityPropertyFormatKind, IdentityPropertyKind,
+    IdentityPropertyOrder, IndexClustering, IndexColumn, IndexOption, IndexType, KeyOrIndexDisplay,
+    Msck, NullsDistinctOption, OperatorArgTypes, OperatorClassItem, OperatorFamilyDropItem,
+    OperatorFamilyItem, OperatorOption, OperatorPurpose, Owner, Partition, PartitionBoundValue,
+    ProcedureParam, ReferentialAction, RenameTableNameKind, ReplicaIdentity, SqliteTableOption,
+    SqliteTableOptions, TagsColumnOption, TextSearchObjectType, TriggerObjectKind, Truncate,
+    UserDefinedTypeCompositeAttributeDef, UserDefinedTypeInternalLength,
+    UserDefinedTypeRangeOption, UserDefinedTypeRepresentation, UserDefinedTypeSqlDefinitionOption,
+    UserDefinedTypeStorage, UserMappingUser, ViewColumnDef, WithData,
 };
 pub use self::dml::{
     Delete, Insert, InsertOverriding, Merge, MergeAction, MergeClause, MergeClauseKind,
@@ -3897,6 +3897,10 @@ pub enum Statement {
     /// `CREATE INDEX`
     /// ```
     CreateIndex(CreateIndex),
+    /// [MsSql] `CREATE PARTITION FUNCTION`
+    CreatePartitionFunction(CreatePartitionFunction),
+    /// [MsSql] `CREATE PARTITION SCHEME`
+    CreatePartitionScheme(CreatePartitionScheme),
     /// ```sql
     /// CREATE ROLE
     /// ```
@@ -5800,6 +5804,8 @@ impl fmt::Display for Statement {
                 Ok(())
             }
             Statement::CreateIndex(create_index) => create_index.fmt(f),
+            Statement::CreatePartitionFunction(s) => s.fmt(f),
+            Statement::CreatePartitionScheme(s) => s.fmt(f),
             Statement::CreateExtension(create_extension) => write!(f, "{create_extension}"),
             Statement::CreateCollation(create_collation) => write!(f, "{create_collation}"),
             Statement::DropExtension(drop_extension) => write!(f, "{drop_extension}"),
