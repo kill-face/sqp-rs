@@ -3252,24 +3252,26 @@ fn parse_array_index_expr() {
     let select = pg_and_generic().verified_only_select(sql);
     assert_eq!(
         &Expr::CompoundFieldAccess {
-            root: Box::new(Expr::Nested(Box::new(Expr::Cast {
-                kind: CastKind::Cast,
-                expr: Box::new(Expr::Array(Array {
-                    elem: vec![Expr::Array(Array {
-                        elem: vec![num[2].clone(), num[3].clone(),],
+            root: Box::new(Expr::Nested(Parens::with_empty_span(Box::new(
+                Expr::Cast {
+                    kind: CastKind::Cast,
+                    expr: Box::new(Expr::Array(Array {
+                        elem: vec![Expr::Array(Array {
+                            elem: vec![num[2].clone(), num[3].clone(),],
+                            named: true,
+                        })],
                         named: true,
-                    })],
-                    named: true,
-                })),
-                data_type: DataType::Array(ArrayElemTypeDef::SquareBracket(
-                    Box::new(DataType::Array(ArrayElemTypeDef::SquareBracket(
-                        Box::new(DataType::Int(None)),
+                    })),
+                    data_type: DataType::Array(ArrayElemTypeDef::SquareBracket(
+                        Box::new(DataType::Array(ArrayElemTypeDef::SquareBracket(
+                            Box::new(DataType::Int(None)),
+                            None
+                        ))),
                         None
-                    ))),
-                    None
-                )),
-                format: None,
-            }))),
+                    )),
+                    format: None,
+                }
+            )))),
             access_chain: vec![
                 AccessExpr::Subscript(Subscript::Index {
                     index: num[1].clone()
@@ -4554,10 +4556,9 @@ fn test_composite_value() {
     };
     assert_eq!(
         root.as_ref(),
-        &Expr::Nested(Box::new(Expr::CompoundIdentifier(vec![
-            Ident::new("on_hand"),
-            Ident::new("item")
-        ])))
+        &Expr::Nested(Parens::with_empty_span(Box::new(Expr::CompoundIdentifier(
+            vec![Ident::new("on_hand"), Ident::new("item")]
+        ))))
     );
     assert_eq!(
         access_chain.as_slice(),
@@ -4568,10 +4569,9 @@ fn test_composite_value() {
         select.selection.as_ref().unwrap(),
         &Expr::BinaryOp {
             left: Box::new(Expr::CompoundFieldAccess {
-                root: Expr::Nested(Box::new(Expr::CompoundIdentifier(vec![
-                    Ident::new("on_hand"),
-                    Ident::new("item")
-                ])))
+                root: Expr::Nested(Parens::with_empty_span(Box::new(Expr::CompoundIdentifier(
+                    vec![Ident::new("on_hand"), Ident::new("item")]
+                ))))
                 .into(),
                 access_chain: vec![AccessExpr::Dot(Expr::Identifier(Ident::new("price")))]
             }),
@@ -4584,36 +4584,40 @@ fn test_composite_value() {
     let select = pg().verified_only_select(sql);
     assert_eq!(
         &Expr::CompoundFieldAccess {
-            root: Box::new(Expr::Nested(Box::new(Expr::Function(Function {
-                name: ObjectName::from(vec![
-                    Ident::new("information_schema"),
-                    Ident::new("_pg_expandarray")
-                ]),
-                uses_odbc_syntax: false,
-                parameters: FunctionArguments::None,
-                args: FunctionArguments::List(FunctionArgumentList {
-                    duplicate_treatment: None,
-                    args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Array(
-                        Array {
-                            elem: vec![
-                                Expr::Value(
-                                    (Value::SingleQuotedString("i".to_string())).with_empty_span()
-                                ),
-                                Expr::Value(
-                                    (Value::SingleQuotedString("i".to_string())).with_empty_span()
-                                ),
-                            ],
-                            named: true
-                        }
-                    )))],
-                    clauses: vec![],
-                }),
-                null_treatment: None,
-                filter: None,
-                over: None,
-                within_group: vec![],
-                closing_paren_token: AttachedToken::empty(),
-            })))),
+            root: Box::new(Expr::Nested(Parens::with_empty_span(Box::new(
+                Expr::Function(Function {
+                    name: ObjectName::from(vec![
+                        Ident::new("information_schema"),
+                        Ident::new("_pg_expandarray")
+                    ]),
+                    uses_odbc_syntax: false,
+                    parameters: FunctionArguments::None,
+                    args: FunctionArguments::List(FunctionArgumentList {
+                        duplicate_treatment: None,
+                        args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Array(
+                            Array {
+                                elem: vec![
+                                    Expr::Value(
+                                        (Value::SingleQuotedString("i".to_string()))
+                                            .with_empty_span()
+                                    ),
+                                    Expr::Value(
+                                        (Value::SingleQuotedString("i".to_string()))
+                                            .with_empty_span()
+                                    ),
+                                ],
+                                named: true
+                            }
+                        )))],
+                        clauses: vec![],
+                    }),
+                    null_treatment: None,
+                    filter: None,
+                    over: None,
+                    within_group: vec![],
+                    closing_paren_token: AttachedToken::empty(),
+                })
+            )))),
             access_chain: vec![AccessExpr::Dot(Expr::Identifier(Ident::new("n")))],
         },
         expr_from_projection(&select.projection[0])
@@ -7528,14 +7532,16 @@ fn parse_create_after_update_trigger_with_condition() {
         referenced_table_name: None,
         referencing: vec![],
         trigger_object: Some(TriggerObjectKind::ForEach(TriggerObject::Row)),
-        condition: Some(Expr::Nested(Box::new(Expr::BinaryOp {
-            left: Box::new(Expr::CompoundIdentifier(vec![
-                Ident::new("NEW"),
-                Ident::new("balance"),
-            ])),
-            op: BinaryOperator::Gt,
-            right: Box::new(Expr::value(number("10000"))),
-        }))),
+        condition: Some(Expr::Nested(Parens::with_empty_span(Box::new(
+            Expr::BinaryOp {
+                left: Box::new(Expr::CompoundIdentifier(vec![
+                    Ident::new("NEW"),
+                    Ident::new("balance"),
+                ])),
+                op: BinaryOperator::Gt,
+                right: Box::new(Expr::value(number("10000"))),
+            },
+        )))),
         exec_body: Some(TriggerExecBody {
             exec_type: TriggerExecBodyType::Function,
             func_desc: FunctionDesc {

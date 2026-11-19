@@ -2172,7 +2172,8 @@ impl<'a> Parser<'a> {
                 Ok(Expr::Value(self.parse_value()?))
             }
             Token::LParen => {
-                let expr =
+                let opening_token = self.last_consumed_token();
+                let mut expr =
                     if let Some(expr) = self.try_parse_expr_sub_query()? {
                         expr
                     } else if let Some(lambda) = self.try_parse_lambda()? {
@@ -2196,11 +2197,18 @@ impl<'a> Parser<'a> {
                                 "Internal parser error: parse_comma_separated returned empty list"
                                     .to_string(),
                             )),
-                            1 => Expr::Nested(Box::new(exprs.into_iter().next().unwrap())),
+                            1 => Expr::Nested(Parens {
+                                opening_token,
+                                content: Box::new(exprs.into_iter().next().unwrap()),
+                                closing_token: AttachedToken::empty(),
+                            }),
                             _ => Expr::Tuple(exprs),
                         }
                     };
-                self.expect_token(&Token::RParen)?;
+                let closing_token = self.expect_token(&Token::RParen)?;
+                if let Expr::Nested(parens) = &mut expr {
+                    parens.closing_token = closing_token.into();
+                }
                 Ok(expr)
             }
             Token::Placeholder(_) | Token::Colon | Token::AtSign => {

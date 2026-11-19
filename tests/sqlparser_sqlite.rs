@@ -1877,7 +1877,11 @@ fn parse_bitwise_and_or_share_precedence() {
             bin(
                 num("6"),
                 BitwiseOr,
-                Expr::Nested(Box::new(bin(num("1"), BitwiseAnd, num("3")))),
+                Expr::Nested(Parens::with_empty_span(Box::new(bin(
+                    num("1"),
+                    BitwiseAnd,
+                    num("3"),
+                )))),
             ),
         ),
         (
@@ -2021,7 +2025,11 @@ fn parse_bitwise_shift_precedence_boundaries() {
             bin(
                 id("a"),
                 PGBitwiseShiftLeft,
-                Expr::Nested(Box::new(bin(id("b"), BitwiseAnd, id("c")))),
+                Expr::Nested(Parens::with_empty_span(Box::new(bin(
+                    id("b"),
+                    BitwiseAnd,
+                    id("c"),
+                )))),
             ),
         ),
     ] {

@@ -2137,11 +2137,11 @@ fn parse_is_distinct_from_precedence() {
     assert_eq!(
         IsDistinctFrom(
             Box::new(Identifier(Ident::new("a"))),
-            Box::new(Nested(Box::new(BinaryOp {
+            Box::new(Nested(Parens::with_empty_span(Box::new(BinaryOp {
                 left: Box::new(Expr::value(number("1"))),
                 op: BinaryOperator::And,
                 right: Box::new(Identifier(Ident::new("b"))),
-            }))),
+            })))),
         ),
         verified_expr("a IS DISTINCT FROM (1 AND b)")
     );
@@ -3092,8 +3092,8 @@ fn parse_tuples() {
                 Expr::value(number("1")),
                 Expr::value(number("2")),
             ])),
-            SelectItem::UnnamedExpr(Expr::Nested(Box::new(Expr::Value(
-                (number("1")).with_empty_span()
+            SelectItem::UnnamedExpr(Expr::Nested(Parens::with_empty_span(Box::new(
+                Expr::Value((number("1")).with_empty_span())
             )))),
             SelectItem::UnnamedExpr(Expr::Tuple(vec![
                 Expr::Value((Value::SingleQuotedString("foo".into())).with_empty_span()),
@@ -8354,17 +8354,17 @@ fn parse_parens() {
     let sql = "(a + b) - (c + d)";
     assert_eq!(
         BinaryOp {
-            left: Box::new(Nested(Box::new(BinaryOp {
+            left: Box::new(Nested(Parens::with_empty_span(Box::new(BinaryOp {
                 left: Box::new(Identifier(Ident::new("a"))),
                 op: Plus,
                 right: Box::new(Identifier(Ident::new("b"))),
-            }))),
+            })))),
             op: Minus,
-            right: Box::new(Nested(Box::new(BinaryOp {
+            right: Box::new(Nested(Parens::with_empty_span(Box::new(BinaryOp {
                 left: Box::new(Identifier(Ident::new("c"))),
                 op: Plus,
                 right: Box::new(Identifier(Ident::new("d"))),
-            }))),
+            })))),
         },
         verified_expr(sql)
     );
@@ -17146,13 +17146,15 @@ fn parse_bang_not() {
 
     for (i, expr) in [
         Box::new(Expr::Identifier(Ident::new("a"))),
-        Box::new(Expr::Nested(Box::new(Expr::BinaryOp {
-            left: Box::new(Expr::Identifier(Ident::new("b"))),
-            op: BinaryOperator::Gt,
-            right: Box::new(Expr::Value(
-                Value::Number("3".parse().unwrap(), false).with_empty_span(),
-            )),
-        }))),
+        Box::new(Expr::Nested(Parens::with_empty_span(Box::new(
+            Expr::BinaryOp {
+                left: Box::new(Expr::Identifier(Ident::new("b"))),
+                op: BinaryOperator::Gt,
+                right: Box::new(Expr::Value(
+                    Value::Number("3".parse().unwrap(), false).with_empty_span(),
+                )),
+            },
+        )))),
     ]
     .into_iter()
     .enumerate()
@@ -17195,11 +17197,13 @@ fn parse_factorial_operator() {
 
     for (i, expr) in [
         Box::new(Expr::Identifier(Ident::new("a"))),
-        Box::new(Expr::Nested(Box::new(Expr::BinaryOp {
-            left: Box::new(Expr::Identifier(Ident::new("b"))),
-            op: BinaryOperator::Plus,
-            right: Box::new(Expr::Identifier(Ident::new("c"))),
-        }))),
+        Box::new(Expr::Nested(Parens::with_empty_span(Box::new(
+            Expr::BinaryOp {
+                left: Box::new(Expr::Identifier(Ident::new("b"))),
+                op: BinaryOperator::Plus,
+                right: Box::new(Expr::Identifier(Ident::new("c"))),
+            },
+        )))),
     ]
     .into_iter()
     .enumerate()
@@ -22249,7 +22253,7 @@ fn parse_in_list_leading_subquery() {
         Expr::In {
             expr: x(),
             target: InTarget::List(vec![
-                Expr::Nested(Box::new(subquery())),
+                Expr::Nested(Parens::with_empty_span(Box::new(subquery()))),
                 Expr::value(number("1"))
             ]),
             negated: true,
@@ -22835,11 +22839,13 @@ fn parse_div_with_nested_divisor() {
         Expr::BinaryOp {
             left: Box::new(Expr::value(number("10"))),
             op: BinaryOperator::MyIntegerDivide,
-            right: Box::new(Expr::Nested(Box::new(Expr::BinaryOp {
-                left: Box::new(Expr::value(number("5"))),
-                op: BinaryOperator::MyIntegerDivide,
-                right: Box::new(Expr::value(number("2"))),
-            }))),
+            right: Box::new(Expr::Nested(Parens::with_empty_span(Box::new(
+                Expr::BinaryOp {
+                    left: Box::new(Expr::value(number("5"))),
+                    op: BinaryOperator::MyIntegerDivide,
+                    right: Box::new(Expr::value(number("2"))),
+                }
+            )))),
         }
     );
 }

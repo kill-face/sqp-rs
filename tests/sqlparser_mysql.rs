@@ -904,18 +904,18 @@ fn test_functional_key_part() {
             mysql_and_generic()
                 .verified_stmt("CREATE INDEX idx_index ON t((col COLLATE utf8mb4_bin) DESC)")
         ),
-        Expr::Nested(Box::new(Expr::Collate {
+        Expr::Nested(Parens::with_empty_span(Box::new(Expr::Collate {
             expr: Box::new(Expr::Identifier("col".into())),
             collation: ObjectName(vec![sqlparser::ast::ObjectNamePart::Identifier(
                 Ident::new("utf8mb4_bin")
             )]),
-        }))
+        })))
     );
     assert_eq!(
         index_column(mysql_and_generic().verified_stmt(
             r#"CREATE TABLE t (jsoncol JSON, PRIMARY KEY ((CAST(col ->> '$.id' AS UNSIGNED)) ASC))"#
         )),
-        Expr::Nested(Box::new(Expr::Cast {
+        Expr::Nested(Parens::with_empty_span(Box::new(Expr::Cast {
             kind: CastKind::Cast,
             expr: Box::new(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier(Ident::new("col"))),
@@ -926,13 +926,13 @@ fn test_functional_key_part() {
             }),
             data_type: DataType::Unsigned,
             format: None,
-        })),
+        }))),
     );
     assert_eq!(
         index_column(mysql_and_generic().verified_stmt(
             r#"CREATE TABLE t (jsoncol JSON, PRIMARY KEY ((CAST(col ->> '$.fields' AS UNSIGNED ARRAY)) ASC))"#
         )),
-        Expr::Nested(Box::new(Expr::Cast {
+        Expr::Nested(Parens::with_empty_span(Box::new(Expr::Cast {
             kind: CastKind::Cast,
             expr: Box::new(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier(Ident::new("col"))),
@@ -946,7 +946,7 @@ fn test_functional_key_part() {
                 None,
             )),
             format: None,
-        })),
+        }))),
     );
 }
 
@@ -3986,11 +3986,11 @@ fn parse_div_precedence() {
     assert_eq!(
         div(
             num("7"),
-            Expr::Nested(Box::new(Expr::BinaryOp {
+            Expr::Nested(Parens::with_empty_span(Box::new(Expr::BinaryOp {
                 left: Box::new(num("2")),
                 op: BinaryOperator::Plus,
                 right: Box::new(num("1")),
-            }))
+            })))
         ),
         mysql().verified_expr("7 DIV (2 + 1)")
     );

@@ -2032,7 +2032,7 @@ impl Spanned for Expr {
             Expr::Collate { expr, collation } => expr
                 .span()
                 .union(&union_spans(collation.0.iter().map(|i| i.span()))),
-            Expr::Nested(expr) => expr.span(),
+            Expr::Nested(parens) => parens.span().union(&parens.content.span()),
             Expr::Value(value) => value.span(),
             Expr::TypedString(TypedString { value, .. }) => value.span(),
             Expr::Function(function) => function.span(),
@@ -4534,6 +4534,33 @@ SETTINGS update_parallel_mode = 'auto'"#;
         let sql = "SELECT 5!";
         let stmts = Parser::parse_sql(&crate::dialect::PostgreSqlDialect {}, sql).unwrap();
         assert_eq!(statement_texts(sql, &stmts), [sql]);
+    }
+
+    #[test]
+    fn test_nested_expression_spans() {
+        let sql = "SELECT * FROM t WHERE a = 1 AND (\n    (b = 2 AND c = 3)\n    OR d = 4\n)";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        let Some(Expr::BinaryOp { right, .. }) = &select.selection else {
+            panic!("expected AND, got {:?}", select.selection);
+        };
+        assert_eq!(
+            spanned_text(sql, right.span()),
+            "(\n    (b = 2 AND c = 3)\n    OR d = 4\n)"
+        );
+        let Expr::Nested(outer) = right.as_ref() else {
+            panic!("expected a nested expression, got {right:?}");
+        };
+        let Expr::BinaryOp { left, .. } = outer.content.as_ref() else {
+            panic!("expected OR, got {outer:?}");
+        };
+        assert_eq!(spanned_text(sql, left.span()), "(b = 2 AND c = 3)");
     }
 
     #[test]

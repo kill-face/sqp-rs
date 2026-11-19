@@ -431,8 +431,8 @@ fn data_type_timestamp_ntz() {
         databricks().verified_expr("(created_at)::TIMESTAMP_NTZ"),
         Expr::Cast {
             kind: CastKind::DoubleColon,
-            expr: Box::new(Expr::Nested(Box::new(Expr::Identifier(
-                "created_at".into()
+            expr: Box::new(Expr::Nested(Parens::with_empty_span(Box::new(
+                Expr::Identifier("created_at".into())
             )))),
             data_type: DataType::TimestampNtz(None),
             format: None
