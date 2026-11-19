@@ -3183,6 +3183,7 @@ fn asof_joins() {
                     },
                     constraint: JoinConstraint::None,
                 },
+                start_token: AttachedToken::empty(),
             }],
         }
     );

@@ -1943,6 +1943,7 @@ fn parse_copy_to() {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: AttachedToken::empty(),
             })),
             to: true,
             target: CopyTarget::File {
@@ -4154,6 +4155,7 @@ fn parse_array_subquery_expr() {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: AttachedToken::empty(),
             })),
             filter: None,
             null_treatment: None,
@@ -6868,6 +6870,7 @@ fn parse_join_constraint_unnest_alias() {
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Identifier("c2".into())),
             })),
+            start_token: AttachedToken::empty(),
         }]
     );
 }
@@ -6940,6 +6943,7 @@ fn test_simple_postgres_insert_with_alias() {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: AttachedToken::empty(),
             })),
             assignments: vec![],
             partitioned: None,
@@ -7026,6 +7030,7 @@ fn test_simple_postgres_insert_with_alias() {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: AttachedToken::empty(),
             })),
             assignments: vec![],
             partitioned: None,
@@ -7110,6 +7115,7 @@ fn test_simple_insert_with_quoted_alias() {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: AttachedToken::empty(),
             })),
             assignments: vec![],
             partitioned: None,

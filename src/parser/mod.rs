@@ -5327,6 +5327,7 @@ impl<'a> Parser<'a> {
                             relation: table.relation,
                             global: false,
                             join_operator: JoinOperator::Join(constraint),
+                            start_token: AttachedToken::empty(),
                         });
                         previous.joins.extend(parser.parse_joins()?);
                     }
@@ -16320,6 +16321,7 @@ impl<'a> Parser<'a> {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: self.last_consumed_token(),
             }
             .into())
         } else if self.parse_keyword(Keyword::UPDATE) {
@@ -16335,6 +16337,7 @@ impl<'a> Parser<'a> {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: self.last_consumed_token(),
             }
             .into())
         } else if self.parse_keyword(Keyword::DELETE) {
@@ -16350,6 +16353,7 @@ impl<'a> Parser<'a> {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: self.last_consumed_token(),
             }
             .into())
         } else if self.parse_keyword(Keyword::MERGE) {
@@ -16365,6 +16369,7 @@ impl<'a> Parser<'a> {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: self.last_consumed_token(),
             }
             .into())
         } else {
@@ -16440,6 +16445,7 @@ impl<'a> Parser<'a> {
                 settings,
                 format_clause,
                 pipe_operators,
+                end_token: self.last_consumed_token(),
             }
             .into())
         }
@@ -18153,6 +18159,7 @@ impl<'a> Parser<'a> {
     fn parse_joins(&mut self) -> Result<Vec<Join>, ParserError> {
         let mut joins = vec![];
         loop {
+            let start_token = AttachedToken(self.peek_token_ref().clone());
             let global = self.parse_keyword(Keyword::GLOBAL);
             let join = if self.parse_keyword(Keyword::CROSS) {
                 let join_operator = if self.parse_keyword(Keyword::JOIN) {
@@ -18176,6 +18183,7 @@ impl<'a> Parser<'a> {
                     relation,
                     global,
                     join_operator,
+                    start_token: start_token.clone(),
                 }
             } else if self.parse_keyword(Keyword::OUTER) {
                 // MSSQL extension, similar to LEFT JOIN LATERAL .. ON 1=1
@@ -18184,6 +18192,7 @@ impl<'a> Parser<'a> {
                     relation: self.parse_table_factor()?,
                     global,
                     join_operator: JoinOperator::OuterApply,
+                    start_token: start_token.clone(),
                 }
             } else if self.parse_keyword(Keyword::ASOF) {
                 self.expect_keyword_is(Keyword::JOIN)?;
@@ -18197,6 +18206,7 @@ impl<'a> Parser<'a> {
                         match_condition,
                         constraint: self.parse_join_constraint(false)?,
                     },
+                    start_token: start_token.clone(),
                 }
             } else if self.dialect.supports_array_join_syntax()
                 && self.parse_keywords(&[Keyword::INNER, Keyword::ARRAY, Keyword::JOIN])
@@ -18206,6 +18216,7 @@ impl<'a> Parser<'a> {
                     relation: self.parse_table_factor()?,
                     global,
                     join_operator: JoinOperator::InnerArrayJoin,
+                    start_token: start_token.clone(),
                 }
             } else if self.dialect.supports_array_join_syntax()
                 && self.parse_keywords(&[Keyword::LEFT, Keyword::ARRAY, Keyword::JOIN])
@@ -18215,6 +18226,7 @@ impl<'a> Parser<'a> {
                     relation: self.parse_table_factor()?,
                     global,
                     join_operator: JoinOperator::LeftArrayJoin,
+                    start_token: start_token.clone(),
                 }
             } else if self.dialect.supports_array_join_syntax()
                 && self.parse_keywords(&[Keyword::ARRAY, Keyword::JOIN])
@@ -18224,6 +18236,7 @@ impl<'a> Parser<'a> {
                     relation: self.parse_table_factor()?,
                     global,
                     join_operator: JoinOperator::ArrayJoin,
+                    start_token: start_token.clone(),
                 }
             } else {
                 let natural = self.parse_keyword(Keyword::NATURAL);
@@ -18340,6 +18353,7 @@ impl<'a> Parser<'a> {
                     relation,
                     global,
                     join_operator: join_operator_type(join_constraint),
+                    start_token: start_token.clone(),
                 }
             };
             joins.push(join);
@@ -18559,6 +18573,7 @@ impl<'a> Parser<'a> {
                     settings: None,
                     format_clause: None,
                     pipe_operators: vec![],
+                    end_token: AttachedToken::empty(),
                 }),
                 alias,
                 sample: None,

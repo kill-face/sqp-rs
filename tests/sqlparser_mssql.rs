@@ -174,7 +174,8 @@ fn parse_create_procedure() {
                         value_table_mode: None,
                         connect_by: vec![],
                         flavor: SelectFlavor::Standard,
-                    })))
+                    }))),
+                    end_token: AttachedToken::empty(),
                 }))],
                 end_token: AttachedToken::empty(),
             })),
@@ -554,7 +555,8 @@ fn parse_mssql_openjson() {
                     alias: table_alias(true, "B")
                 },
                 global: false,
-                join_operator: JoinOperator::CrossApply
+                join_operator: JoinOperator::CrossApply,
+                start_token: AttachedToken::empty(),
             }]
         }],
         select.from
@@ -609,7 +611,8 @@ fn parse_mssql_openjson() {
                     alias: table_alias(true, "B")
                 },
                 global: false,
-                join_operator: JoinOperator::CrossApply
+                join_operator: JoinOperator::CrossApply,
+                start_token: AttachedToken::empty(),
             }]
         }],
         select.from
@@ -664,7 +667,8 @@ fn parse_mssql_openjson() {
                     alias: table_alias(true, "B")
                 },
                 global: false,
-                join_operator: JoinOperator::CrossApply
+                join_operator: JoinOperator::CrossApply,
+                start_token: AttachedToken::empty(),
             }]
         }],
         select.from
@@ -699,7 +703,8 @@ fn parse_mssql_openjson() {
                     alias: table_alias(true, "B")
                 },
                 global: false,
-                join_operator: JoinOperator::CrossApply
+                join_operator: JoinOperator::CrossApply,
+                start_token: AttachedToken::empty(),
             }]
         }],
         select.from
@@ -734,7 +739,8 @@ fn parse_mssql_openjson() {
                     alias: table_alias(true, "B")
                 },
                 global: false,
-                join_operator: JoinOperator::CrossApply
+                join_operator: JoinOperator::CrossApply,
+                start_token: AttachedToken::empty(),
             }]
         }],
         select.from
@@ -1385,6 +1391,7 @@ fn parse_substring_in_select() {
                     settings: None,
                     format_clause: None,
                     pipe_operators: vec![],
+                    end_token: AttachedToken::empty(),
                 }),
                 query
             );
@@ -1530,7 +1537,8 @@ fn parse_mssql_declare() {
                     value_table_mode: None,
                     connect_by: vec![],
                     flavor: SelectFlavor::Standard,
-                })))
+                }))),
+                end_token: AttachedToken::empty(),
             }))
         ],
         ast

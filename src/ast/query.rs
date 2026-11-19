@@ -68,6 +68,9 @@ pub struct Query {
 
     /// Pipe operator
     pub pipe_operators: Vec<PipeOperator>,
+    /// The query's last token, so that its span covers trailing clauses
+    /// made of keywords, such as `FOR XML PATH` or `FOR UPDATE`.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for Query {
@@ -2810,6 +2813,8 @@ pub struct Join {
     pub global: bool,
     /// The join operator and its constraint (INNER/LEFT/RIGHT/CROSS/ASOF/etc.).
     pub join_operator: JoinOperator,
+    /// The join's first token, e.g. `LEFT` in `LEFT OUTER JOIN t ON ...`.
+    pub start_token: AttachedToken,
 }
 
 impl fmt::Display for Join {

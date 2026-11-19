@@ -1820,6 +1820,7 @@ fn parse_join_constraint_unnest_alias() {
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Identifier("c2".into())),
             })),
+            start_token: AttachedToken::empty(),
         }]
     );
 }
@@ -2814,6 +2815,7 @@ fn test_export_data() {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: AttachedToken::empty(),
             })
         })
     );
@@ -2921,6 +2923,7 @@ fn test_export_data() {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: AttachedToken::empty(),
             })
         })
     );

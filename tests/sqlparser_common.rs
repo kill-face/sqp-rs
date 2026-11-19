@@ -582,6 +582,7 @@ fn parse_update_set_from() {
                         settings: None,
                         format_clause: None,
                         pipe_operators: vec![],
+                        end_token: AttachedToken::empty(),
                     }),
                     alias: table_alias(true, "t2"),
                     sample: None,
@@ -5230,6 +5231,7 @@ fn parse_create_table_as_table() {
         settings: None,
         format_clause: None,
         pipe_operators: vec![],
+        end_token: AttachedToken::empty(),
     });
 
     match verified_stmt(sql1) {
@@ -5257,6 +5259,7 @@ fn parse_create_table_as_table() {
         settings: None,
         format_clause: None,
         pipe_operators: vec![],
+        end_token: AttachedToken::empty(),
     });
 
     match verified_stmt(sql2) {
@@ -7841,6 +7844,7 @@ fn parse_interval_and_or_xor() {
         settings: None,
         format_clause: None,
         pipe_operators: vec![],
+        end_token: AttachedToken::empty(),
     }))];
 
     assert_eq!(actual_ast, expected_ast);
@@ -8456,6 +8460,7 @@ fn parse_implicit_join() {
                     relation: table_from_name(ObjectName::from(vec!["t1b".into()])),
                     global: false,
                     join_operator: JoinOperator::Join(JoinConstraint::Natural),
+                    start_token: AttachedToken::empty(),
                 }],
             },
             TableWithJoins {
@@ -8464,6 +8469,7 @@ fn parse_implicit_join() {
                     relation: table_from_name(ObjectName::from(vec!["t2b".into()])),
                     global: false,
                     join_operator: JoinOperator::Join(JoinConstraint::Natural),
+                    start_token: AttachedToken::empty(),
                 }],
             },
         ],
@@ -8480,6 +8486,7 @@ fn parse_cross_join() {
             relation: table_from_name(ObjectName::from(vec![Ident::new("t2")])),
             global: false,
             join_operator: JoinOperator::CrossJoin(JoinConstraint::None),
+            start_token: AttachedToken::empty(),
         },
         only(only(select.from).joins),
     );
@@ -8492,6 +8499,7 @@ fn parse_cross_join_constraint() {
             relation: table_from_name(ObjectName::from(vec![Ident::new("t2")])),
             global: false,
             join_operator: JoinOperator::CrossJoin(constraint),
+            start_token: AttachedToken::empty(),
         }
     }
 
@@ -8546,6 +8554,7 @@ fn parse_joins_on() {
                 op: BinaryOperator::Eq,
                 right: Box::new(Expr::Identifier("c2".into())),
             })),
+            start_token: AttachedToken::empty(),
         }
     }
     // Test parsing of aliases
@@ -8687,6 +8696,7 @@ fn parse_joins_using() {
             join_operator: f(JoinConstraint::Using(vec![ObjectName::from(vec![
                 "c1".into()
             ])])),
+            start_token: AttachedToken::empty(),
         }
     }
     // Test parsing of aliases
@@ -8781,6 +8791,7 @@ fn parse_natural_join() {
             },
             global: false,
             join_operator: f(JoinConstraint::Natural),
+            start_token: AttachedToken::empty(),
         }
     }
 
@@ -9086,6 +9097,7 @@ fn parse_derived_tables() {
                     relation: table_from_name(ObjectName::from(vec!["t2".into()])),
                     global: false,
                     join_operator: JoinOperator::Join(JoinConstraint::Natural),
+                    start_token: AttachedToken::empty(),
                 }],
             }),
             alias: None,
@@ -10240,6 +10252,7 @@ fn lateral_function() {
                 },
                 global: false,
                 join_operator: JoinOperator::Left(JoinConstraint::None),
+                start_token: AttachedToken::empty(),
             }],
         }],
         lateral_views: vec![],
@@ -11381,6 +11394,7 @@ fn parse_merge() {
                         settings: None,
                         format_clause: None,
                         pipe_operators: vec![],
+                        end_token: AttachedToken::empty(),
                     }),
                     alias: table_alias(true, "stg"),
                     sample: None,
@@ -14004,6 +14018,7 @@ fn parse_unload() {
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
+                end_token: AttachedToken::empty(),
             })),
             to: Ident {
                 value: "s3://...".to_string(),
@@ -15652,6 +15667,7 @@ fn test_extract_seconds_ok() {
         settings: None,
         format_clause: None,
         pipe_operators: vec![],
+        end_token: AttachedToken::empty(),
     }))];
 
     assert_eq!(actual_ast, expected_ast);
@@ -18394,6 +18410,7 @@ fn test_select_from_first() {
             settings: None,
             format_clause: None,
             pipe_operators: vec![],
+            end_token: AttachedToken::empty(),
         };
         assert_eq!(expected, ast);
     }
@@ -19554,6 +19571,7 @@ fn test_nested_join_without_parentheses() {
                                 Ident::new("customer_id".to_string())
                             ])),
                         })),
+                        start_token: AttachedToken::empty(),
                     }]
                 }),
                 alias: None
@@ -19569,7 +19587,8 @@ fn test_nested_join_without_parentheses() {
                     Ident::new("o".to_string()),
                     Ident::new("order_id".to_string())
                 ])),
-            }))
+            })),
+            start_token: AttachedToken::empty(),
         }],
     );
 
@@ -19623,6 +19642,7 @@ fn test_nested_join_without_parentheses() {
                                 Ident::new("customer_id".to_string())
                             ])),
                         })),
+                        start_token: AttachedToken::empty(),
                     }]
                 }),
                 alias: None
@@ -19638,7 +19658,8 @@ fn test_nested_join_without_parentheses() {
                     Ident::new("o".to_string()),
                     Ident::new("order_id".to_string())
                 ])),
-            }))
+            })),
+            start_token: AttachedToken::empty(),
         }],
     );
 
@@ -19692,6 +19713,7 @@ fn test_nested_join_without_parentheses() {
                                 Ident::new("customer_id".to_string())
                             ])),
                         })),
+                        start_token: AttachedToken::empty(),
                     }]
                 }),
                 alias: None
@@ -19707,7 +19729,8 @@ fn test_nested_join_without_parentheses() {
                     Ident::new("o".to_string()),
                     Ident::new("order_id".to_string())
                 ])),
-            }))
+            })),
+            start_token: AttachedToken::empty(),
         }],
     );
 
@@ -19761,6 +19784,7 @@ fn test_nested_join_without_parentheses() {
                                 Ident::new("customer_id".to_string())
                             ])),
                         })),
+                        start_token: AttachedToken::empty(),
                     }]
                 }),
                 alias: None
@@ -19776,7 +19800,8 @@ fn test_nested_join_without_parentheses() {
                     Ident::new("o".to_string()),
                     Ident::new("order_id".to_string())
                 ])),
-            }))
+            })),
+            start_token: AttachedToken::empty(),
         }],
     );
 
@@ -19832,6 +19857,7 @@ fn test_nested_join_without_parentheses() {
                                 ])),
                             }
                         )),
+                        start_token: AttachedToken::empty(),
                     }]
                 }),
                 alias: None
@@ -19847,7 +19873,8 @@ fn test_nested_join_without_parentheses() {
                     Ident::new("o".to_string()),
                     Ident::new("order_id".to_string())
                 ])),
-            }))
+            })),
+            start_token: AttachedToken::empty(),
         }],
     );
 }

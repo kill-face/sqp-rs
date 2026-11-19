@@ -127,12 +127,13 @@ impl Spanned for Query {
             order_by,
             limit_clause,
             fetch,
-            locks: _,      // todo
-            for_clause: _, // todo, mssql specific
+            locks: _,      // keywords, covered by end_token
+            for_clause: _, // keywords, covered by end_token
             query_hints,
-            settings: _,       // todo, clickhouse specific
-            format_clause: _,  // todo, clickhouse specific
-            pipe_operators: _, // todo bigquery specific
+            settings: _,       // covered by end_token
+            format_clause: _,  // covered by end_token
+            pipe_operators: _, // covered by end_token
+            end_token,
         } = self;
 
         union_spans(
@@ -142,7 +143,8 @@ impl Spanned for Query {
                 .chain(order_by.as_ref().map(|i| i.span()))
                 .chain(limit_clause.as_ref().map(|i| i.span()))
                 .chain(fetch.as_ref().map(|i| i.span()))
-                .chain(query_hints.as_ref().map(|i| i.span())),
+                .chain(query_hints.as_ref().map(|i| i.span()))
+                .chain(iter::once(end_token.0.span)),
         )
     }
 }
@@ -2481,8 +2483,8 @@ impl Spanned for TableFactor {
             TableFactor::Table {
                 name,
                 alias,
-                args: _,
-                with_hints: _,
+                args,
+                with_hints,
                 version: _,
                 with_ordinality: _,
                 partitions: _,
@@ -2494,6 +2496,8 @@ impl Spanned for TableFactor {
                 name.0
                     .iter()
                     .map(|i| i.span())
+                    .chain(args.iter().flat_map(|a| a.args.iter().map(|i| i.span())))
+                    .chain(with_hints.iter().map(|i| i.span()))
                     .chain(alias.as_ref().map(|alias| {
                         union_spans(
                             iter::once(alias.name.span)
@@ -2763,9 +2767,10 @@ impl Spanned for Join {
             relation,
             global: _, // bool
             join_operator,
+            start_token,
         } = self;
 
-        relation.span().union(&join_operator.span())
+        union_spans([start_token.0.span, relation.span(), join_operator.span()].into_iter())
     }
 }
 
@@ -3371,10 +3376,9 @@ pub mod tests {
 
         let join_span = query.from[0].joins[0].span();
 
-        // 'LEFT JOIN' missing
         assert_eq!(
             test.get_source(join_span),
-            "companies ON users.company_id = companies.id"
+            "LEFT JOIN companies ON users.company_id = companies.id"
         );
     }
 
@@ -4461,6 +4465,49 @@ SETTINGS update_parallel_mode = 'auto'"#;
         let stmts = mssql_statements(sql);
         let expected: Vec<_> = sql.lines().map(|l| l.trim_end_matches(';')).collect();
         assert_eq!(statement_texts(sql, &stmts), expected);
+    }
+
+    #[test]
+    fn test_join_spans() {
+        let sql = "SELECT * FROM a INNER JOIN b ON a.id = b.id LEFT OUTER JOIN c ON c.id = b.id \
+                   CROSS APPLY dbo.f(a.id) AS f OUTER APPLY (SELECT 1 AS x) AS g CROSS JOIN d JOIN e WITH (NOLOCK) ON 1 = 1";
+        let stmts = mssql_statements(sql);
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        let joins: Vec<_> = select.from[0]
+            .joins
+            .iter()
+            .map(|j| spanned_text(sql, j.span()))
+            .collect();
+        assert_eq!(
+            joins,
+            [
+                "INNER JOIN b ON a.id = b.id",
+                "LEFT OUTER JOIN c ON c.id = b.id",
+                "CROSS APPLY dbo.f(a.id) AS f",
+                "OUTER APPLY (SELECT 1 AS x) AS g",
+                "CROSS JOIN d",
+                "JOIN e WITH (NOLOCK) ON 1 = 1",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_query_spans_include_trailing_clauses() {
+        let sql = "SELECT a FROM t ORDER BY a FOR XML PATH('r'), ROOT('x'), TYPE;\n\
+                   SELECT a FROM t FOR JSON PATH, WITHOUT_ARRAY_WRAPPER;\n\
+                   SELECT a FROM t OPTION (RECOMPILE)";
+        let stmts = mssql_statements(sql);
+        let expected: Vec<_> = sql.lines().map(|l| l.trim_end_matches(';')).collect();
+        assert_eq!(statement_texts(sql, &stmts), expected);
+
+        let sql = "SELECT a FROM t FOR UPDATE SKIP LOCKED";
+        let stmts = Parser::parse_sql(&crate::dialect::PostgreSqlDialect {}, sql).unwrap();
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
     }
 
     #[test]
