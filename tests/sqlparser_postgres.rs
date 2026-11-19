@@ -2438,6 +2438,8 @@ fn parse_execute() {
             into: vec![],
             output: false,
             default: false,
+            execute_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     );
 
@@ -2456,6 +2458,8 @@ fn parse_execute() {
             into: vec![],
             output: false,
             default: false,
+            execute_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     );
 
@@ -2495,6 +2499,8 @@ fn parse_execute() {
             into: vec![],
             output: false,
             default: false,
+            execute_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     );
 }

@@ -45,13 +45,14 @@ use super::{
     NamedParenthesizedList, NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart,
     Offset, OnConflict, OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy,
     OrderByExpr, OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue,
-    PivotValueSource, ProjectionSelect, Query, QueryHint, QueryHints, RaiseStatement,
-    RaiseStatementValue, ReferentialAction, RefreshMaterializedView, RenameSelectItem,
-    ReplaceSelectElement, ReplaceSelectItem, Select, SelectInto, SelectItem, Set, SetExpr, Setting,
-    SqlOption, Statement, Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef,
-    TableConstraint, TableFactor, TableObject, TableOptionsClustered, TableWithJoins, Update,
-    UpdateTableFromKind, Use, UserMappingUser, Values, ViewColumnDef, WhileStatement,
-    WildcardAdditionalOptions, With, WithFill,
+    PivotValueSource, PrintStatement, ProjectionSelect, Query, QueryHint, QueryHints,
+    RaiseStatement, RaiseStatementValue, ReferentialAction, RefreshMaterializedView,
+    RenameSelectItem, ReplaceSelectElement, ReplaceSelectItem, ReturnStatement,
+    ReturnStatementValue, Select, SelectInto, SelectItem, Set, SetExpr, Setting, SqlOption,
+    Statement, Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef, TableConstraint,
+    TableFactor, TableObject, TableOptionsClustered, TableWithJoins, ThrowStatement, Update,
+    UpdateTableFromKind, Use, UserMappingUser, Values, ViewColumnDef, WaitForStatement,
+    WhileStatement, WildcardAdditionalOptions, With, WithFill,
 };
 
 /// Given an iterator of spans, return the [Span::union] of all spans.
@@ -324,7 +325,6 @@ impl Spanned for Values {
 /// - [Statement::GrantRole]
 /// - [Statement::RevokeRole]
 /// - [Statement::Deallocate]
-/// - [Statement::Execute]
 /// - [Statement::Prepare]
 /// - [Statement::Kill]
 /// - [Statement::ExplainTable]
@@ -512,7 +512,11 @@ impl Spanned for Statement {
             Statement::RevokeRole { .. } => Span::empty(),
             Statement::AlterDefaultPrivileges(privileges) => privileges.span(),
             Statement::Deallocate { .. } => Span::empty(),
-            Statement::Execute { .. } => Span::empty(),
+            Statement::Execute {
+                execute_token,
+                end_token,
+                ..
+            } => execute_token.0.span.union(&end_token.0.span),
             Statement::Prepare { .. } => Span::empty(),
             Statement::Kill { .. } => Span::empty(),
             Statement::ExplainTable { .. } => Span::empty(),
@@ -550,11 +554,15 @@ impl Spanned for Statement {
             Statement::LoadData { .. } => Span::empty(),
             Statement::UNLISTEN { .. } => Span::empty(),
             Statement::RenameTable { .. } => Span::empty(),
-            Statement::RaisError { .. } => Span::empty(),
-            Statement::Throw(_) => Span::empty(),
-            Statement::Print { .. } => Span::empty(),
-            Statement::WaitFor(_) => Span::empty(),
-            Statement::Return { .. } => Span::empty(),
+            Statement::RaisError {
+                raiserror_token,
+                end_token,
+                ..
+            } => raiserror_token.0.span.union(&end_token.0.span),
+            Statement::Throw(s) => s.span(),
+            Statement::Print(s) => s.span(),
+            Statement::WaitFor(s) => s.span(),
+            Statement::Return(s) => s.span(),
             Statement::List(..) | Statement::Put { .. } | Statement::Remove(..) => Span::empty(),
             Statement::ExportData(ExportData {
                 options,
@@ -575,6 +583,57 @@ impl Spanned for Statement {
             Statement::RefreshMaterializedView(refresh) => refresh.span(),
             Statement::CreateAggregate(create_aggregate) => create_aggregate.span(),
         }
+    }
+}
+
+impl Spanned for PrintStatement {
+    fn span(&self) -> Span {
+        let PrintStatement {
+            message,
+            print_token,
+        } = self;
+        print_token.0.span.union(&message.span())
+    }
+}
+
+impl Spanned for ReturnStatement {
+    fn span(&self) -> Span {
+        let ReturnStatement {
+            value,
+            return_token,
+        } = self;
+        match value {
+            Some(ReturnStatementValue::Expr(expr)) => return_token.0.span.union(&expr.span()),
+            None => return_token.0.span,
+        }
+    }
+}
+
+impl Spanned for ThrowStatement {
+    fn span(&self) -> Span {
+        let ThrowStatement {
+            error_number,
+            message,
+            state,
+            throw_token,
+        } = self;
+        union_spans(
+            iter::once(throw_token.0.span)
+                .chain(error_number.iter().map(|e| e.span()))
+                .chain(message.iter().map(|e| e.span()))
+                .chain(state.iter().map(|e| e.span())),
+        )
+    }
+}
+
+impl Spanned for WaitForStatement {
+    fn span(&self) -> Span {
+        let WaitForStatement {
+            wait_type: _,
+            expr,
+            waitfor_token,
+        } = self;
+        waitfor_token.0.span.union(&expr.span())
     }
 }
 
@@ -3821,6 +3880,37 @@ SETTINGS update_parallel_mode = 'auto'"#;
                 "START TRANSACTION ISOLATION LEVEL SERIALIZABLE",
                 "COMMIT AND NO CHAIN",
                 "ABORT WORK",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_mssql_procedural_statement_spans() {
+        let sql = "PRINT 'a' + @b\n\
+                   RETURN;\n\
+                   RETURN @x + 1\n\
+                   THROW 50000, N'msg', 1;\n\
+                   THROW;\n\
+                   RAISERROR('m', 16, 1) WITH NOWAIT, LOG\n\
+                   RAISERROR('m', 16, 1)\n\
+                   EXEC dbo.p @a = 1, @b = 'x';\n\
+                   EXECUTE (@sql);\n\
+                   EXEC p @out OUTPUT;\n\
+                   WAITFOR DELAY '00:00:01'";
+        assert_eq!(
+            statement_texts(sql, &mssql_statements(sql)),
+            [
+                "PRINT 'a' + @b",
+                "RETURN",
+                "RETURN @x + 1",
+                "THROW 50000, N'msg', 1",
+                "THROW",
+                "RAISERROR('m', 16, 1) WITH NOWAIT, LOG",
+                "RAISERROR('m', 16, 1)",
+                "EXEC dbo.p @a = 1, @b = 'x'",
+                "EXECUTE (@sql)",
+                "EXEC p @out OUTPUT",
+                "WAITFOR DELAY '00:00:01'",
             ]
         );
     }

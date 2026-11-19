@@ -13693,6 +13693,8 @@ fn parse_execute_stored_procedure() {
         into: vec![],
         output: false,
         default: false,
+        execute_token: AttachedToken::empty(),
+        end_token: AttachedToken::empty(),
     };
     assert_eq!(
         // Microsoft SQL Server does not use parentheses around arguments for EXECUTE
@@ -13741,6 +13743,8 @@ fn parse_execute_immediate() {
         has_parentheses: false,
         output: false,
         default: false,
+        execute_token: AttachedToken::empty(),
+        end_token: AttachedToken::empty(),
     };
 
     let stmt = dialects.verified_stmt("EXECUTE IMMEDIATE 'SELECT 1' INTO a USING 1 AS b");
@@ -19261,7 +19265,13 @@ fn parse_set_time_zone_alias() {
 #[test]
 fn parse_return() {
     let stmt = all_dialects().verified_stmt("RETURN");
-    assert_eq!(stmt, Statement::Return(ReturnStatement { value: None }));
+    assert_eq!(
+        stmt,
+        Statement::Return(ReturnStatement {
+            value: None,
+            return_token: AttachedToken::empty(),
+        })
+    );
 
     let _ = all_dialects().verified_stmt("RETURN 1");
 }

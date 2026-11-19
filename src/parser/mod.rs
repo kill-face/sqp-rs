@@ -1801,7 +1801,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::StaticMethodCall(Box::new(StaticMethodCall {
             type_name,
             method,
-            end_token: AttachedToken(self.get_current_token().clone()),
+            end_token: self.last_consumed_token(),
         })))
     }
 
@@ -22026,6 +22026,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a 'RAISERROR' statement
     pub fn parse_raiserror(&mut self) -> Result<Statement, ParserError> {
+        let raiserror_token = self.get_current_token().clone();
         self.expect_token(&Token::LParen)?;
         let message = Box::new(self.parse_expr()?);
         self.expect_token(&Token::Comma)?;
@@ -22049,6 +22050,8 @@ impl<'a> Parser<'a> {
             state,
             arguments,
             options,
+            raiserror_token: AttachedToken(raiserror_token),
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -22069,7 +22072,7 @@ impl<'a> Parser<'a> {
     ///
     /// See [Statement::Throw]
     pub fn parse_throw(&mut self) -> Result<ThrowStatement, ParserError> {
-        self.expect_keyword_is(Keyword::THROW)?;
+        let throw_token = self.expect_keyword(Keyword::THROW)?;
 
         let error_number = self.maybe_parse(|p| p.parse_expr().map(Box::new))?;
         let (message, state) = if error_number.is_some() {
@@ -22086,6 +22089,7 @@ impl<'a> Parser<'a> {
             error_number,
             message,
             state,
+            throw_token: AttachedToken(throw_token),
         })
     }
 
@@ -22098,6 +22102,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a SQL `EXECUTE` statement
     pub fn parse_execute(&mut self) -> Result<Statement, ParserError> {
+        let execute_token = self.get_current_token().clone();
         let immediate =
             self.dialect.supports_execute_immediate() && self.parse_keyword(Keyword::IMMEDIATE);
 
@@ -22153,6 +22158,8 @@ impl<'a> Parser<'a> {
             using,
             output,
             default,
+            execute_token: AttachedToken(execute_token),
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -22385,7 +22392,7 @@ impl<'a> Parser<'a> {
             if_exists,
             name,
             sequence_options,
-            end_token: AttachedToken(self.get_current_token().clone()),
+            end_token: self.last_consumed_token(),
         }))
     }
 
@@ -23183,8 +23190,10 @@ impl<'a> Parser<'a> {
 
     /// Parse [Statement::Print]
     fn parse_print(&mut self) -> Result<Statement, ParserError> {
+        let print_token = self.get_current_token().clone();
         Ok(Statement::Print(PrintStatement {
             message: Box::new(self.parse_expr()?),
+            print_token: AttachedToken(print_token),
         }))
     }
 
@@ -23192,6 +23201,7 @@ impl<'a> Parser<'a> {
     ///
     /// See: <https://learn.microsoft.com/en-us/sql/t-sql/language-elements/waitfor-transact-sql>
     fn parse_waitfor(&mut self) -> Result<Statement, ParserError> {
+        let waitfor_token = self.get_current_token().clone();
         let wait_type = if self.parse_keyword(Keyword::DELAY) {
             WaitForType::Delay
         } else if self.parse_keyword(Keyword::TIME) {
@@ -23200,16 +23210,25 @@ impl<'a> Parser<'a> {
             return self.expected_ref("DELAY or TIME", self.peek_token_ref());
         };
         let expr = self.parse_expr()?;
-        Ok(Statement::WaitFor(WaitForStatement { wait_type, expr }))
+        Ok(Statement::WaitFor(WaitForStatement {
+            wait_type,
+            expr,
+            waitfor_token: AttachedToken(waitfor_token),
+        }))
     }
 
     /// Parse [Statement::Return]
     fn parse_return(&mut self) -> Result<Statement, ParserError> {
+        let return_token = AttachedToken(self.get_current_token().clone());
         match self.maybe_parse(|p| p.parse_expr())? {
             Some(expr) => Ok(Statement::Return(ReturnStatement {
                 value: Some(ReturnStatementValue::Expr(expr)),
+                return_token,
             })),
-            None => Ok(Statement::Return(ReturnStatement { value: None })),
+            None => Ok(Statement::Return(ReturnStatement {
+                value: None,
+                return_token,
+            })),
         }
     }
 

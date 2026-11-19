@@ -272,6 +272,7 @@ fn parse_create_function() {
                     value: Some(ReturnStatementValue::Expr(Expr::Value(
                         (number("1")).with_empty_span()
                     ))),
+                    return_token: AttachedToken::empty(),
                 })],
                 end_token: AttachedToken::empty(),
             })),
@@ -452,6 +453,7 @@ fn parse_create_function_parameter_default_values() {
                     value: Some(ReturnStatementValue::Expr(Expr::Identifier(Ident::new(
                         "@param1"
                     )))),
+                    return_token: AttachedToken::empty(),
                 })],
                 end_token: AttachedToken::empty(),
             })),
@@ -1577,6 +1579,7 @@ fn test_mssql_while_statement() {
                             (Value::SingleQuotedString("Hello World".to_string()))
                                 .with_empty_span()
                         )),
+                        print_token: AttachedToken::empty(),
                     })],
                 }
             }
@@ -1619,6 +1622,8 @@ fn test_parse_raiserror() {
             )),
             arguments: vec![],
             options: vec![],
+            raiserror_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     );
 
@@ -1655,6 +1660,7 @@ fn test_parse_throw() {
             state: Some(Box::new(Expr::Value(
                 (Value::Number("1".parse().unwrap(), false)).with_empty_span()
             ))),
+            throw_token: AttachedToken::empty(),
         })
     );
 
@@ -1671,6 +1677,7 @@ fn test_parse_throw() {
             error_number: None,
             message: None,
             state: None,
+            throw_token: AttachedToken::empty(),
         })
     );
 }
@@ -1687,6 +1694,7 @@ fn test_parse_waitfor() {
             expr: Expr::Value(
                 (Value::SingleQuotedString("00:00:05".to_string())).with_empty_span()
             ),
+            waitfor_token: AttachedToken::empty(),
         })
     );
 
@@ -1700,6 +1708,7 @@ fn test_parse_waitfor() {
             expr: Expr::Value(
                 (Value::SingleQuotedString("14:30:00".to_string())).with_empty_span()
             ),
+            waitfor_token: AttachedToken::empty(),
         })
     );
 
@@ -2485,6 +2494,8 @@ fn parse_create_trigger() {
                     )),
                     arguments: vec![],
                     options: vec![],
+                    raiserror_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 }],
             }),
             characteristics: None,
@@ -2566,6 +2577,7 @@ fn parse_print() {
             message: Box::new(Expr::Value(
                 (Value::SingleQuotedString("Hello, world!".to_string())).with_empty_span()
             )),
+            print_token: AttachedToken::empty(),
         })
     );
 

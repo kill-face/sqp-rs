@@ -3087,6 +3087,8 @@ pub struct ThrowStatement {
     pub message: Option<Box<Expr>>,
     /// State expression.
     pub state: Option<Box<Expr>>,
+    /// The `THROW` keyword.
+    pub throw_token: AttachedToken,
 }
 
 impl fmt::Display for ThrowStatement {
@@ -3095,6 +3097,7 @@ impl fmt::Display for ThrowStatement {
             error_number,
             message,
             state,
+            throw_token: _,
         } = self;
 
         write!(f, "THROW")?;
@@ -4842,6 +4845,10 @@ pub enum Statement {
         /// Whether to invoke the procedure with the default parameter values
         /// MSSQL: <https://learn.microsoft.com/en-us/sql/t-sql/language-elements/execute-transact-sql?view=sql-server-ver17#default>
         default: bool,
+        /// The `EXECUTE` or `EXEC` keyword.
+        execute_token: AttachedToken,
+        /// The statement's last token.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// PREPARE name [ ( data_type [, ...] ) ] AS statement
@@ -5185,6 +5192,10 @@ pub enum Statement {
         arguments: Vec<Expr>,
         /// Additional `WITH` options for RAISERROR.
         options: Vec<RaisErrorOption>,
+        /// The `RAISERROR` keyword.
+        raiserror_token: AttachedToken,
+        /// The statement's last token: `)` or the last option.
+        end_token: AttachedToken,
     },
     /// A MSSQL `THROW` statement.
     Throw(ThrowStatement),
@@ -6350,6 +6361,8 @@ impl fmt::Display for Statement {
                 using,
                 output,
                 default,
+                execute_token: _,
+                end_token: _,
             } => {
                 let (open, close) = if *has_parentheses {
                     // Space before `(` only when there is no name directly preceding it.
@@ -6712,6 +6725,8 @@ impl fmt::Display for Statement {
                 state,
                 arguments,
                 options,
+                raiserror_token: _,
+                end_token: _,
             } => {
                 write!(f, "RAISERROR({message}, {severity}, {state}")?;
                 if !arguments.is_empty() {
@@ -11833,6 +11848,8 @@ pub enum CopyIntoSnowflakeKind {
 pub struct PrintStatement {
     /// The expression producing the message to print.
     pub message: Box<Expr>,
+    /// The `PRINT` keyword.
+    pub print_token: AttachedToken,
 }
 
 impl fmt::Display for PrintStatement {
@@ -11874,6 +11891,8 @@ pub struct WaitForStatement {
     pub wait_type: WaitForType,
     /// The time expression.
     pub expr: Expr,
+    /// The `WAITFOR` keyword.
+    pub waitfor_token: AttachedToken,
 }
 
 impl fmt::Display for WaitForStatement {
@@ -11936,6 +11955,8 @@ impl fmt::Display for DoOption {
 pub struct ReturnStatement {
     /// Optional return value expression.
     pub value: Option<ReturnStatementValue>,
+    /// The `RETURN` keyword.
+    pub return_token: AttachedToken,
 }
 
 impl fmt::Display for ReturnStatement {
