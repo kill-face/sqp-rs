@@ -10263,6 +10263,7 @@ fn parse_set_transaction() {
             modes,
             session,
             snapshot,
+            ..
         }) => {
             assert_eq!(
                 modes,
@@ -10287,6 +10288,7 @@ fn parse_set_variable() {
             hivevar,
             variable,
             values,
+            ..
         }) => {
             assert_eq!(scope, None);
             assert!(!hivevar);
@@ -10307,6 +10309,7 @@ fn parse_set_variable() {
             hivevar,
             variable,
             values,
+            ..
         }) => {
             assert_eq!(scope, Some(ContextModifier::Global));
             assert!(!hivevar);
@@ -10399,6 +10402,7 @@ fn parse_set_role_as_variable() {
             hivevar,
             variable,
             values,
+            ..
         }) => {
             assert_eq!(scope, None);
             assert!(!hivevar);
@@ -10446,6 +10450,7 @@ fn parse_set_time_zone() {
             hivevar,
             variable,
             values,
+            ..
         }) => {
             assert_eq!(scope, None);
             assert!(!hivevar);

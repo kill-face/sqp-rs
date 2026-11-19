@@ -20,6 +20,7 @@
 //! Test SQL syntax specific to Hive. The parser based on the generic dialect
 //! is also tested (on the inputs it can handle).
 
+use sqlparser::ast::helpers::attached_token::AttachedToken;
 use sqlparser::ast::{
     ClusteredBy, CommentDef, CreateFunction, CreateFunctionBody, CreateFunctionUsing, CreateTable,
     Expr, Ident, ObjectName, OrderByExpr, OrderByOptions, OrderBySort, Set, Statement,
@@ -390,6 +391,7 @@ fn set_statement_with_minus() {
                 op: UnaryOperator::Minus,
                 expr: Box::new(Expr::Identifier(Ident::new("Xmx4g")))
             }],
+            set_token: AttachedToken::empty(),
         })
     );
 

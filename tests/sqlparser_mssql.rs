@@ -1404,7 +1404,8 @@ fn parse_mssql_declare() {
                     sensitive: None,
                     scroll: None,
                     hold: None,
-                    for_query: None
+                    for_query: None,
+                    data_type_end_token: AttachedToken::empty(),
                 },
                 Declare {
                     names: vec![Ident {
@@ -1419,7 +1420,8 @@ fn parse_mssql_declare() {
                     sensitive: None,
                     scroll: None,
                     hold: None,
-                    for_query: None
+                    for_query: None,
+                    data_type_end_token: AttachedToken::empty(),
                 },
                 Declare {
                     names: vec![Ident {
@@ -1436,10 +1438,12 @@ fn parse_mssql_declare() {
                     sensitive: None,
                     scroll: None,
                     hold: None,
-                    for_query: None
+                    for_query: None,
+                    data_type_end_token: AttachedToken::empty(),
                 }
             ],
             separator: DeclareSeparator::Comma,
+            declare_token: AttachedToken::empty(),
         }],
         ast
     );
@@ -1458,9 +1462,11 @@ fn parse_mssql_declare() {
                     sensitive: None,
                     scroll: None,
                     hold: None,
-                    for_query: None
+                    for_query: None,
+                    data_type_end_token: AttachedToken::empty(),
                 }],
                 separator: DeclareSeparator::Comma,
+                declare_token: AttachedToken::empty(),
             },
             Statement::Set(Set::SingleAssignment {
                 scope: None,
@@ -1469,6 +1475,7 @@ fn parse_mssql_declare() {
                 values: vec![Expr::Value(
                     (Value::Number("2".parse().unwrap(), false)).with_empty_span()
                 )],
+                set_token: AttachedToken::empty(),
             }),
             Statement::Query(Box::new(Query {
                 with: None,

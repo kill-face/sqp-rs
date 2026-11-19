@@ -642,6 +642,7 @@ fn parse_set_variables() {
             hivevar: false,
             variable: ObjectName::from(vec!["autocommit".into()]),
             values: vec![Expr::value(number("1"))],
+            set_token: AttachedToken::empty(),
         })
     );
 }

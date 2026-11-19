@@ -2214,6 +2214,7 @@ fn parse_set() {
                 quote_style: None,
                 span: Span::empty(),
             })],
+            set_token: AttachedToken::empty(),
         })
     );
 
@@ -2227,6 +2228,7 @@ fn parse_set() {
             values: vec![Expr::Value(
                 (Value::SingleQuotedString("b".into())).with_empty_span()
             )],
+            set_token: AttachedToken::empty(),
         })
     );
 
@@ -2238,6 +2240,7 @@ fn parse_set() {
             hivevar: false,
             variable: ObjectName::from(vec![Ident::new("a")]),
             values: vec![Expr::value(number("0"))],
+            set_token: AttachedToken::empty(),
         })
     );
 
@@ -2249,6 +2252,7 @@ fn parse_set() {
             hivevar: false,
             variable: ObjectName::from(vec![Ident::new("a")]),
             values: vec![Expr::Identifier(Ident::new("DEFAULT"))],
+            set_token: AttachedToken::empty(),
         })
     );
 
@@ -2260,6 +2264,7 @@ fn parse_set() {
             hivevar: false,
             variable: ObjectName::from(vec![Ident::new("a")]),
             values: vec![Expr::Identifier("b".into())],
+            set_token: AttachedToken::empty(),
         })
     );
 
@@ -2275,6 +2280,7 @@ fn parse_set() {
                 quote_style: None,
                 span: Span::empty(),
             })],
+            set_token: AttachedToken::empty(),
         })
     );
 
@@ -2295,6 +2301,7 @@ fn parse_set() {
                 Ident::new("parallelism")
             ]),
             values: vec![Expr::Value((Value::Boolean(false)).with_empty_span())],
+            set_token: AttachedToken::empty(),
         })
     );
 
@@ -4109,7 +4116,9 @@ fn test_transaction_statement() {
         Statement::Set(Set::SetTransaction {
             modes: vec![],
             snapshot: Some(Value::SingleQuotedString(String::from("000003A1-1")).with_empty_span()),
-            session: false
+            session: false,
+            set_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
     let statement = pg().verified_stmt("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY, READ WRITE, ISOLATION LEVEL SERIALIZABLE");
@@ -4122,7 +4131,9 @@ fn test_transaction_statement() {
                 TransactionMode::IsolationLevel(TransactionIsolationLevel::Serializable),
             ],
             snapshot: None,
-            session: true
+            session: true,
+            set_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 }

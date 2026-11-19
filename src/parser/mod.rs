@@ -8624,6 +8624,7 @@ impl<'a> Parser<'a> {
     /// The syntax can vary significantly between warehouses. See the grammar
     /// on the warehouse specific function in such cases.
     pub fn parse_declare(&mut self) -> Result<Statement, ParserError> {
+        let declare_token = AttachedToken(self.get_current_token().clone());
         if dialect_of!(self is BigQueryDialect) {
             return self.parse_big_query_declare();
         }
@@ -8685,8 +8686,10 @@ impl<'a> Parser<'a> {
                 scroll,
                 hold,
                 for_query: query,
+                data_type_end_token: AttachedToken::empty(),
             }],
             separator: DeclareSeparator::Semicolon,
+            declare_token,
         })
     }
 
@@ -8698,11 +8701,17 @@ impl<'a> Parser<'a> {
     /// ```
     /// [BigQuery]: https://cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#declare
     pub fn parse_big_query_declare(&mut self) -> Result<Statement, ParserError> {
+        let declare_token = AttachedToken(self.get_current_token().clone());
         let names = self.parse_comma_separated(Parser::parse_identifier)?;
 
+        let mut data_type_end_token = AttachedToken::empty();
         let data_type = match &self.peek_token_ref().token {
             Token::Word(w) if w.keyword == Keyword::DEFAULT => None,
-            _ => Some(self.parse_data_type()?),
+            _ => {
+                let data_type = self.parse_data_type()?;
+                data_type_end_token = self.last_consumed_token();
+                Some(data_type)
+            }
         };
 
         let expr = if data_type.is_some() {
@@ -8729,8 +8738,10 @@ impl<'a> Parser<'a> {
                 scroll: None,
                 hold: None,
                 for_query: None,
+                data_type_end_token,
             }],
             separator: DeclareSeparator::Semicolon,
+            declare_token,
         })
     }
 
@@ -8759,9 +8770,11 @@ impl<'a> Parser<'a> {
     ///
     /// [Snowflake]: https://docs.snowflake.com/en/sql-reference/snowflake-scripting/declare
     pub fn parse_snowflake_declare(&mut self) -> Result<Statement, ParserError> {
+        let declare_token = AttachedToken(self.get_current_token().clone());
         let mut stmts = vec![];
         loop {
             let name = self.parse_identifier()?;
+            let mut data_type_end_token = AttachedToken::empty();
             let (declare_type, for_query, assigned_expr, data_type) =
                 if self.parse_keyword(Keyword::CURSOR) {
                     self.expect_keyword_is(Keyword::FOR)?;
@@ -8805,6 +8818,7 @@ impl<'a> Parser<'a> {
                         (Some(assigned_expr), None)
                     } else if let Token::Word(_) = &self.peek_token_ref().token {
                         let data_type = self.parse_data_type()?;
+                        data_type_end_token = self.last_consumed_token();
                         (
                             self.parse_snowflake_variable_declaration_expression()?,
                             Some(data_type),
@@ -8824,6 +8838,7 @@ impl<'a> Parser<'a> {
                 scroll: None,
                 hold: None,
                 for_query,
+                data_type_end_token,
             };
 
             stmts.push(stmt);
@@ -8850,6 +8865,7 @@ impl<'a> Parser<'a> {
         Ok(Statement::Declare {
             stmts,
             separator: DeclareSeparator::Semicolon,
+            declare_token,
         })
     }
 
@@ -8865,11 +8881,13 @@ impl<'a> Parser<'a> {
     /// ```
     /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-local-variable-transact-sql?view=sql-server-ver16
     pub fn parse_mssql_declare(&mut self) -> Result<Statement, ParserError> {
+        let declare_token = AttachedToken(self.get_current_token().clone());
         let stmts = self.parse_comma_separated(Parser::parse_mssql_declare_stmt)?;
 
         Ok(Statement::Declare {
             stmts,
             separator: DeclareSeparator::Comma,
+            declare_token,
         })
     }
 
@@ -8914,6 +8932,11 @@ impl<'a> Parser<'a> {
             },
             _ => (None, Some(self.parse_data_type()?)),
         };
+        let data_type_end_token = if data_type.is_some() {
+            self.last_consumed_token()
+        } else {
+            AttachedToken::empty()
+        };
 
         let (for_query, assignment) = if self.peek_keyword(Keyword::FOR) {
             self.next_token();
@@ -8934,6 +8957,7 @@ impl<'a> Parser<'a> {
             scroll: None,
             hold: None,
             for_query,
+            data_type_end_token,
         })
     }
 
@@ -17451,6 +17475,7 @@ impl<'a> Parser<'a> {
                     hivevar,
                     variable: ObjectName::from(vec!["TIMEZONE".into()]),
                     values: self.parse_set_values(false)?,
+                    set_token: set_token.into(),
                 }
                 .into());
             } else {
@@ -17481,10 +17506,13 @@ impl<'a> Parser<'a> {
             .into());
         } else if self.parse_keyword(Keyword::CHARACTERISTICS) {
             self.expect_keywords(&[Keyword::AS, Keyword::TRANSACTION])?;
+            let modes = self.parse_transaction_modes()?;
             return Ok(Set::SetTransaction {
-                modes: self.parse_transaction_modes()?,
+                modes,
                 snapshot: None,
                 session: true,
+                set_token: set_token.into(),
+                end_token: self.last_consumed_token(),
             }
             .into());
         } else if self.parse_keyword(Keyword::TRANSACTION) {
@@ -17494,13 +17522,18 @@ impl<'a> Parser<'a> {
                     modes: vec![],
                     snapshot: Some(snapshot_id),
                     session: false,
+                    set_token: set_token.into(),
+                    end_token: self.last_consumed_token(),
                 }
                 .into());
             }
+            let modes = self.parse_transaction_modes()?;
             return Ok(Set::SetTransaction {
-                modes: self.parse_transaction_modes()?,
+                modes,
                 snapshot: None,
                 session: false,
+                set_token: set_token.into(),
+                end_token: self.last_consumed_token(),
             }
             .into());
         } else if self.parse_keyword(Keyword::AUTHORIZATION) {
@@ -17555,6 +17588,7 @@ impl<'a> Parser<'a> {
                         hivevar,
                         variable: name,
                         values: vec![value],
+                        set_token: set_token.into(),
                     }
                     .into())
                 };
@@ -17583,6 +17617,7 @@ impl<'a> Parser<'a> {
                     hivevar,
                     variable: var,
                     values: self.parse_set_values(false)?,
+                    set_token: set_token.into(),
                 },
                 OneOrManyWithParens::Many(vars) => Set::ParenthesizedAssignments {
                     variables: vars,
@@ -17595,7 +17630,7 @@ impl<'a> Parser<'a> {
 
         if self.dialect.supports_set_stmt_without_operator() {
             self.prev_token();
-            return self.parse_set_session_params();
+            return self.parse_set_session_params_after(set_token.into());
         };
 
         self.expected_ref("equals sign or TO", self.peek_token_ref())
@@ -17603,6 +17638,14 @@ impl<'a> Parser<'a> {
 
     /// Parse session parameter assignments after `SET` when no `=` or `TO` is present.
     pub fn parse_set_session_params(&mut self) -> Result<Statement, ParserError> {
+        self.parse_set_session_params_after(AttachedToken::empty())
+    }
+
+    /// [Self::parse_set_session_params], keeping the `SET` keyword's token.
+    fn parse_set_session_params_after(
+        &mut self,
+        set_token: AttachedToken,
+    ) -> Result<Statement, ParserError> {
         if self.parse_keyword(Keyword::STATISTICS) {
             let topic = match self.parse_one_of_keywords(&[
                 Keyword::IO,
@@ -17621,6 +17664,8 @@ impl<'a> Parser<'a> {
                 Set::SetSessionParam(SetSessionParamKind::Statistics(SetSessionParamStatistics {
                     topic,
                     value,
+                    set_token,
+                    end_token: self.last_consumed_token(),
                 }))
                 .into(),
             )
@@ -17628,7 +17673,12 @@ impl<'a> Parser<'a> {
             let obj = self.parse_object_name(false)?;
             let value = self.parse_session_param_value()?;
             Ok(Set::SetSessionParam(SetSessionParamKind::IdentityInsert(
-                SetSessionParamIdentityInsert { obj, value },
+                SetSessionParamIdentityInsert {
+                    obj,
+                    value,
+                    set_token,
+                    end_token: self.last_consumed_token(),
+                },
             ))
             .into())
         } else if self.parse_keyword(Keyword::OFFSETS) {
@@ -17644,6 +17694,8 @@ impl<'a> Parser<'a> {
                 Set::SetSessionParam(SetSessionParamKind::Offsets(SetSessionParamOffsets {
                     keywords,
                     value,
+                    set_token,
+                    end_token: self.last_consumed_token(),
                 }))
                 .into(),
             )
@@ -17660,6 +17712,8 @@ impl<'a> Parser<'a> {
                 Set::SetSessionParam(SetSessionParamKind::Generic(SetSessionParamGeneric {
                     names,
                     value,
+                    set_token,
+                    end_token: self.last_consumed_token(),
                 }))
                 .into(),
             )

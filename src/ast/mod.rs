@@ -3277,6 +3277,9 @@ pub struct Declare {
     pub hold: Option<bool>,
     /// `FOR <query>` clause in a CURSOR declaration.
     pub for_query: Option<Box<Query>>,
+    /// The last token of `data_type`, so that the declaration's span covers
+    /// the type ([DataType] has no span of its own).
+    pub data_type_end_token: AttachedToken,
 }
 
 impl fmt::Display for Declare {
@@ -3291,6 +3294,7 @@ impl fmt::Display for Declare {
             scroll,
             hold,
             for_query,
+            data_type_end_token: _,
         } = self;
         write!(f, "{}", display_comma_separated(names))?;
 
@@ -3426,6 +3430,8 @@ pub enum Set {
         variable: ObjectName,
         /// Values assigned to the variable.
         values: Vec<Expr>,
+        /// The `SET` keyword.
+        set_token: AttachedToken,
     },
     /// Snowflake-style
     /// SET (a, b, ..) = (1, 2, ..);
@@ -3525,6 +3531,10 @@ pub enum Set {
         snapshot: Option<ValueWithSpan>,
         /// `true` when the `SESSION` keyword was used.
         session: bool,
+        /// The `SET` keyword.
+        set_token: AttachedToken,
+        /// The statement's last token.
+        end_token: AttachedToken,
     },
 }
 
@@ -3557,6 +3567,7 @@ impl Display for Set {
                 modes,
                 snapshot,
                 session,
+                ..
             } => {
                 if *session {
                     write!(f, "SET SESSION CHARACTERISTICS AS TRANSACTION")?;
@@ -3607,6 +3618,7 @@ impl Display for Set {
                 hivevar,
                 variable,
                 values,
+                ..
             } => {
                 write!(
                     f,
@@ -4233,6 +4245,8 @@ pub enum Statement {
         stmts: Vec<Declare>,
         /// Separator between `stmts` in the rendered SQL.
         separator: DeclareSeparator,
+        /// The `DECLARE` keyword.
+        declare_token: AttachedToken,
     },
     /// ```sql
     /// CREATE EXTENSION [ IF NOT EXISTS ] extension_name
@@ -5453,7 +5467,9 @@ impl fmt::Display for Statement {
                 write!(f, "{statement}")
             }
             Statement::Query(s) => s.fmt(f),
-            Statement::Declare { stmts, separator } => {
+            Statement::Declare {
+                stmts, separator, ..
+            } => {
                 let sep = match separator {
                     DeclareSeparator::Comma => ", ",
                     DeclareSeparator::Semicolon => "; ",
@@ -11668,6 +11684,10 @@ pub struct SetSessionParamGeneric {
     pub names: Vec<String>,
     /// The value to assign to the parameter(s).
     pub value: String,
+    /// The `SET` keyword.
+    pub set_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for SetSessionParamGeneric {
@@ -11685,6 +11705,10 @@ pub struct SetSessionParamIdentityInsert {
     pub obj: ObjectName,
     /// Value (ON/OFF) for the identity insert setting.
     pub value: SessionParamValue,
+    /// The `SET` keyword.
+    pub set_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for SetSessionParamIdentityInsert {
@@ -11702,6 +11726,10 @@ pub struct SetSessionParamOffsets {
     pub keywords: Vec<String>,
     /// Value (ON/OFF) for the offsets setting.
     pub value: SessionParamValue,
+    /// The `SET` keyword.
+    pub set_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for SetSessionParamOffsets {
@@ -11724,6 +11752,10 @@ pub struct SetSessionParamStatistics {
     pub topic: SessionParamStatsTopic,
     /// Value (ON/OFF) for the statistics topic.
     pub value: SessionParamValue,
+    /// The `SET` keyword.
+    pub set_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for SetSessionParamStatistics {

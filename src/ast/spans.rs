@@ -35,22 +35,23 @@ use super::{
     ClusteredIndex, ColumnDef, ColumnOption, ColumnOptionDef, ConditionalStatementBlock,
     ConditionalStatements, ConflictTarget, ConnectByKind, ConstraintCharacteristics, CopySource,
     CreateIndex, CreateRule, CreateRuleAction, CreateTable, CreateTableOptions, CreateUserMapping,
-    Cte, DataSpace, Delete, DoOption, DoStatement, DoUpdate, DropRule, ExceptSelectItem,
-    ExcludeConstraintElement, ExcludeSelectItem, Expr, ExprWithAlias, Fetch, ForValues, FromTable,
-    Function, FunctionArg, FunctionArgExpr, FunctionArgumentClause, FunctionArgumentList,
-    FunctionArguments, GroupByExpr, HavingBound, IfStatement, IlikeSelectItem, InTarget,
-    IndexColumn, Insert, Interpolate, InterpolateExpr, Join, JoinConstraint, JoinOperator,
-    JsonPath, JsonPathElem, LateralView, LimitClause, MatchRecognizePattern, Measure, Merge,
-    MergeAction, MergeClause, MergeInsertExpr, MergeInsertKind, MergeUpdateExpr, MergeUpdateKind,
-    NamedParenthesizedList, NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart,
-    Offset, OnConflict, OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy,
-    OrderByExpr, OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue,
-    PivotValueSource, PrintStatement, ProjectionSelect, Query, QueryHint, QueryHints,
-    RaiseStatement, RaiseStatementValue, ReferentialAction, RefreshMaterializedView,
-    RenameSelectItem, ReplaceSelectElement, ReplaceSelectItem, ReturnStatement,
-    ReturnStatementValue, Select, SelectInto, SelectItem, Set, SetExpr, Setting, SqlOption,
-    Statement, Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef, TableConstraint,
-    TableFactor, TableObject, TableOptionsClustered, TableWithJoins, ThrowStatement, Update,
+    Cte, DataSpace, Declare, DeclareAssignment, Delete, DoOption, DoStatement, DoUpdate, DropRule,
+    ExceptSelectItem, ExcludeConstraintElement, ExcludeSelectItem, Expr, ExprWithAlias, Fetch,
+    ForValues, FromTable, Function, FunctionArg, FunctionArgExpr, FunctionArgumentClause,
+    FunctionArgumentList, FunctionArguments, GroupByExpr, HavingBound, IfStatement,
+    IlikeSelectItem, InTarget, IndexColumn, Insert, Interpolate, InterpolateExpr, Join,
+    JoinConstraint, JoinOperator, JsonPath, JsonPathElem, LateralView, LimitClause,
+    MatchRecognizePattern, Measure, Merge, MergeAction, MergeClause, MergeInsertExpr,
+    MergeInsertKind, MergeUpdateExpr, MergeUpdateKind, NamedParenthesizedList,
+    NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart, Offset, OnConflict,
+    OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy, OrderByExpr,
+    OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue, PivotValueSource,
+    PrintStatement, ProjectionSelect, Query, QueryHint, QueryHints, RaiseStatement,
+    RaiseStatementValue, ReferentialAction, RefreshMaterializedView, RenameSelectItem,
+    ReplaceSelectElement, ReplaceSelectItem, ReturnStatement, ReturnStatementValue, Select,
+    SelectInto, SelectItem, Set, SetExpr, SetSessionParamKind, Setting, SqlOption, Statement,
+    Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef, TableConstraint, TableFactor,
+    TableObject, TableOptionsClustered, TableWithJoins, ThrowStatement, Update,
     UpdateTableFromKind, Use, UserMappingUser, Values, ViewColumnDef, WaitForStatement,
     WhileStatement, WildcardAdditionalOptions, With, WithFill,
 };
@@ -292,7 +293,6 @@ impl Spanned for Values {
 /// - [Statement::DropFunction]
 /// - [Statement::DropProcedure]
 /// - [Statement::DropSecret]
-/// - [Statement::Declare]
 /// - [Statement::CreateExtension]
 /// - [Statement::CreateCollation]
 /// - [Statement::AlterCollation]
@@ -300,7 +300,6 @@ impl Spanned for Values {
 /// - [Statement::Fetch]
 /// - [Statement::Flush]
 /// - [Statement::Discard]
-/// - [Statement::Set]
 /// - [Statement::ShowFunctions]
 /// - [Statement::ShowVariable]
 /// - [Statement::ShowStatus]
@@ -451,17 +450,17 @@ impl Spanned for Statement {
             Statement::DropDomain { .. } => Span::empty(),
             Statement::DropProcedure { .. } => Span::empty(),
             Statement::DropSecret { .. } => Span::empty(),
-            Statement::Declare { .. } => Span::empty(),
+            Statement::Declare {
+                stmts,
+                declare_token,
+                ..
+            } => {
+                union_spans(iter::once(declare_token.0.span).chain(stmts.iter().map(|d| d.span())))
+            }
             Statement::Fetch { .. } => Span::empty(),
             Statement::Flush { .. } => Span::empty(),
             Statement::Discard { .. } => Span::empty(),
-            Statement::Set(Set::CompoundAssignment {
-                set_token,
-                variable: _,
-                op: _,
-                value,
-            }) => set_token.0.span.union(&value.span()),
-            Statement::Set(_) => Span::empty(),
+            Statement::Set(set) => set.span(),
             Statement::ShowFunctions { .. } => Span::empty(),
             Statement::ShowVariable { .. } => Span::empty(),
             Statement::ShowStatus { .. } => Span::empty(),
@@ -583,6 +582,107 @@ impl Spanned for Statement {
             Statement::RefreshMaterializedView(refresh) => refresh.span(),
             Statement::CreateAggregate(create_aggregate) => create_aggregate.span(),
         }
+    }
+}
+
+impl Spanned for Declare {
+    fn span(&self) -> Span {
+        let Declare {
+            names,
+            data_type: _, // no span, see data_type_end_token
+            assignment,
+            declare_type: _, // enum
+            binary: _,
+            sensitive: _,
+            scroll: _,
+            hold: _,
+            for_query,
+            data_type_end_token,
+        } = self;
+        union_spans(
+            names
+                .iter()
+                .map(|n| n.span)
+                .chain(iter::once(data_type_end_token.0.span))
+                .chain(assignment.iter().map(|a| a.span()))
+                .chain(for_query.iter().map(|q| q.span())),
+        )
+    }
+}
+
+impl Spanned for DeclareAssignment {
+    fn span(&self) -> Span {
+        match self {
+            DeclareAssignment::Expr(expr)
+            | DeclareAssignment::Default(expr)
+            | DeclareAssignment::DuckAssignment(expr)
+            | DeclareAssignment::For(expr)
+            | DeclareAssignment::MsSqlAssignment(expr) => expr.span(),
+        }
+    }
+}
+
+/// # partial span
+///
+/// Missing spans:
+/// - [Set::ParenthesizedAssignments] and [Set::MultipleAssignments] lack the `SET` keyword
+/// - [Set::SetSessionAuthorization], [Set::SetRole], [Set::SetTimeZone],
+///   [Set::SetNames] and [Set::SetNamesDefault]
+impl Spanned for Set {
+    fn span(&self) -> Span {
+        match self {
+            Set::SingleAssignment {
+                scope: _,
+                hivevar: _,
+                variable,
+                values,
+                set_token,
+            } => union_spans(
+                iter::once(set_token.0.span)
+                    .chain(iter::once(variable.span()))
+                    .chain(values.iter().map(|v| v.span())),
+            ),
+            Set::ParenthesizedAssignments { variables, values } => union_spans(
+                variables
+                    .iter()
+                    .map(|v| v.span())
+                    .chain(values.iter().map(|v| v.span())),
+            ),
+            Set::CompoundAssignment {
+                set_token,
+                variable: _,
+                op: _,
+                value,
+            } => set_token.0.span.union(&value.span()),
+            Set::MultipleAssignments { assignments } => union_spans(
+                assignments
+                    .iter()
+                    .map(|a| a.name.span().union(&a.value.span())),
+            ),
+            Set::SetSessionParam(kind) => kind.span(),
+            Set::SetTransaction {
+                set_token,
+                end_token,
+                ..
+            } => set_token.0.span.union(&end_token.0.span),
+            Set::SetSessionAuthorization(_)
+            | Set::SetRole { .. }
+            | Set::SetTimeZone { .. }
+            | Set::SetNames { .. }
+            | Set::SetNamesDefault {} => Span::empty(),
+        }
+    }
+}
+
+impl Spanned for SetSessionParamKind {
+    fn span(&self) -> Span {
+        let (set_token, end_token) = match self {
+            SetSessionParamKind::Generic(p) => (&p.set_token, &p.end_token),
+            SetSessionParamKind::IdentityInsert(p) => (&p.set_token, &p.end_token),
+            SetSessionParamKind::Offsets(p) => (&p.set_token, &p.end_token),
+            SetSessionParamKind::Statistics(p) => (&p.set_token, &p.end_token),
+        };
+        set_token.0.span.union(&end_token.0.span)
     }
 }
 
@@ -3911,6 +4011,50 @@ SETTINGS update_parallel_mode = 'auto'"#;
                 "EXECUTE (@sql)",
                 "EXEC p @out OUTPUT",
                 "WAITFOR DELAY '00:00:01'",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_mssql_declare_and_set_spans() {
+        let sql = "DECLARE @a INT\n\
+                   DECLARE @b DECIMAL(18, 2) = 1.5, @c NVARCHAR(MAX), @d AS dbo.MyType\n\
+                   DECLARE @t TABLE (id INT NOT NULL, name VARCHAR(10))\n\
+                   DECLARE c CURSOR FOR SELECT 1;\n\
+                   SET @a = @a + 1\n\
+                   SET @a += 1\n\
+                   SET NOCOUNT ON\n\
+                   SET XACT_ABORT, NOCOUNT OFF\n\
+                   SET IDENTITY_INSERT dbo.t ON\n\
+                   SET STATISTICS IO ON\n\
+                   SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED";
+        let stmts = mssql_statements(sql);
+        assert_eq!(
+            statement_texts(sql, &stmts),
+            [
+                "DECLARE @a INT",
+                "DECLARE @b DECIMAL(18, 2) = 1.5, @c NVARCHAR(MAX), @d AS dbo.MyType",
+                "DECLARE @t TABLE (id INT NOT NULL, name VARCHAR(10))",
+                "DECLARE c CURSOR FOR SELECT 1",
+                "SET @a = @a + 1",
+                "SET @a += 1",
+                "SET NOCOUNT ON",
+                "SET XACT_ABORT, NOCOUNT OFF",
+                "SET IDENTITY_INSERT dbo.t ON",
+                "SET STATISTICS IO ON",
+                "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED",
+            ]
+        );
+        let Statement::Declare { stmts: decls, .. } = &stmts[1] else {
+            panic!("expected DECLARE, got {:?}", stmts[1]);
+        };
+        let texts: Vec<_> = decls.iter().map(|d| spanned_text(sql, d.span())).collect();
+        assert_eq!(
+            texts,
+            [
+                "@b DECIMAL(18, 2) = 1.5",
+                "@c NVARCHAR(MAX)",
+                "@d AS dbo.MyType"
             ]
         );
     }
