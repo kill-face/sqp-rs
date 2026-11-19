@@ -1354,6 +1354,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support `CLUSTERED` / `NONCLUSTERED` in index and
+    /// key definitions? e.g. `PRIMARY KEY CLUSTERED (id)`
+    fn supports_index_clustering(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///

@@ -2983,3 +2983,44 @@ fn parse_quoted_statement_keyword_aliases() {
     ms().verified_stmt("SELECT * FROM t [PRINT]");
     ms().verified_stmt("SELECT * FROM t AS [PRINT]");
 }
+
+#[test]
+fn parse_mssql_constraint_clustering() {
+    let sql =
+        "CREATE TABLE t (id INT PRIMARY KEY CLUSTERED NOT NULL, code INT UNIQUE NONCLUSTERED)";
+    let Statement::CreateTable(create) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    let ColumnOption::PrimaryKey(pk) = &create.columns[0].options[0].option else {
+        panic!("expected PRIMARY KEY, got {:?}", create.columns[0].options);
+    };
+    assert_eq!(pk.clustering, Some(IndexClustering::Clustered));
+    let ColumnOption::Unique(uq) = &create.columns[1].options[0].option else {
+        panic!("expected UNIQUE, got {:?}", create.columns[1].options);
+    };
+    assert_eq!(uq.clustering, Some(IndexClustering::NonClustered));
+
+    let sql = "CREATE TABLE t (id INT, code INT, \
+        CONSTRAINT pk_t PRIMARY KEY CLUSTERED (id ASC), \
+        CONSTRAINT uq_t UNIQUE NONCLUSTERED (code))";
+    let Statement::CreateTable(create) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    let TableConstraint::PrimaryKey(pk) = &create.constraints[0] else {
+        panic!("expected PRIMARY KEY, got {:?}", create.constraints[0]);
+    };
+    assert_eq!(pk.name, Some(Ident::new("pk_t")));
+    assert_eq!(pk.index_name, None);
+    assert_eq!(pk.clustering, Some(IndexClustering::Clustered));
+    let TableConstraint::Unique(uq) = &create.constraints[1] else {
+        panic!("expected UNIQUE, got {:?}", create.constraints[1]);
+    };
+    assert_eq!(uq.clustering, Some(IndexClustering::NonClustered));
+
+    ms().verified_stmt("ALTER TABLE t ADD CONSTRAINT pk_t PRIMARY KEY NONCLUSTERED (id)");
+    ms().verified_stmt("CREATE TABLE t (id INT PRIMARY KEY)");
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("CREATE TABLE t (id INT PRIMARY KEY CLUSTERED)")
+        .unwrap_err();
+}

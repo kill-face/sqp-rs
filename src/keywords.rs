@@ -724,6 +724,7 @@ define_keywords!(
     NOCYCLE,
     NOINHERIT,
     NOLOGIN,
+    NONCLUSTERED,
     NONE,
     NOORDER,
     NOREPLICATION,

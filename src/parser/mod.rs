@@ -10357,6 +10357,7 @@ impl<'a> Parser<'a> {
                     KeyOrIndexDisplay::None
                 };
             let nulls_distinct = self.parse_optional_nulls_distinct()?;
+            let clustering = self.parse_optional_index_clustering();
             let characteristics = self.parse_constraint_characteristics()?;
             Ok(Some(
                 UniqueConstraint {
@@ -10364,6 +10365,7 @@ impl<'a> Parser<'a> {
                     index_name: None,
                     index_type_display,
                     index_type: None,
+                    clustering,
                     columns: vec![],
                     include: vec![],
                     index_options: vec![],
@@ -10375,12 +10377,14 @@ impl<'a> Parser<'a> {
         } else if self.parse_keywords(&[Keyword::PRIMARY, Keyword::KEY])
             || (self.dialect.supports_key_column_option() && self.parse_keyword(Keyword::KEY))
         {
+            let clustering = self.parse_optional_index_clustering();
             let characteristics = self.parse_constraint_characteristics()?;
             Ok(Some(
                 PrimaryKeyConstraint {
                     name: None,
                     index_name: None,
                     index_type: None,
+                    clustering,
                     columns: vec![],
                     include: vec![],
                     index_options: vec![],
@@ -10822,6 +10826,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let nulls_distinct = self.parse_optional_nulls_distinct()?;
+                let clustering = self.parse_optional_index_clustering();
 
                 // optional index name
                 let index_name = self.parse_optional_index_name()?;
@@ -10837,6 +10842,7 @@ impl<'a> Parser<'a> {
                         index_name,
                         index_type_display,
                         index_type,
+                        clustering,
                         columns,
                         include,
                         index_options,
@@ -10858,6 +10864,8 @@ impl<'a> Parser<'a> {
                     )));
                 }
 
+                let clustering = self.parse_optional_index_clustering();
+
                 // optional index name
                 let index_name = self.parse_optional_index_name()?;
                 let index_type = self.parse_optional_using_then_index_type()?;
@@ -10871,6 +10879,7 @@ impl<'a> Parser<'a> {
                         name,
                         index_name,
                         index_type,
+                        clustering,
                         columns,
                         include,
                         index_options,
@@ -11230,6 +11239,18 @@ impl<'a> Parser<'a> {
             Ok(None)
         } else {
             self.parse_optional_ident()
+        }
+    }
+
+    /// Parse an optional `CLUSTERED` or `NONCLUSTERED`, if the dialect supports it.
+    fn parse_optional_index_clustering(&mut self) -> Option<IndexClustering> {
+        if !self.dialect.supports_index_clustering() {
+            return None;
+        }
+        match self.parse_one_of_keywords(&[Keyword::CLUSTERED, Keyword::NONCLUSTERED]) {
+            Some(Keyword::CLUSTERED) => Some(IndexClustering::Clustered),
+            Some(Keyword::NONCLUSTERED) => Some(IndexClustering::NonClustered),
+            _ => None,
         }
     }
 

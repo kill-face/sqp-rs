@@ -1654,6 +1654,29 @@ impl fmt::Display for IndexOption {
     }
 }
 
+/// `CLUSTERED` or `NONCLUSTERED` in an index, primary key or unique constraint
+/// definition.
+///
+/// See [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-index-transact-sql)
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum IndexClustering {
+    /// `CLUSTERED`
+    Clustered,
+    /// `NONCLUSTERED`
+    NonClustered,
+}
+
+impl fmt::Display for IndexClustering {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Clustered => write!(f, "CLUSTERED"),
+            Self::NonClustered => write!(f, "NONCLUSTERED"),
+        }
+    }
+}
+
 /// [PostgreSQL] unique index nulls handling option: `[ NULLS [ NOT ] DISTINCT ]`
 ///
 /// [PostgreSQL]: https://www.postgresql.org/docs/17/sql-altertable.html
@@ -2233,6 +2256,9 @@ impl fmt::Display for ColumnOption {
             Alias(expr) => write!(f, "ALIAS {expr}"),
             PrimaryKey(constraint) => {
                 write!(f, "PRIMARY KEY")?;
+                if let Some(clustering) = &constraint.clustering {
+                    write!(f, " {clustering}")?;
+                }
                 if let Some(characteristics) = &constraint.characteristics {
                     write!(f, " {characteristics}")?;
                 }
@@ -2244,6 +2270,9 @@ impl fmt::Display for ColumnOption {
                     "UNIQUE{:>}{}",
                     constraint.index_type_display, constraint.nulls_distinct
                 )?;
+                if let Some(clustering) = &constraint.clustering {
+                    write!(f, " {clustering}")?;
+                }
                 if let Some(characteristics) = &constraint.characteristics {
                     write!(f, " {characteristics}")?;
                 }

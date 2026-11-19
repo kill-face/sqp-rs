@@ -19,8 +19,8 @@
 
 use crate::ast::{
     display_comma_separated, display_separated, ConstraintCharacteristics,
-    ConstraintReferenceMatchKind, Expr, Ident, IndexColumn, IndexOption, IndexType,
-    KeyOrIndexDisplay, NullsDistinctOption, ObjectName, ReferentialAction,
+    ConstraintReferenceMatchKind, Expr, Ident, IndexClustering, IndexColumn, IndexOption,
+    IndexType, KeyOrIndexDisplay, NullsDistinctOption, ObjectName, ReferentialAction,
 };
 use crate::tokenizer::Span;
 use core::fmt;
@@ -509,6 +509,10 @@ pub struct PrimaryKeyConstraint {
     ///
     /// [1]: IndexType
     pub index_type: Option<IndexType>,
+    /// [MsSql] `CLUSTERED` or `NONCLUSTERED`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+    pub clustering: Option<IndexClustering>,
     /// Identifiers of the columns that form the primary key.
     pub columns: Vec<IndexColumn>,
     /// INCLUDE clause: <https://www.postgresql.org/docs/current/sql-createtable.html>
@@ -524,8 +528,9 @@ impl fmt::Display for PrimaryKeyConstraint {
         use crate::ast::ddl::{display_constraint_name, display_option, display_option_spaced};
         write!(
             f,
-            "{}PRIMARY KEY{}{} ({})",
+            "{}PRIMARY KEY{}{}{} ({})",
             display_constraint_name(&self.name),
+            display_option_spaced(&self.clustering),
             display_option_spaced(&self.index_name),
             display_option(" USING ", "", &self.index_type),
             display_comma_separated(&self.columns),
@@ -579,6 +584,10 @@ pub struct UniqueConstraint {
     ///
     /// [1]: IndexType
     pub index_type: Option<IndexType>,
+    /// [MsSql] `CLUSTERED` or `NONCLUSTERED`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+    pub clustering: Option<IndexClustering>,
     /// Identifiers of the columns that are unique.
     pub columns: Vec<IndexColumn>,
     /// INCLUDE clause: <https://www.postgresql.org/docs/current/sql-createtable.html>
@@ -596,10 +605,11 @@ impl fmt::Display for UniqueConstraint {
         use crate::ast::ddl::{display_constraint_name, display_option, display_option_spaced};
         write!(
             f,
-            "{}UNIQUE{}{:>}{}{} ({})",
+            "{}UNIQUE{}{:>}{}{}{} ({})",
             display_constraint_name(&self.name),
             self.nulls_distinct,
             self.index_type_display,
+            display_option_spaced(&self.clustering),
             display_option_spaced(&self.index_name),
             display_option(" USING ", "", &self.index_type),
             display_comma_separated(&self.columns),
