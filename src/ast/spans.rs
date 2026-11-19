@@ -1888,6 +1888,7 @@ impl Spanned for Expr {
             Expr::Lambda(_) => Span::empty(),
             Expr::MemberOf(member_of) => member_of.value.span().union(&member_of.array.span()),
             Expr::NextValueFor(next_value_for) => next_value_for.span(),
+            Expr::StaticMethodCall(call) => call.type_name.span().union(&call.end_token.0.span),
         }
     }
 }

@@ -7582,7 +7582,9 @@ fn interval_disallow_interval_expr_double_colon() {
 
 #[test]
 fn parse_text_type_modifier_double_colon_cast() {
-    let expr = verified_expr("ID::TEXT(16777216)");
+    // In dialects with static method calls this is `TEXT(16777216)` on type `ID`
+    let expr = all_dialects_where(|d| !d.supports_static_method_calls())
+        .verified_expr("ID::TEXT(16777216)");
     assert_eq!(
         expr,
         Expr::Cast {

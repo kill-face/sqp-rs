@@ -3410,3 +3410,39 @@ fn parse_mssql_create_view_attributes() {
         .parse_sql_statements("CREATE VIEW v WITH SCHEMABINDING AS SELECT 1")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_static_method_call() {
+    let sql = "SELECT geography::STPointFromText('POINT(' + lon + ' ' + lat + ')', 4326)";
+    let select = ms().verified_only_select(sql);
+    let Expr::StaticMethodCall(call) = expr_from_projection(only(&select.projection)) else {
+        panic!("expected static method call, got {:?}", select.projection);
+    };
+    assert_eq!(
+        call.type_name,
+        ObjectName::from(vec![Ident::new("geography")])
+    );
+    assert_eq!(call.method.name.to_string(), "STPointFromText");
+
+    ms().verified_stmt("SELECT dbo.MyType::Create(1)");
+    ms().verified_stmt("SELECT hierarchyid::GetRoot()");
+
+    let sql = "SELECT geography::Point(1, 2, 4326)";
+    let select = Parser::new(&MsSqlDialect {})
+        .try_with_sql(sql)
+        .unwrap()
+        .parse_select()
+        .unwrap();
+    assert_eq!(
+        select.projection[0].span(),
+        Span::new(Location::new(1, 8), Location::new(1, 36))
+    );
+
+    // Other dialects keep `::` as a cast
+    let select = TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .verified_only_select("SELECT a::INT");
+    assert!(matches!(
+        expr_from_projection(only(&select.projection)),
+        Expr::Cast { .. }
+    ));
+}

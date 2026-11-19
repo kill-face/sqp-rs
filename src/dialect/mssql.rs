@@ -107,6 +107,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/spatial-geography/point-geography-data-type>
+    fn supports_static_method_calls(&self) -> bool {
+        true
+    }
+
     /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql#computed_column_expression>
     fn supports_computed_columns(&self) -> bool {
         true

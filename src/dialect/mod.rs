@@ -1376,6 +1376,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support static method calls on types?
+    /// e.g. `SELECT geography::Point(1, 2, 4326)`
+    fn supports_static_method_calls(&self) -> bool {
+        false
+    }
+
     /// Does the dialect support computed columns without a data type?
     /// e.g. `CREATE TABLE t (a INT, b AS a + 1 PERSISTED)`
     fn supports_computed_columns(&self) -> bool {

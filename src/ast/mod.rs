@@ -1447,6 +1447,10 @@ pub enum Expr {
     ///
     /// See [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/functions/next-value-for-transact-sql)
     NextValueFor(Box<NextValueFor>),
+    /// [MsSql] static method call on a type: `geography::Point(1, 2, 4326)`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/spatial-geography/point-geography-data-type
+    StaticMethodCall(Box<StaticMethodCall>),
     /// Checks membership of a value in a JSON array
     MemberOf(MemberOf),
 }
@@ -1455,6 +1459,25 @@ impl Expr {
     /// Creates a new [`Expr::Value`]
     pub fn value(value: impl Into<ValueWithSpan>) -> Self {
         Expr::Value(value.into())
+    }
+}
+
+/// [MsSql] static method call on a type: `<type>::<method>(<args>)`
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct StaticMethodCall {
+    /// The type the method belongs to, e.g. `geography`.
+    pub type_name: ObjectName,
+    /// The method call, e.g. `Point(1, 2, 4326)`.
+    pub method: Function,
+    /// The last token of the call, i.e. the closing parenthesis.
+    pub end_token: AttachedToken,
+}
+
+impl fmt::Display for StaticMethodCall {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}::{}", self.type_name, self.method)
     }
 }
 
@@ -2346,6 +2369,7 @@ impl fmt::Display for Expr {
             Expr::Lambda(lambda) => write!(f, "{lambda}"),
             Expr::MemberOf(member_of) => write!(f, "{member_of}"),
             Expr::NextValueFor(next_value_for) => write!(f, "{next_value_for}"),
+            Expr::StaticMethodCall(call) => write!(f, "{call}"),
         }
     }
 }

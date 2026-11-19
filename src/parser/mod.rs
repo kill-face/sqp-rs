@@ -1783,6 +1783,28 @@ impl<'a> Parser<'a> {
         })))
     }
 
+    /// Parse the rest of an MsSql static method call `<type>::<method>(<args>)`
+    /// after `::`.
+    fn parse_static_method_call(&mut self, type_expr: Expr) -> Result<Expr, ParserError> {
+        let type_name = match type_expr {
+            Expr::Identifier(ident) => ObjectName::from(vec![ident]),
+            Expr::CompoundIdentifier(idents) => ObjectName::from(idents),
+            _ => {
+                return parser_err!(
+                    format!("Expected a type name before ::, found: {type_expr}"),
+                    self.get_current_token().span.start
+                )
+            }
+        };
+        let method_name = self.parse_identifier()?;
+        let method = self.parse_function_call(ObjectName::from(vec![method_name]))?;
+        Ok(Expr::StaticMethodCall(Box::new(StaticMethodCall {
+            type_name,
+            method,
+            end_token: AttachedToken(self.get_current_token().clone()),
+        })))
+    }
+
     fn geometric_type_kind(&self, keyword: Keyword) -> Option<GeometricTypeKind> {
         if !self.dialect.supports_geometric_types() {
             return None;
@@ -4382,6 +4404,13 @@ impl<'a> Parser<'a> {
                     tok.span.start
                 ),
             }
+        } else if Token::DoubleColon == *tok
+            && self.dialect.supports_static_method_calls()
+            && matches!(expr, Expr::Identifier(_) | Expr::CompoundIdentifier(_))
+            && matches!(self.peek_token_ref().token, Token::Word(_))
+            && self.peek_nth_token_ref(1).token == Token::LParen
+        {
+            self.parse_static_method_call(expr)
         } else if Token::DoubleColon == *tok {
             Ok(Expr::Cast {
                 kind: CastKind::DoubleColon,
