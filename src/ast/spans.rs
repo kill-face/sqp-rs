@@ -34,8 +34,9 @@ use super::{
     AssignmentTarget, AttachedToken, BeginEndStatements, CaseStatement, CloseCursor,
     ClusteredIndex, ColumnDef, ColumnOption, ColumnOptionDef, ConditionalStatementBlock,
     ConditionalStatements, ConflictTarget, ConnectByKind, ConstraintCharacteristics, CopySource,
-    CreateIndex, CreateRule, CreateRuleAction, CreateTable, CreateTableOptions, CreateUserMapping,
-    Cte, DataSpace, Declare, DeclareAssignment, Delete, DoOption, DoStatement, DoUpdate, DropRule,
+    CreateFunction, CreateFunctionBody, CreateIndex, CreateProcedureBody, CreateRule,
+    CreateRuleAction, CreateTable, CreateTableOptions, CreateTrigger, CreateUserMapping, Cte,
+    DataSpace, Declare, DeclareAssignment, Delete, DoOption, DoStatement, DoUpdate, DropRule,
     ExceptSelectItem, ExcludeConstraintElement, ExcludeSelectItem, Expr, ExprWithAlias, Fetch,
     ForValues, FromTable, Function, FunctionArg, FunctionArgExpr, FunctionArgumentClause,
     FunctionArgumentList, FunctionArguments, GroupByExpr, HavingBound, IfStatement,
@@ -46,7 +47,7 @@ use super::{
     NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart, Offset, OnConflict,
     OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy, OrderByExpr,
     OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue, PivotValueSource,
-    PrintStatement, ProjectionSelect, Query, QueryHint, QueryHints, RaiseStatement,
+    PrintStatement, ProcedureParam, ProjectionSelect, Query, QueryHint, QueryHints, RaiseStatement,
     RaiseStatementValue, ReferentialAction, RefreshMaterializedView, RenameSelectItem,
     ReplaceSelectElement, ReplaceSelectItem, ReturnStatement, ReturnStatementValue, Select,
     SelectInto, SelectItem, Set, SetExpr, SetSessionParamKind, Setting, SqlOption, Statement,
@@ -311,10 +312,7 @@ impl Spanned for Values {
 /// - [Statement::Comment]
 /// - [Statement::CreateSchema]
 /// - [Statement::CreateDatabase]
-/// - [Statement::CreateFunction]
-/// - [Statement::CreateTrigger]
 /// - [Statement::DropTrigger]
-/// - [Statement::CreateProcedure]
 /// - [Statement::CreateMacro]
 /// - [Statement::CreateStage]
 /// - [Statement::CreateFileFormat]
@@ -494,11 +492,24 @@ impl Spanned for Statement {
             } => rollback_token.0.span.union(&end_token.0.span),
             Statement::CreateSchema { .. } => Span::empty(),
             Statement::CreateDatabase { .. } => Span::empty(),
-            Statement::CreateFunction { .. } => Span::empty(),
+            Statement::CreateFunction(create_function) => create_function.span(),
             Statement::CreateDomain { .. } => Span::empty(),
-            Statement::CreateTrigger { .. } => Span::empty(),
+            Statement::CreateTrigger(create_trigger) => create_trigger.span(),
             Statement::DropTrigger { .. } => Span::empty(),
-            Statement::CreateProcedure { .. } => Span::empty(),
+            Statement::CreateProcedure {
+                or_alter: _,
+                name,
+                params,
+                language,
+                body,
+                create_token,
+            } => union_spans(
+                iter::once(create_token.0.span)
+                    .chain(iter::once(name.span()))
+                    .chain(params.iter().flatten().map(|p| p.span()))
+                    .chain(language.iter().map(|l| l.span))
+                    .chain(iter::once(body.span())),
+            ),
             Statement::CreateMacro { .. } => Span::empty(),
             Statement::CreateStage { .. } => Span::empty(),
             Statement::CreateFileFormat { .. } => Span::empty(),
@@ -3002,13 +3013,100 @@ impl Spanned for CreateAggregateArgs {
     }
 }
 
+/// # partial span
+///
+/// Misses a leading argument mode (`IN`, `OUT`, ...).
 impl Spanned for OperateFunctionArg {
     fn span(&self) -> Span {
         union_spans(
             self.name
                 .iter()
                 .map(|name| name.span)
-                .chain(self.default_expr.iter().map(|expr| expr.span())),
+                .chain(self.default_expr.iter().map(|expr| expr.span()))
+                .chain(iter::once(self.end_token.0.span)),
+        )
+    }
+}
+
+/// # partial span
+///
+/// Misses a leading parameter mode (`IN`, `OUT`, ...).
+impl Spanned for ProcedureParam {
+    fn span(&self) -> Span {
+        let ProcedureParam {
+            name,
+            data_type: _, // no span, covered by end_token
+            mode: _,
+            default,
+            readonly: _,
+            end_token,
+        } = self;
+        union_spans(
+            iter::once(name.span)
+                .chain(default.iter().map(|d| d.span()))
+                .chain(iter::once(end_token.0.span)),
+        )
+    }
+}
+
+impl Spanned for CreateProcedureBody {
+    fn span(&self) -> Span {
+        match self {
+            CreateProcedureBody::As(statements) => statements.span(),
+            CreateProcedureBody::AsString { body, link_symbol } => body
+                .span()
+                .union_opt(&link_symbol.as_ref().map(|l| l.span())),
+            CreateProcedureBody::BeginAtomic(statements) => statements.span(),
+        }
+    }
+}
+
+/// # partial span
+///
+/// Without [CreateFunction::create_token] and [CreateFunction::end_token]
+/// (when not parsed by [crate::parser::Parser::parse_statement]), the span
+/// covers only the name, arguments and body.
+impl Spanned for CreateFunction {
+    fn span(&self) -> Span {
+        union_spans(
+            iter::once(self.create_token.0.span)
+                .chain(iter::once(self.name.span()))
+                .chain(self.args.iter().flatten().map(|a| a.span()))
+                .chain(self.function_body.iter().map(|b| b.span()))
+                .chain(iter::once(self.end_token.0.span)),
+        )
+    }
+}
+
+impl Spanned for CreateFunctionBody {
+    fn span(&self) -> Span {
+        match self {
+            CreateFunctionBody::AsBeforeOptions { body, link_symbol } => body
+                .span()
+                .union_opt(&link_symbol.as_ref().map(|l| l.span())),
+            CreateFunctionBody::AsAfterOptions(expr)
+            | CreateFunctionBody::AsReturnExpr(expr)
+            | CreateFunctionBody::Return(expr) => expr.span(),
+            CreateFunctionBody::AsBeginEnd(statements)
+            | CreateFunctionBody::BeginAtomic(statements) => statements.span(),
+            CreateFunctionBody::AsReturnSelect(select) => select.span(),
+        }
+    }
+}
+
+/// # partial span
+///
+/// Without [CreateTrigger::create_token] and [CreateTrigger::end_token]
+/// (when not parsed by [crate::parser::Parser::parse_statement]), the span
+/// covers only the names and the body.
+impl Spanned for CreateTrigger {
+    fn span(&self) -> Span {
+        union_spans(
+            iter::once(self.create_token.0.span)
+                .chain(iter::once(self.name.span()))
+                .chain(iter::once(self.table_name.span()))
+                .chain(self.statements.iter().map(|s| s.span()))
+                .chain(iter::once(self.end_token.0.span)),
         )
     }
 }
@@ -4128,6 +4226,48 @@ SETTINGS update_parallel_mode = 'auto'"#;
             spanned_text(sql, f.over.as_ref().unwrap().span()),
             "(PARTITION BY a, b ORDER BY c ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)"
         );
+    }
+
+    #[test]
+    fn test_mssql_create_procedure_function_trigger_spans() {
+        let sql = "CREATE OR ALTER PROCEDURE dbo.p (\n    @a INT,\n    @b NVARCHAR(50) = N'x',\n    @t dbo.T READONLY\n)\nAS\nBEGIN\n    SET NOCOUNT ON\n    SELECT @a\nEND";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let Statement::CreateProcedure { params, .. } = &stmts[0] else {
+            panic!("expected CREATE PROCEDURE, got {stmts:?}");
+        };
+        let params: Vec<_> = params
+            .iter()
+            .flatten()
+            .map(|p| spanned_text(sql, p.span()))
+            .collect();
+        assert_eq!(
+            params,
+            ["@a INT", "@b NVARCHAR(50) = N'x'", "@t dbo.T READONLY"]
+        );
+
+        let sql = "CREATE PROC p AS SELECT 1";
+        assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);
+
+        let sql = "CREATE FUNCTION dbo.f (@a INT, @b DECIMAL(10, 2) = 0)\nRETURNS INT\nAS\nBEGIN\n    RETURN @a\nEND";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let Statement::CreateFunction(f) = &stmts[0] else {
+            panic!("expected CREATE FUNCTION, got {stmts:?}");
+        };
+        let args: Vec<_> = f
+            .args
+            .iter()
+            .flatten()
+            .map(|a| spanned_text(sql, a.span()))
+            .collect();
+        assert_eq!(args, ["@a INT", "@b DECIMAL(10, 2) = 0"]);
+
+        let sql = "CREATE FUNCTION dbo.tvf (@a INT) RETURNS TABLE AS RETURN (SELECT @a AS a)";
+        assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);
+
+        let sql = "CREATE TRIGGER dbo.trg ON dbo.t AFTER INSERT, UPDATE AS\nBEGIN\n    SET NOCOUNT ON\nEND";
+        assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);
     }
 
     #[test]

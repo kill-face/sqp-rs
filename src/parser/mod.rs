@@ -4900,7 +4900,7 @@ impl<'a> Parser<'a> {
     /// Return true if the next tokens exactly `expected`
     ///
     /// Does not advance the current token.
-    fn peek_keywords(&mut self, expected: &[Keyword]) -> bool {
+    pub(crate) fn peek_keywords(&mut self, expected: &[Keyword]) -> bool {
         let index = self.index;
         let matched = self.parse_keywords(expected);
         self.index = index;
@@ -5669,15 +5669,16 @@ impl<'a> Parser<'a> {
         } else if self.parse_keyword(Keyword::EXTERNAL) {
             self.parse_create_external_table(or_replace).map(Into::into)
         } else if self.parse_keyword(Keyword::FUNCTION) {
-            self.parse_create_function(or_alter, or_replace, temporary)
+            let stmt = self.parse_create_function(or_alter, or_replace, temporary)?;
+            Ok(self.with_create_token(stmt, create_token))
         } else if self.parse_keyword(Keyword::DOMAIN) {
             self.parse_create_domain().map(Into::into)
         } else if self.parse_keyword(Keyword::TRIGGER) {
-            self.parse_create_trigger(temporary, or_alter, or_replace, false)
-                .map(Into::into)
+            let stmt = self.parse_create_trigger(temporary, or_alter, or_replace, false)?;
+            Ok(self.with_create_token(stmt.into(), create_token))
         } else if self.parse_keywords(&[Keyword::CONSTRAINT, Keyword::TRIGGER]) {
-            self.parse_create_trigger(temporary, or_alter, or_replace, true)
-                .map(Into::into)
+            let stmt = self.parse_create_trigger(temporary, or_alter, or_replace, true)?;
+            Ok(self.with_create_token(stmt.into(), create_token))
         } else if self.parse_keyword(Keyword::MACRO) {
             self.parse_create_macro(or_replace, temporary)
         } else if self.parse_keyword(Keyword::SECRET) {
@@ -5752,7 +5753,8 @@ impl<'a> Parser<'a> {
         } else if self.parse_keyword(Keyword::PROCEDURE)
             || self.dialect.supports_create_proc_syntax() && self.parse_keyword(Keyword::PROC)
         {
-            self.parse_create_procedure(or_alter)
+            let stmt = self.parse_create_procedure(or_alter)?;
+            Ok(self.with_create_token(stmt, create_token))
         } else if self.parse_keyword(Keyword::CONNECTOR) {
             self.parse_create_connector().map(Into::into)
         } else if self.parse_keyword(Keyword::OPERATOR) {
@@ -5785,6 +5787,30 @@ impl<'a> Parser<'a> {
         } else {
             self.expected_ref("an object type after CREATE", self.peek_token_ref())
         }
+    }
+
+    /// Record the `CREATE` keyword, and for statements that keep it the last
+    /// token consumed, in a statement that [Self::parse_create] dispatched
+    /// to a parser that doesn't see the keyword.
+    fn with_create_token(&self, mut stmt: Statement, create_token: TokenWithSpan) -> Statement {
+        let create_token = AttachedToken(create_token);
+        let last_token = self.last_consumed_token();
+        match &mut stmt {
+            Statement::CreateProcedure {
+                create_token: token,
+                ..
+            } => *token = create_token,
+            Statement::CreateFunction(f) => {
+                f.create_token = create_token;
+                f.end_token = last_token;
+            }
+            Statement::CreateTrigger(t) => {
+                t.create_token = create_token;
+                t.end_token = last_token;
+            }
+            _ => {}
+        }
+        stmt
     }
 
     fn parse_text_search_object_type(&mut self) -> Result<TextSearchObjectType, ParserError> {
@@ -6399,6 +6425,8 @@ impl<'a> Parser<'a> {
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 
@@ -6440,6 +6468,8 @@ impl<'a> Parser<'a> {
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 
@@ -6525,6 +6555,8 @@ impl<'a> Parser<'a> {
             rows: None,
             support: None,
             set_params: vec![],
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 
@@ -6621,6 +6653,8 @@ impl<'a> Parser<'a> {
             rows: None,
             support: None,
             set_params: vec![],
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 
@@ -6651,6 +6685,7 @@ impl<'a> Parser<'a> {
                     name: Some(name),
                     data_type,
                     default_expr,
+                    end_token: parser.last_consumed_token(),
                 })
             };
         self.expect_token(&Token::LParen)?;
@@ -6732,6 +6767,7 @@ impl<'a> Parser<'a> {
             name,
             data_type,
             default_expr,
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -6795,6 +6831,7 @@ impl<'a> Parser<'a> {
             name,
             data_type,
             default_expr: None,
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -6921,6 +6958,8 @@ impl<'a> Parser<'a> {
             statements_as: false,
             statements,
             characteristics,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     }
 
@@ -10543,6 +10582,7 @@ impl<'a> Parser<'a> {
             mode,
             default,
             readonly,
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -22828,6 +22868,7 @@ impl<'a> Parser<'a> {
             params,
             language,
             body,
+            create_token: AttachedToken::empty(),
         })
     }
 

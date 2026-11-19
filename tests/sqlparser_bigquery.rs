@@ -2360,6 +2360,8 @@ fn test_bigquery_create_function() {
             rows: None,
             support: None,
             set_params: vec![],
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 

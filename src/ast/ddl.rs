@@ -1737,6 +1737,9 @@ pub struct ProcedureParam {
     ///
     /// [MsSql]: https://learn.microsoft.com/en-us/sql/relational-databases/tables/use-table-valued-parameters-database-engine
     pub readonly: bool,
+    /// The parameter's last token, so that its span covers the data type
+    /// ([DataType] has no span of its own) and trailing keywords.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for ProcedureParam {
@@ -4155,6 +4158,10 @@ pub struct CreateFunction {
     /// ```
     /// [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_a_remote_function)
     pub remote_connection: Option<ObjectName>,
+    /// The `CREATE` keyword.
+    pub create_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for CreateFunction {
@@ -4586,6 +4593,10 @@ pub struct CreateTrigger {
     pub statements: Option<ConditionalStatements>,
     /// The characteristic of the trigger, which include whether the trigger is `DEFERRABLE`, `INITIALLY DEFERRED`, or `INITIALLY IMMEDIATE`,
     pub characteristics: Option<ConstraintCharacteristics>,
+    /// The `CREATE` keyword.
+    pub create_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl Display for CreateTrigger {
@@ -4608,6 +4619,8 @@ impl Display for CreateTrigger {
             statements_as,
             statements,
             characteristics,
+            create_token: _,
+            end_token: _,
         } = self;
         write!(
             f,

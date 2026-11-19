@@ -23,7 +23,7 @@ use crate::ast::{
 use crate::dialect::Dialect;
 use crate::keywords::{Keyword, RESERVED_FOR_TABLE_FACTOR};
 use crate::parser::{Parser, ParserError};
-use crate::tokenizer::Token;
+use crate::tokenizer::{Token, TokenWithSpan};
 #[cfg(not(feature = "std"))]
 use alloc::{vec, vec::Vec};
 
@@ -255,15 +255,24 @@ impl Dialect for MsSqlDialect {
             }
         } else if parser.peek_keyword(Keyword::IF) {
             Some(self.parse_if_stmt(parser))
-        } else if parser.parse_keywords(&[Keyword::CREATE, Keyword::TRIGGER]) {
-            Some(self.parse_create_trigger(parser, false))
-        } else if parser.parse_keywords(&[
+        } else if parser.peek_keywords(&[Keyword::CREATE, Keyword::TRIGGER]) {
+            let create_token = parser.next_token();
+            if let Err(e) = parser.expect_keyword(Keyword::TRIGGER) {
+                return Some(Err(e));
+            }
+            Some(self.parse_create_trigger(parser, create_token, false))
+        } else if parser.peek_keywords(&[
             Keyword::CREATE,
             Keyword::OR,
             Keyword::ALTER,
             Keyword::TRIGGER,
         ]) {
-            Some(self.parse_create_trigger(parser, true))
+            let create_token = parser.next_token();
+            if let Err(e) = parser.expect_keywords(&[Keyword::OR, Keyword::ALTER, Keyword::TRIGGER])
+            {
+                return Some(Err(e));
+            }
+            Some(self.parse_create_trigger(parser, create_token, true))
         } else {
             None
         }
@@ -396,6 +405,7 @@ impl MsSqlDialect {
     fn parse_create_trigger(
         &self,
         parser: &mut Parser,
+        create_token: TokenWithSpan,
         or_alter: bool,
     ) -> Result<Statement, ParserError> {
         let name = parser.parse_object_name(false)?;
@@ -425,6 +435,8 @@ impl MsSqlDialect {
             statements_as: true,
             statements,
             characteristics: None,
+            create_token: create_token.into(),
+            end_token: parser.last_consumed_token(),
         }
         .into())
     }

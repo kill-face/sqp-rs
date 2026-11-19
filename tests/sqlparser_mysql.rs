@@ -4383,6 +4383,8 @@ fn parse_create_trigger() {
             statements_as: false,
             statements: None,
             characteristics: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 }

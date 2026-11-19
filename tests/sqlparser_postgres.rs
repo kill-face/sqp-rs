@@ -5602,6 +5602,8 @@ $$"#;
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 
@@ -5650,6 +5652,8 @@ $$"#;
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 
@@ -5702,6 +5706,8 @@ $$"#;
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 
@@ -5754,6 +5760,8 @@ $$"#;
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 
@@ -5803,6 +5811,8 @@ $$"#;
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 
@@ -5850,6 +5860,8 @@ fn parse_create_function() {
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 }
@@ -5999,6 +6011,8 @@ fn parse_create_function_c_with_module_pathname() {
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 
@@ -6049,6 +6063,7 @@ fn parse_drop_function() {
                         default_expr: Some(Expr::Value(
                             (Value::Number("1".parse().unwrap(), false)).with_empty_span()
                         )),
+                        end_token: AttachedToken::empty(),
                     }
                 ]),
             }],
@@ -6077,6 +6092,7 @@ fn parse_drop_function() {
                             default_expr: Some(Expr::Value(
                                 (Value::Number("1".parse().unwrap(), false)).with_empty_span()
                             )),
+                            end_token: AttachedToken::empty(),
                         }
                     ]),
                 },
@@ -6095,6 +6111,7 @@ fn parse_drop_function() {
                             default_expr: Some(Expr::Value(
                                 (Value::Number("1".parse().unwrap(), false)).with_empty_span()
                             )),
+                            end_token: AttachedToken::empty(),
                         }
                     ]),
                 }
@@ -6203,6 +6220,7 @@ fn parse_drop_procedure() {
                         default_expr: Some(Expr::Value(
                             (Value::Number("1".parse().unwrap(), false)).with_empty_span()
                         )),
+                        end_token: AttachedToken::empty(),
                     }
                 ]),
             }],
@@ -6231,6 +6249,7 @@ fn parse_drop_procedure() {
                             default_expr: Some(Expr::Value(
                                 (Value::Number("1".parse().unwrap(), false)).with_empty_span()
                             )),
+                            end_token: AttachedToken::empty(),
                         }
                     ]),
                 },
@@ -6249,6 +6268,7 @@ fn parse_drop_procedure() {
                             default_expr: Some(Expr::Value(
                                 (Value::Number("1".parse().unwrap(), false)).with_empty_span()
                             )),
+                            end_token: AttachedToken::empty(),
                         }
                     ]),
                 }
@@ -7403,6 +7423,8 @@ fn parse_create_simple_before_insert_trigger() {
         statements_as: false,
         statements: None,
         characteristics: None,
+        create_token: AttachedToken::empty(),
+        end_token: AttachedToken::empty(),
     });
 
     assert_eq!(pg().verified_stmt(sql), expected);
@@ -7442,6 +7464,8 @@ fn parse_create_after_update_trigger_with_condition() {
         statements_as: false,
         statements: None,
         characteristics: None,
+        create_token: AttachedToken::empty(),
+        end_token: AttachedToken::empty(),
     });
 
     assert_eq!(pg().verified_stmt(sql), expected);
@@ -7474,6 +7498,8 @@ fn parse_create_instead_of_delete_trigger() {
         statements_as: false,
         statements: None,
         characteristics: None,
+        create_token: AttachedToken::empty(),
+        end_token: AttachedToken::empty(),
     });
 
     assert_eq!(pg().verified_stmt(sql), expected);
@@ -7514,6 +7540,8 @@ fn parse_create_trigger_with_multiple_events_and_deferrable() {
             initially: Some(DeferrableInitial::Deferred),
             enforced: None,
         }),
+        create_token: AttachedToken::empty(),
+        end_token: AttachedToken::empty(),
     });
 
     assert_eq!(pg().verified_stmt(sql), expected);
@@ -7557,6 +7585,8 @@ fn parse_create_trigger_with_referencing() {
         statements_as: false,
         statements: None,
         characteristics: None,
+        create_token: AttachedToken::empty(),
+        end_token: AttachedToken::empty(),
     });
 
     assert_eq!(pg().verified_stmt(sql), expected);
@@ -7847,6 +7877,8 @@ fn parse_trigger_related_functions() {
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     ));
 
@@ -7877,7 +7909,9 @@ fn parse_trigger_related_functions() {
             }),
             statements_as: false,
             statements: None,
-            characteristics: None
+            characteristics: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 
@@ -10747,6 +10781,7 @@ fn parse_quoted_function_argument_name() {
             name: Some(Ident::with_quote('"', "Role")),
             data_type: DataType::Text,
             default_expr: None,
+            end_token: AttachedToken::empty(),
         }])
     );
 
@@ -10764,6 +10799,7 @@ fn parse_quoted_function_argument_name() {
             name: Some(Ident::with_quote('"', r#"we"ird"#)),
             data_type: DataType::Int(None),
             default_expr: None,
+            end_token: AttachedToken::empty(),
         }])
     );
 
@@ -10807,18 +10843,21 @@ fn parse_function_argument_modes_and_defaults_keep_quoted_names() {
                 default_expr: Some(Expr::Value(
                     Value::Number("1".parse().unwrap(), false).with_empty_span()
                 )),
+                end_token: AttachedToken::empty(),
             },
             OperateFunctionArg {
                 mode: Some(ArgMode::Out),
                 name: Some(Ident::with_quote('"', "B")),
                 data_type: DataType::Text,
                 default_expr: None,
+                end_token: AttachedToken::empty(),
             },
             OperateFunctionArg {
                 mode: Some(ArgMode::InOut),
                 name: Some(Ident::with_quote('"', "C")),
                 data_type: DataType::Boolean,
                 default_expr: None,
+                end_token: AttachedToken::empty(),
             },
             OperateFunctionArg {
                 mode: Some(ArgMode::Variadic),
@@ -10828,6 +10867,7 @@ fn parse_function_argument_modes_and_defaults_keep_quoted_names() {
                     None
                 )),
                 default_expr: None,
+                end_token: AttachedToken::empty(),
             },
         ])
     );
@@ -10865,6 +10905,7 @@ fn parse_quoted_argument_names_in_function_signatures() {
             name: Some(Ident::with_quote('"', "A")),
             data_type: DataType::Int(None),
             default_expr: None,
+            end_token: AttachedToken::empty(),
         }]
     );
     assert_eq!(
@@ -10874,6 +10915,7 @@ fn parse_quoted_argument_names_in_function_signatures() {
             name: Some(Ident::with_quote('"', "B")),
             data_type: DataType::Int(None),
             default_expr: None,
+            end_token: AttachedToken::empty(),
         }])
     );
 }

@@ -4719,6 +4719,8 @@ pub enum Statement {
         language: Option<Ident>,
         /// Procedure body.
         body: CreateProcedureBody,
+        /// The `CREATE` keyword.
+        create_token: AttachedToken,
     },
     /// ```sql
     /// CREATE MACRO
@@ -5745,6 +5747,7 @@ impl fmt::Display for Statement {
                 params,
                 language,
                 body,
+                create_token: _,
             } => {
                 write!(
                     f,
@@ -10438,6 +10441,9 @@ pub struct OperateFunctionArg {
     pub data_type: DataType,
     /// Optional default expression for the argument.
     pub default_expr: Option<Expr>,
+    /// The argument's last token, so that its span covers the data type
+    /// ([DataType] has no span of its own).
+    pub end_token: AttachedToken,
 }
 
 impl OperateFunctionArg {
@@ -10448,6 +10454,7 @@ impl OperateFunctionArg {
             name: None,
             data_type,
             default_expr: None,
+            end_token: AttachedToken::empty(),
         }
     }
 
@@ -10458,6 +10465,7 @@ impl OperateFunctionArg {
             name: Some(name.into()),
             data_type,
             default_expr: None,
+            end_token: AttachedToken::empty(),
         }
     }
 }

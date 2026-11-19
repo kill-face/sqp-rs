@@ -189,6 +189,7 @@ fn parse_create_procedure() {
                     mode: None,
                     default: None,
                     readonly: false,
+                    end_token: AttachedToken::empty(),
                 },
                 ProcedureParam {
                     name: Ident {
@@ -203,6 +204,7 @@ fn parse_create_procedure() {
                     mode: None,
                     default: None,
                     readonly: false,
+                    end_token: AttachedToken::empty(),
                 }
             ]),
             name: ObjectName::from(vec![Ident {
@@ -211,6 +213,7 @@ fn parse_create_procedure() {
                 span: Span::empty(),
             }]),
             language: None,
+            create_token: AttachedToken::empty(),
         }
     )
 }
@@ -254,6 +257,7 @@ fn parse_create_function() {
                     name: Some(Ident::new("@foo")),
                     data_type: DataType::Int(None),
                     default_expr: None,
+                    end_token: AttachedToken::empty(),
                 },
                 OperateFunctionArg {
                     mode: None,
@@ -263,6 +267,7 @@ fn parse_create_function() {
                         unit: None
                     })),
                     default_expr: None,
+                    end_token: AttachedToken::empty(),
                 },
             ]),
             return_type: Some(FunctionReturnType::DataType(DataType::Int(None))),
@@ -291,6 +296,8 @@ fn parse_create_function() {
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }),
     );
 
@@ -445,6 +452,7 @@ fn parse_create_function_parameter_default_values() {
                 name: Some(Ident::new("@param1")),
                 data_type: DataType::Int(None),
                 default_expr: Some(Expr::Value((number("42")).with_empty_span())),
+                end_token: AttachedToken::empty(),
             },]),
             return_type: Some(FunctionReturnType::DataType(DataType::Int(None))),
             function_body: Some(CreateFunctionBody::AsBeginEnd(BeginEndStatements {
@@ -472,6 +480,8 @@ fn parse_create_function_parameter_default_values() {
             determinism_specifier: None,
             options: None,
             remote_connection: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }),
     );
 }
@@ -2507,6 +2517,8 @@ fn parse_create_trigger() {
                 }],
             }),
             characteristics: None,
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
 
@@ -2971,6 +2983,7 @@ fn parse_bracket_quoted_function_argument_name() {
             name: Some(Ident::with_quote('[', "Role")),
             data_type: Int(None),
             default_expr: None,
+            end_token: AttachedToken::empty(),
         }])
     );
 }

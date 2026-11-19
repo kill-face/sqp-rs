@@ -886,6 +886,7 @@ fn test_create_trigger() {
             statements_as,
             statements: _,
             characteristics,
+            ..
         }) => {
             assert!(!or_alter);
             assert!(!temporary);
@@ -932,6 +933,7 @@ fn test_create_trigger() {
             statements_as,
             statements: _,
             characteristics,
+            ..
         }) => {
             assert!(!or_alter);
             assert!(!temporary);
@@ -972,6 +974,7 @@ fn test_create_trigger() {
             statements_as,
             statements: _,
             characteristics,
+            ..
         }) => {
             assert!(!or_alter);
             assert!(!temporary);
@@ -1012,6 +1015,7 @@ fn test_create_trigger() {
             statements_as,
             statements: _,
             characteristics,
+            ..
         }) => {
             assert!(!or_alter);
             assert!(!temporary);
@@ -1056,6 +1060,7 @@ fn test_create_trigger() {
             statements_as,
             statements: _,
             characteristics,
+            ..
         }) => {
             assert!(!or_alter);
             assert!(!temporary);
@@ -1097,6 +1102,7 @@ fn test_create_trigger() {
             statements_as,
             statements: _,
             characteristics,
+            ..
         }) => {
             assert!(!or_alter);
             assert!(temporary);

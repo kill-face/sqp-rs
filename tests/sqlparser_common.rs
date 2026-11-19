@@ -19812,6 +19812,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::In),
                         default: None,
                         readonly: false,
+                        end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
                         name: Ident {
@@ -19823,6 +19824,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::Out),
                         default: None,
                         readonly: false,
+                        end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
                         name: Ident {
@@ -19834,6 +19836,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::InOut),
                         default: None,
                         readonly: false,
+                        end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
                         name: Ident {
@@ -19845,6 +19848,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: None,
                         default: None,
                         readonly: false,
+                        end_token: AttachedToken::empty(),
                     },
                 ])
             );
@@ -19872,6 +19876,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::In),
                         default: Some(Expr::Value((number("1")).with_empty_span())),
                         readonly: false,
+                        end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
                         name: Ident::new("b"),
@@ -19881,6 +19886,7 @@ fn parse_create_procedure_with_parameter_modes() {
                             Value::SingleQuotedString("2".into()).with_empty_span()
                         )),
                         readonly: false,
+                        end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
                         name: Ident::new("c"),
@@ -19888,6 +19894,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::InOut),
                         default: Some(Expr::Value(Value::Null.with_empty_span())),
                         readonly: false,
+                        end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
                         name: Ident::new("d"),
@@ -19895,6 +19902,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: None,
                         default: Some(Expr::Value((number("0")).with_empty_span())),
                         readonly: false,
+                        end_token: AttachedToken::empty(),
                     }
                 ]),
             );
@@ -22814,6 +22822,7 @@ fn parse_grant_function_signature() {
                 name: Some(Ident::new("p_id")),
                 data_type: DataType::Uuid,
                 default_expr: None,
+                end_token: AttachedToken::empty(),
             },
             OperateFunctionArg::unnamed(DataType::Int(None)),
         ]))]))
