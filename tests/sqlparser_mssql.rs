@@ -3273,3 +3273,32 @@ fn parse_mssql_query_hints() {
         .parse_sql_statements("SELECT 1 OPTION (RECOMPILE)")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_alter_table_constraint_check() {
+    let sql = "ALTER TABLE t WITH NOCHECK ADD CONSTRAINT fk FOREIGN KEY (a) REFERENCES u(b)";
+    let Statement::AlterTable(alter) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(alter.with_check, Some(false));
+
+    let sql = "ALTER TABLE t WITH CHECK CHECK CONSTRAINT fk1, fk2";
+    let Statement::AlterTable(alter) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(alter.with_check, Some(true));
+    assert_eq!(
+        alter.operations,
+        vec![AlterTableOperation::ConstraintCheck {
+            enabled: true,
+            names: Some(vec![Ident::new("fk1"), Ident::new("fk2")]),
+        }]
+    );
+
+    ms().verified_stmt("ALTER TABLE t NOCHECK CONSTRAINT ALL");
+    ms().verified_stmt("ALTER TABLE t ADD CONSTRAINT c CHECK (a > 0)");
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("ALTER TABLE t WITH CHECK CHECK CONSTRAINT fk")
+        .unwrap_err();
+}

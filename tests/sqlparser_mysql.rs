@@ -2984,6 +2984,7 @@ fn parse_alter_table_add_column() {
             table_type,
             location: _,
             on_cluster: _,
+            with_check: None,
             end_token: _,
         }) => {
             assert_eq!(name.to_string(), "tab");

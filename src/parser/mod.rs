@@ -11618,6 +11618,21 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+        } else if self.dialect.supports_alter_table_constraint_check()
+            && (self.peek_keywords(&[Keyword::CHECK, Keyword::CONSTRAINT])
+                || self.peek_keywords(&[Keyword::NOCHECK, Keyword::CONSTRAINT]))
+        {
+            let enabled = self.parse_keyword(Keyword::CHECK);
+            if !enabled {
+                self.expect_keyword_is(Keyword::NOCHECK)?;
+            }
+            self.expect_keyword_is(Keyword::CONSTRAINT)?;
+            let names = if self.parse_keyword(Keyword::ALL) {
+                None
+            } else {
+                Some(self.parse_comma_separated(|p| p.parse_identifier())?)
+            };
+            AlterTableOperation::ConstraintCheck { enabled, names }
         } else if self.parse_keyword(Keyword::RENAME) {
             if dialect_of!(self is PostgreSqlDialect) && self.parse_keyword(Keyword::CONSTRAINT) {
                 let old_name = self.parse_identifier()?;
@@ -12427,6 +12442,15 @@ impl<'a> Parser<'a> {
                 on_cluster_loc
             );
         }
+        let with_check = if !self.dialect.supports_alter_table_constraint_check() {
+            None
+        } else if self.parse_keywords(&[Keyword::WITH, Keyword::CHECK]) {
+            Some(true)
+        } else if self.parse_keywords(&[Keyword::WITH, Keyword::NOCHECK]) {
+            Some(false)
+        } else {
+            None
+        };
         let operations = self.parse_comma_separated(Parser::parse_alter_table_operation)?;
 
         let location_loc = self.peek_token_ref().span.start;
@@ -12462,6 +12486,7 @@ impl<'a> Parser<'a> {
             operations,
             location,
             on_cluster,
+            with_check,
             table_type,
             end_token: AttachedToken(end_token),
         }

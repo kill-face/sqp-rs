@@ -718,6 +718,7 @@ define_keywords!(
     NFKD,
     NO,
     NOBYPASSRLS,
+    NOCHECK,
     NOCOMPRESS,
     NOCREATEDB,
     NOCREATEROLE,

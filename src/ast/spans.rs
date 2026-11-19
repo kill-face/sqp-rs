@@ -1411,6 +1411,9 @@ impl Spanned for AlterTableOperation {
             AlterTableOperation::Lock { .. } => Span::empty(),
             AlterTableOperation::ReplicaIdentity { .. } => Span::empty(),
             AlterTableOperation::ValidateConstraint { name } => name.span,
+            AlterTableOperation::ConstraintCheck { names, .. } => {
+                union_spans(names.iter().flatten().map(|i| i.span))
+            }
             AlterTableOperation::Inherit { parent } | AlterTableOperation::NoInherit { parent } => {
                 parent.span()
             }

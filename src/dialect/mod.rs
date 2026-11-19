@@ -1377,6 +1377,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support `WITH CHECK` / `WITH NOCHECK` and
+    /// `{ CHECK | NOCHECK } CONSTRAINT` in `ALTER TABLE`?
+    fn supports_alter_table_constraint_check(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///

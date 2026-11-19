@@ -553,6 +553,15 @@ pub enum AlterTableOperation {
         /// Value to set for the auto-increment counter.
         value: ValueWithSpan,
     },
+    /// [MsSql] `{ CHECK | NOCHECK } CONSTRAINT { ALL | name [, ...] }`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql
+    ConstraintCheck {
+        /// `true` for `CHECK`, `false` for `NOCHECK`.
+        enabled: bool,
+        /// The constraint names, or `None` for `ALL`.
+        names: Option<Vec<Ident>>,
+    },
     /// `VALIDATE CONSTRAINT <name>`
     ValidateConstraint {
         /// Name of the constraint to validate.
@@ -1163,6 +1172,15 @@ impl fmt::Display for AlterTableOperation {
             }
             AlterTableOperation::ReplicaIdentity { identity } => {
                 write!(f, "REPLICA IDENTITY {identity}")
+            }
+            AlterTableOperation::ConstraintCheck { enabled, names } => {
+                let check = if *enabled { "CHECK" } else { "NOCHECK" };
+                match names {
+                    Some(names) => {
+                        write!(f, "{check} CONSTRAINT {}", display_comma_separated(names))
+                    }
+                    None => write!(f, "{check} CONSTRAINT ALL"),
+                }
             }
             AlterTableOperation::ValidateConstraint { name } => {
                 write!(f, "VALIDATE CONSTRAINT {name}")
@@ -5530,6 +5548,12 @@ pub struct AlterTable {
     /// For example: `ALTER TABLE table_name ON CLUSTER cluster_name ADD COLUMN c UInt32`
     /// [ClickHouse](https://clickhouse.com/docs/en/sql-reference/statements/alter/update)
     pub on_cluster: Option<Ident>,
+    /// [MsSql] `WITH CHECK` (`Some(true)`) or `WITH NOCHECK` (`Some(false)`),
+    /// controlling whether existing rows are validated against added or
+    /// re-enabled constraints.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql
+    pub with_check: Option<bool>,
     /// Table type: None for regular tables, Some(AlterTableType) for Iceberg or Dynamic tables
     pub table_type: Option<AlterTableType>,
     /// Token that represents the end of the statement (semicolon or EOF)
@@ -5555,6 +5579,11 @@ impl fmt::Display for AlterTable {
         write!(f, "{} ", self.name)?;
         if let Some(cluster) = &self.on_cluster {
             write!(f, "ON CLUSTER {cluster} ")?;
+        }
+        match self.with_check {
+            Some(true) => write!(f, "WITH CHECK ")?,
+            Some(false) => write!(f, "WITH NOCHECK ")?,
+            None => {}
         }
         write!(f, "{}", display_comma_separated(&self.operations))?;
         if let Some(loc) = &self.location {
