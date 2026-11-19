@@ -9458,6 +9458,8 @@ fn parse_exists_subquery() {
         Expr::Exists {
             negated: false,
             subquery: Box::new(expected_inner.clone()),
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         select.selection.unwrap(),
     );
@@ -9468,6 +9470,8 @@ fn parse_exists_subquery() {
         Expr::Exists {
             negated: true,
             subquery: Box::new(expected_inner),
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         select.selection.unwrap(),
     );

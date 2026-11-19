@@ -3155,14 +3155,19 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a SQL EXISTS expression e.g. `WHERE EXISTS(SELECT ...)`.
+    ///
+    /// The `EXISTS` keyword must be the token just consumed.
     pub fn parse_exists_expr(&mut self, negated: bool) -> Result<Expr, ParserError> {
+        let start_token = self.last_consumed_token();
         self.expect_token(&Token::LParen)?;
-        let exists_node = Expr::Exists {
+        let subquery = self.parse_query()?;
+        let end_token = self.expect_token(&Token::RParen)?.into();
+        Ok(Expr::Exists {
             negated,
-            subquery: self.parse_query()?,
-        };
-        self.expect_token(&Token::RParen)?;
-        Ok(exists_node)
+            subquery,
+            start_token,
+            end_token,
+        })
     }
 
     /// Parse a SQL `EXTRACT` expression e.g. `EXTRACT(YEAR FROM date)`.
@@ -3538,9 +3543,14 @@ impl<'a> Parser<'a> {
         match &self.peek_token_ref().token {
             Token::Word(w) => match w.keyword {
                 Keyword::EXISTS => {
+                    let not_token = self.last_consumed_token();
                     let negated = true;
                     let _ = self.parse_keyword(Keyword::EXISTS);
-                    self.parse_exists_expr(negated)
+                    let mut expr = self.parse_exists_expr(negated)?;
+                    if let Expr::Exists { start_token, .. } = &mut expr {
+                        *start_token = not_token;
+                    }
+                    Ok(expr)
                 }
                 _ => Ok(Expr::UnaryOp {
                     op: UnaryOperator::Not,

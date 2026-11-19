@@ -1359,6 +1359,10 @@ pub enum Expr {
         subquery: Box<Query>,
         /// Whether the `EXISTS` is negated (`NOT EXISTS`).
         negated: bool,
+        /// The first token: `EXISTS`, or `NOT` in `NOT EXISTS`.
+        start_token: AttachedToken,
+        /// The closing `)`.
+        end_token: AttachedToken,
     },
     /// A parenthesized subquery `(SELECT ...)`, used in expression like
     /// `SELECT (subquery) AS x` or `WHERE (subquery) = x`, with its parentheses
@@ -2223,7 +2227,9 @@ impl fmt::Display for Expr {
                 SpaceOrNewline.fmt(f)?;
                 f.write_str("END")
             }
-            Expr::Exists { subquery, negated } => write!(
+            Expr::Exists {
+                subquery, negated, ..
+            } => write!(
                 f,
                 "{}EXISTS ({})",
                 if *negated { "NOT " } else { "" },

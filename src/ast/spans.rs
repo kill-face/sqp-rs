@@ -2149,7 +2149,12 @@ impl Spanned for Expr {
                     )
                     .chain(iter::once(end_token.0.span)),
             ),
-            Expr::Exists { subquery, .. } => subquery.span(),
+            Expr::Exists {
+                subquery,
+                start_token,
+                end_token,
+                ..
+            } => union_spans([start_token.0.span, subquery.span(), end_token.0.span].into_iter()),
             Expr::Subquery(parens) => parens.span().union(&parens.content.span()),
             Expr::Struct { .. } => Span::empty(),
             Expr::Named { .. } => Span::empty(),
@@ -4703,6 +4708,23 @@ SETTINGS update_parallel_mode = 'auto'"#;
             panic!("expected ORDER BY expressions, got {order_by:?}");
         };
         assert_eq!(spanned_text(sql, exprs[0].span()), "h DESC");
+    }
+
+    #[test]
+    fn test_exists_spans() {
+        let sql = "SELECT * FROM t WHERE EXISTS (SELECT 1 FROM u) AND NOT EXISTS (SELECT 2)";
+        let stmts = mssql_statements(sql);
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        let Some(Expr::BinaryOp { left, right, .. }) = &select.selection else {
+            panic!("expected AND, got {:?}", select.selection);
+        };
+        assert_eq!(spanned_text(sql, left.span()), "EXISTS (SELECT 1 FROM u)");
+        assert_eq!(spanned_text(sql, right.span()), "NOT EXISTS (SELECT 2)");
     }
 
     #[test]
