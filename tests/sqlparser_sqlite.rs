@@ -232,14 +232,19 @@ fn parse_create_table_auto_increment() {
                                 index_options: vec![],
                                 characteristics: None,
                             }),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         },
                         ColumnOptionDef {
                             name: None,
                             option: ColumnOption::DialectSpecific(vec![Token::make_keyword(
                                 "AUTOINCREMENT"
                             )]),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         },
                     ],
+                    data_type_end_token: AttachedToken::empty(),
                 }],
                 columns
             );
@@ -266,12 +271,17 @@ fn parse_create_table_primary_key_asc_desc() {
                     index_options: vec![],
                     characteristics: None,
                 }),
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             },
             ColumnOptionDef {
                 name: None,
                 option: ColumnOption::DialectSpecific(vec![Token::make_keyword(kind)]),
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             },
         ],
+        data_type_end_token: AttachedToken::empty(),
     };
 
     let sql = "CREATE TABLE foo (bar INT PRIMARY KEY ASC)";
@@ -302,11 +312,13 @@ fn parse_create_sqlite_quote() {
                         name: Ident::with_quote('"', "KEY"),
                         data_type: DataType::Int(None),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::with_quote('[', "INDEX"),
                         data_type: DataType::Int(None),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ],
                 columns
@@ -348,6 +360,8 @@ fn parse_create_table_on_conflict_col() {
                     vec![ColumnOptionDef {
                         name: None,
                         option: ColumnOption::OnConflict(keyword),
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }],
                     columns[1].options
                 );

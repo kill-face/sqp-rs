@@ -466,7 +466,8 @@ fn parse_create_table_with_unquoted_hyphen() {
                 vec![ColumnDef {
                     name: Ident::new("x"),
                     data_type: DataType::Int64,
-                    options: vec![]
+                    options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 },],
                 columns
             );
@@ -507,6 +508,8 @@ fn parse_create_table_with_options() {
                             ColumnOptionDef {
                                 name: None,
                                 option: ColumnOption::NotNull,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
@@ -517,9 +520,12 @@ fn parse_create_table_with_options() {
                                             Span::new(Location::new(1, 42), Location::new(1, 52))
                                         )
                                     ),
-                                },])
+                                },]),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
-                        ]
+                        ],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("y"),
@@ -533,8 +539,11 @@ fn parse_create_table_with_options() {
                                         Span::new(Location::new(1, 42), Location::new(1, 52))
                                     )
                                 ),
-                            },])
-                        }]
+                            },]),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
+                        }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ],
                 columns
@@ -630,6 +639,7 @@ fn parse_nested_data_types() {
                             StructBracketKind::AngleBrackets
                         ),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("y"),
@@ -644,6 +654,7 @@ fn parse_nested_data_types() {
                             ),
                         ))),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ]
             );

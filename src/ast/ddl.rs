@@ -1773,6 +1773,10 @@ pub struct ColumnDef {
     pub data_type: DataType,
     /// Column options (defaults, constraints, generated, etc.).
     pub options: Vec<ColumnOptionDef>,
+    /// The last token of `data_type`, so that the column's span covers the
+    /// type ([DataType] has no span of its own). Empty when the type is
+    /// [DataType::Unspecified].
+    pub data_type_end_token: AttachedToken,
 }
 
 impl fmt::Display for ColumnDef {
@@ -1882,6 +1886,11 @@ pub struct ColumnOptionDef {
     pub name: Option<Ident>,
     /// The actual column option (e.g. `NOT NULL`, `DEFAULT`, `GENERATED`, ...).
     pub option: ColumnOption,
+    /// The option's first token: `CONSTRAINT` when named, otherwise the
+    /// option's first keyword.
+    pub start_token: AttachedToken,
+    /// The option's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for ColumnOptionDef {

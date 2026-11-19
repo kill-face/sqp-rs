@@ -544,6 +544,7 @@ fn column_def(name: Ident, data_type: DataType) -> ColumnDef {
         name,
         data_type,
         options: vec![],
+        data_type_end_token: AttachedToken::empty(),
     }
 }
 
@@ -633,8 +634,11 @@ fn parse_create_table_with_nullable() {
                         data_type: DataType::Date32,
                         options: vec![ColumnOptionDef {
                             name: None,
-                            option: ColumnOption::Null
+                            option: ColumnOption::Null,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     }
                 ]
             );
@@ -675,6 +679,7 @@ fn parse_create_table_with_nested_data_types() {
                             )
                         ]),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("k"),
@@ -693,6 +698,7 @@ fn parse_create_table_with_nested_data_types() {
                             ])
                         ))),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("l"),
@@ -711,6 +717,7 @@ fn parse_create_table_with_nested_data_types() {
                             },
                         ]),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("m"),
@@ -720,6 +727,7 @@ fn parse_create_table_with_nested_data_types() {
                             MapBracketKind::Parentheses
                         ),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ]
             );
@@ -761,11 +769,13 @@ fn parse_create_table_with_primary_key() {
                         name: Ident::with_quote('`', "i"),
                         data_type: DataType::Int(None),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::with_quote('`', "k"),
                         data_type: DataType::Int(None),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ],
                 columns
@@ -859,8 +869,11 @@ fn parse_create_table_with_variant_default_expressions() {
                                 over: None,
                                 within_group: vec![],
                                 closing_paren_token: AttachedToken::empty(),
-                            }))
+                            })),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("b"),
@@ -881,16 +894,22 @@ fn parse_create_table_with_variant_default_expressions() {
                                 over: None,
                                 within_group: vec![],
                                 closing_paren_token: AttachedToken::empty(),
-                            })))
+                            }))),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("c"),
                         data_type: DataType::Datetime(None),
                         options: vec![ColumnOptionDef {
                             name: None,
-                            option: ColumnOption::Ephemeral(None)
+                            option: ColumnOption::Ephemeral(None),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("d"),
@@ -913,8 +932,11 @@ fn parse_create_table_with_variant_default_expressions() {
                                 over: None,
                                 within_group: vec![],
                                 closing_paren_token: AttachedToken::empty(),
-                            }))
+                            })),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     }
                 ]
             )

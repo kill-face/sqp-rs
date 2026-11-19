@@ -397,8 +397,11 @@ fn test_snowflake_create_table_column_comment() {
                     data_type: DataType::String(None),
                     options: vec![ColumnOptionDef {
                         name: None,
-                        option: ColumnOption::Comment("some comment".to_string())
+                        option: ColumnOption::Comment("some comment".to_string()),
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }],
+                    data_type_end_token: AttachedToken::empty(),
                 }],
                 columns
             )
@@ -651,8 +654,11 @@ fn test_snowflake_create_table_with_autoincrement_columns() {
                                     parameters: None,
                                     order: Some(IdentityPropertyOrder::Order),
                                 }
-                            ))
-                        }]
+                            )),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
+                        }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "b".into(),
@@ -669,8 +675,11 @@ fn test_snowflake_create_table_with_autoincrement_columns() {
                                     )),
                                     order: Some(IdentityPropertyOrder::NoOrder),
                                 }
-                            ))
-                        }]
+                            )),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
+                        }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "c".into(),
@@ -682,8 +691,11 @@ fn test_snowflake_create_table_with_autoincrement_columns() {
                                     parameters: None,
                                     order: None,
                                 }
-                            ))
-                        }]
+                            )),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
+                        }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "d".into(),
@@ -706,8 +718,11 @@ fn test_snowflake_create_table_with_autoincrement_columns() {
                                     ),
                                     order: Some(IdentityPropertyOrder::Order),
                                 }
-                            ))
-                        }]
+                            )),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
+                        }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ]
             );
@@ -730,7 +745,10 @@ fn test_snowflake_create_table_with_collated_column() {
                         option: ColumnOption::Collation(ObjectName::from(vec![Ident::with_quote(
                             '\'', "de_DE"
                         )])),
-                    }]
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
+                    }],
+                    data_type_end_token: AttachedToken::empty(),
                 },]
             );
         }
@@ -777,8 +795,11 @@ fn test_snowflake_create_table_with_columns_masking_policy() {
                                     policy_name: ObjectName::from(vec![Ident::new("p")]),
                                     using_columns,
                                 }
-                            ))
+                            )),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },]
                 );
             }
@@ -811,8 +832,11 @@ fn test_snowflake_create_table_with_columns_projection_policy() {
                                     policy_name: ObjectName::from(vec![Ident::new("p")]),
                                     using_columns: None,
                                 }
-                            ))
+                            )),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },]
                 );
             }
@@ -855,7 +879,10 @@ fn test_snowflake_create_table_with_columns_tags() {
                                     ),
                                 ]
                             }),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },]
                 );
             }
@@ -889,6 +916,8 @@ fn test_snowflake_create_table_with_several_column_options() {
                                         order: None
                                     }
                                 )),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
@@ -899,6 +928,8 @@ fn test_snowflake_create_table_with_several_column_options() {
                                         using_columns: Some(vec!["a".into(), "b".into()]),
                                     }
                                 )),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
@@ -915,8 +946,11 @@ fn test_snowflake_create_table_with_several_column_options() {
                                         ),
                                     ]
                                 }),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }
                         ],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "b".into(),
@@ -927,6 +961,8 @@ fn test_snowflake_create_table_with_several_column_options() {
                                 option: ColumnOption::Collation(ObjectName::from(vec![
                                     Ident::with_quote('\'', "de_DE")
                                 ])),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
@@ -937,6 +973,8 @@ fn test_snowflake_create_table_with_several_column_options() {
                                         using_columns: None,
                                     }
                                 )),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
@@ -953,8 +991,11 @@ fn test_snowflake_create_table_with_several_column_options() {
                                         ),
                                     ]
                                 }),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }
                         ],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ]
             );

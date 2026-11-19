@@ -900,19 +900,34 @@ impl Spanned for ColumnDef {
     fn span(&self) -> Span {
         let ColumnDef {
             name,
-            data_type: _, // enum
+            data_type: _, // enum, no span, see data_type_end_token
             options,
+            data_type_end_token,
         } = self;
 
-        union_spans(core::iter::once(name.span).chain(options.iter().map(|i| i.span())))
+        union_spans(
+            core::iter::once(name.span)
+                .chain(iter::once(data_type_end_token.0.span))
+                .chain(options.iter().map(|i| i.span())),
+        )
     }
 }
 
 impl Spanned for ColumnOptionDef {
     fn span(&self) -> Span {
-        let ColumnOptionDef { name, option } = self;
+        let ColumnOptionDef {
+            name,
+            option,
+            start_token,
+            end_token,
+        } = self;
 
-        option.span().union_opt(&name.as_ref().map(|i| i.span))
+        union_spans(
+            iter::once(start_token.0.span)
+                .chain(name.as_ref().map(|i| i.span))
+                .chain(iter::once(option.span()))
+                .chain(iter::once(end_token.0.span)),
+        )
     }
 }
 
@@ -4268,6 +4283,62 @@ SETTINGS update_parallel_mode = 'auto'"#;
 
         let sql = "CREATE TRIGGER dbo.trg ON dbo.t AFTER INSERT, UPDATE AS\nBEGIN\n    SET NOCOUNT ON\nEND";
         assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);
+    }
+
+    #[test]
+    fn test_column_def_spans() {
+        let sql = "CREATE TABLE t (\n\
+                   \x20   a INT,\n\
+                   \x20   b DECIMAL(18, 2) NOT NULL,\n\
+                   \x20   c NVARCHAR(MAX) NULL CONSTRAINT df_c DEFAULT N'x',\n\
+                   \x20   d INT IDENTITY(1, 1) PRIMARY KEY CLUSTERED,\n\
+                   \x20   e INT CONSTRAINT fk_e REFERENCES u (id) ON DELETE CASCADE UNIQUE,\n\
+                   \x20   f AS (a + 1) PERSISTED\n\
+                   )";
+        let stmts = mssql_statements(sql);
+        let Statement::CreateTable(create_table) = &stmts[0] else {
+            panic!("expected CREATE TABLE, got {stmts:?}");
+        };
+        let columns: Vec<_> = create_table
+            .columns
+            .iter()
+            .map(|c| spanned_text(sql, c.span()))
+            .collect();
+        assert_eq!(
+            columns,
+            [
+                "a INT",
+                "b DECIMAL(18, 2) NOT NULL",
+                "c NVARCHAR(MAX) NULL CONSTRAINT df_c DEFAULT N'x'",
+                "d INT IDENTITY(1, 1) PRIMARY KEY CLUSTERED",
+                "e INT CONSTRAINT fk_e REFERENCES u (id) ON DELETE CASCADE UNIQUE",
+                "f AS (a + 1) PERSISTED",
+            ]
+        );
+        let options: Vec<Vec<_>> = create_table
+            .columns
+            .iter()
+            .map(|c| {
+                c.options
+                    .iter()
+                    .map(|o| spanned_text(sql, o.span()))
+                    .collect()
+            })
+            .collect();
+        assert_eq!(
+            options,
+            [
+                vec![],
+                vec!["NOT NULL"],
+                vec!["NULL", "CONSTRAINT df_c DEFAULT N'x'"],
+                vec!["IDENTITY(1, 1)", "PRIMARY KEY CLUSTERED"],
+                vec![
+                    "CONSTRAINT fk_e REFERENCES u (id) ON DELETE CASCADE",
+                    "UNIQUE"
+                ],
+                vec!["AS (a + 1) PERSISTED"],
+            ]
+        );
     }
 
     #[test]

@@ -4452,7 +4452,10 @@ fn parse_create_table() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::NotNull,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "lat".into(),
@@ -4460,12 +4463,16 @@ fn parse_create_table() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::Null,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "lng".into(),
                         data_type: DataType::Double(ExactNumberInfo::None),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "constrained".into(),
@@ -4474,6 +4481,8 @@ fn parse_create_table() {
                             ColumnOptionDef {
                                 name: None,
                                 option: ColumnOption::Null,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: Some("pkey".into()),
@@ -4487,10 +4496,14 @@ fn parse_create_table() {
                                     index_options: vec![],
                                     characteristics: None,
                                 }),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
                                 option: ColumnOption::NotNull,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
@@ -4506,6 +4519,8 @@ fn parse_create_table() {
                                     characteristics: None,
                                     nulls_distinct: NullsDistinctOption::None,
                                 }),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
@@ -4515,8 +4530,11 @@ fn parse_create_table() {
                                     no_inherit: false,
                                     enforced: None,
                                 }),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                         ],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "ref".into(),
@@ -4534,7 +4552,10 @@ fn parse_create_table() {
                                 match_kind: None,
                                 characteristics: None,
                             }),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "ref2".into(),
@@ -4552,7 +4573,10 @@ fn parse_create_table() {
                                 match_kind: None,
                                 characteristics: None,
                             }),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         },],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ]
             );
@@ -4674,7 +4698,10 @@ fn parse_create_table_with_constraint_characteristics() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::NotNull,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "lat".into(),
@@ -4682,12 +4709,16 @@ fn parse_create_table_with_constraint_characteristics() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::Null,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "lng".into(),
                         data_type: DataType::Double(ExactNumberInfo::None),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ]
             );
@@ -4846,8 +4877,11 @@ fn parse_create_table_column_constraint_characteristics() {
                                 index_options: vec![],
                                 characteristics: expected_value,
                                 nulls_distinct: NullsDistinctOption::None,
-                            })
-                        }]
+                            }),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
+                        }],
+                        data_type_end_token: AttachedToken::empty(),
                     }],
                     "{message}"
                 )
@@ -4956,11 +4990,13 @@ fn parse_create_table_hive_array() {
                             name: Ident::new("name"),
                             data_type: DataType::Int(None),
                             options: vec![],
+                            data_type_end_token: AttachedToken::empty(),
                         },
                         ColumnDef {
                             name: Ident::new("val"),
                             data_type: DataType::Array(expected),
                             options: vec![],
+                            data_type_end_token: AttachedToken::empty(),
                         },
                     ],
                 )
@@ -5347,7 +5383,10 @@ fn parse_create_external_table() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::NotNull,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "lat".into(),
@@ -5355,12 +5394,16 @@ fn parse_create_external_table() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::Null,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "lng".into(),
                         data_type: DataType::Double(ExactNumberInfo::None),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ]
             );
@@ -5415,7 +5458,10 @@ fn parse_create_or_replace_external_table() {
                     options: vec![ColumnOptionDef {
                         name: None,
                         option: ColumnOption::NotNull,
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
                     }],
+                    data_type_end_token: AttachedToken::empty(),
                 },]
             );
             assert!(constraints.is_empty());
@@ -14154,7 +14200,10 @@ fn test_parse_inline_comment() {
                     options: vec![ColumnOptionDef {
                         name: None,
                         option: Comment("comment without equal".to_string()),
-                    }]
+                        start_token: AttachedToken::empty(),
+                        end_token: AttachedToken::empty(),
+                    }],
+                    data_type_end_token: AttachedToken::empty(),
                 }]
             );
             assert_eq!(
@@ -17633,6 +17682,7 @@ fn parse_create_table_with_enum_types() {
                             Some(8)
                         ),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("bar"),
@@ -17654,6 +17704,7 @@ fn parse_create_table_with_enum_types() {
                             Some(16)
                         ),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident::new("baz"),
@@ -17665,6 +17716,7 @@ fn parse_create_table_with_enum_types() {
                             None
                         ),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     }
                 ],
                 columns
@@ -20340,6 +20392,7 @@ fn test_parse_default_with_collate_column_option() {
         if let ColumnOptionDef {
             name: None,
             option: ColumnOption::Collation(collate),
+            ..
         } = collate_option
         {
             assert_eq!(collate.to_string(), "'en_US'");
@@ -20350,6 +20403,7 @@ fn test_parse_default_with_collate_column_option() {
         if let ColumnOptionDef {
             name: None,
             option: ColumnOption::Default(Expr::Value(value)),
+            ..
         } = default_option
         {
             assert_eq!(value.to_string(), "'foo'");
@@ -20721,15 +20775,19 @@ fn parse_invisible_column() {
                     ColumnDef {
                         name: "foo".into(),
                         data_type: DataType::Int(None),
-                        options: vec![]
+                        options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "bar".into(),
                         data_type: DataType::Int(None),
                         options: vec![ColumnOptionDef {
                             name: None,
-                            option: ColumnOption::Invisible
-                        }]
+                            option: ColumnOption::Invisible,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
+                        }],
+                        data_type_end_token: AttachedToken::empty(),
                     }
                 ]
             );
@@ -20751,8 +20809,11 @@ fn parse_invisible_column() {
                         data_type: DataType::Int(None),
                         options: vec![ColumnOptionDef {
                             name: None,
-                            option: ColumnOption::Invisible
-                        }]
+                            option: ColumnOption::Invisible,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
+                        }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     column_position: None
                 }]

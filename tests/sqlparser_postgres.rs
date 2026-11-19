@@ -370,8 +370,11 @@ fn parse_create_table_with_defaults() {
                             name: None,
                             option: ColumnOption::Default(
                                 pg().verified_expr("nextval(public.customer_customer_id_seq)")
-                            )
+                            ),
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "store_id".into(),
@@ -379,7 +382,10 @@ fn parse_create_table_with_defaults() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::NotNull,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "first_name".into(),
@@ -392,7 +398,10 @@ fn parse_create_table_with_defaults() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::NotNull,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "last_name".into(),
@@ -408,12 +417,17 @@ fn parse_create_table_with_defaults() {
                                 option: ColumnOption::Collation(ObjectName::from(vec![
                                     Ident::with_quote('"', "es_ES")
                                 ])),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
                                 option: ColumnOption::NotNull,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }
                         ],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "email".into(),
@@ -424,14 +438,18 @@ fn parse_create_table_with_defaults() {
                             }
                         )),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "address_id".into(),
                         data_type: DataType::SmallInt(None),
                         options: vec![ColumnOptionDef {
                             name: None,
-                            option: ColumnOption::NotNull
+                            option: ColumnOption::NotNull,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "activebool".into(),
@@ -442,12 +460,17 @@ fn parse_create_table_with_defaults() {
                                 option: ColumnOption::Default(Expr::Value(
                                     (Value::Boolean(true)).with_empty_span()
                                 )),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
                                 option: ColumnOption::NotNull,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }
                         ],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "create_date".into(),
@@ -455,13 +478,18 @@ fn parse_create_table_with_defaults() {
                         options: vec![
                             ColumnOptionDef {
                                 name: None,
-                                option: ColumnOption::Default(pg().verified_expr("now()::TEXT"))
+                                option: ColumnOption::Default(pg().verified_expr("now()::TEXT")),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
                                 option: ColumnOption::NotNull,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }
                         ],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "last_update".into(),
@@ -470,20 +498,28 @@ fn parse_create_table_with_defaults() {
                             ColumnOptionDef {
                                 name: None,
                                 option: ColumnOption::Default(pg().verified_expr("now()")),
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             },
                             ColumnOptionDef {
                                 name: None,
                                 option: ColumnOption::NotNull,
+                                start_token: AttachedToken::empty(),
+                                end_token: AttachedToken::empty(),
                             }
                         ],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "active".into(),
                         data_type: DataType::Int(None),
                         options: vec![ColumnOptionDef {
                             name: None,
-                            option: ColumnOption::NotNull
+                            option: ColumnOption::NotNull,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         }],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ]
             );
@@ -1327,6 +1363,7 @@ fn parse_alter_table_add_columns() {
                             name: "a".into(),
                             data_type: DataType::Text,
                             options: vec![],
+                            data_type_end_token: AttachedToken::empty(),
                         },
                         column_position: None,
                     },
@@ -1337,6 +1374,7 @@ fn parse_alter_table_add_columns() {
                             name: "b".into(),
                             data_type: DataType::Int(None),
                             options: vec![],
+                            data_type_end_token: AttachedToken::empty(),
                         },
                         column_position: None,
                     },
@@ -6652,32 +6690,38 @@ fn parse_create_table_with_alias() {
                     ColumnDef {
                         name: "int8_col".into(),
                         data_type: DataType::Int8(None),
-                        options: vec![]
+                        options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "int4_col".into(),
                         data_type: DataType::Int4(None),
-                        options: vec![]
+                        options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "int2_col".into(),
                         data_type: DataType::Int2(None),
-                        options: vec![]
+                        options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "float8_col".into(),
                         data_type: DataType::Float8,
-                        options: vec![]
+                        options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "float4_col".into(),
                         data_type: DataType::Float4,
-                        options: vec![]
+                        options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "bool_col".into(),
                         data_type: DataType::Bool,
-                        options: vec![]
+                        options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ]
             );
@@ -6698,12 +6742,14 @@ fn parse_create_table_with_partition_by() {
                     ColumnDef {
                         name: "a".into(),
                         data_type: DataType::Int(None),
-                        options: vec![]
+                        options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "b".into(),
                         data_type: DataType::Text,
-                        options: vec![]
+                        options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     }
                 ],
                 create_table.columns
@@ -7764,21 +7810,25 @@ fn parse_trigger_related_functions() {
                     name: "empname".into(),
                     data_type: DataType::Text,
                     options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 },
                 ColumnDef {
                     name: "salary".into(),
                     data_type: DataType::Integer(None),
                     options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 },
                 ColumnDef {
                     name: "last_date".into(),
                     data_type: DataType::Timestamp(None, TimezoneInfo::None),
                     options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 },
                 ColumnDef {
                     name: "last_user".into(),
                     data_type: DataType::Text,
                     options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 },
             ],
             constraints: vec![],
@@ -8145,11 +8195,13 @@ fn parse_varbit_datatype() {
                         name: "x".into(),
                         data_type: DataType::VarBit(None),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: "y".into(),
                         data_type: DataType::VarBit(Some(42)),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     }
                 ]
             );
@@ -8219,6 +8271,7 @@ fn parse_ts_datatypes() {
                     name: "x".into(),
                     data_type: DataType::TsVector,
                     options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 }]
             );
         }
@@ -8233,6 +8286,7 @@ fn parse_ts_datatypes() {
                     name: "x".into(),
                     data_type: DataType::TsQuery,
                     options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 }]
             );
         }
@@ -12586,8 +12640,14 @@ fn parse_create_table_partition_of_untyped_columns() {
         name: Ident::new(name),
         data_type: DataType::Unspecified,
         options,
+        data_type_end_token: AttachedToken::empty(),
     };
-    let option = |option| ColumnOptionDef { name: None, option };
+    let option = |option| ColumnOptionDef {
+        name: None,
+        option,
+        start_token: AttachedToken::empty(),
+        end_token: AttachedToken::empty(),
+    };
     let create_table = |sql: &str| match pg_and_generic().verified_stmt(sql) {
         Statement::CreateTable(create_table) => create_table,
         stmt => panic!("unexpected statement: {stmt:?}"),
@@ -12620,6 +12680,8 @@ fn parse_create_table_partition_of_untyped_columns() {
             vec![ColumnOptionDef {
                 name: Some(Ident::new("id_present")),
                 option: ColumnOption::NotNull,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             }]
         )]
     );
@@ -12678,10 +12740,14 @@ fn parse_column_generic_options() {
                     key: Ident::new("column_name"),
                     value: Ident::with_quote('\'', "remote_id"),
                 }]),
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             },
             ColumnOptionDef {
                 name: None,
                 option: ColumnOption::NotNull,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             },
         ]
     );
@@ -13087,7 +13153,10 @@ fn parse_create_foreign_table_partition_of() {
             options: vec![ColumnOptionDef {
                 name: None,
                 option: ColumnOption::NotNull,
+                start_token: AttachedToken::empty(),
+                end_token: AttachedToken::empty(),
             }],
+            data_type_end_token: AttachedToken::empty(),
         }]
     );
     assert_eq!(stmt.constraints.len(), 1);

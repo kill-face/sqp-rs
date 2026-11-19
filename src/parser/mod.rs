@@ -10504,6 +10504,7 @@ impl<'a> Parser<'a> {
                 name,
                 data_type: DataType::Unspecified,
                 options: parser.parse_column_option_defs()?,
+                data_type_end_token: AttachedToken::empty(),
             })
         })
     }
@@ -10606,16 +10607,23 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_data_type()?
         };
+        let data_type_end_token = if data_type == DataType::Unspecified {
+            AttachedToken::empty()
+        } else {
+            self.last_consumed_token()
+        };
         Ok(ColumnDef {
             name: col_name,
             data_type,
             options: self.parse_column_option_defs()?,
+            data_type_end_token,
         })
     }
 
     fn parse_column_option_defs(&mut self) -> Result<Vec<ColumnOptionDef>, ParserError> {
         let mut options = vec![];
         loop {
+            let start_token = self.peek_token_ref().clone();
             if self.parse_keyword(Keyword::CONSTRAINT) {
                 let name = Some(self.parse_identifier()?);
                 let Some(option) = self.parse_optional_column_option()? else {
@@ -10624,9 +10632,19 @@ impl<'a> Parser<'a> {
                         self.peek_token_ref(),
                     );
                 };
-                options.push(ColumnOptionDef { name, option });
+                options.push(ColumnOptionDef {
+                    name,
+                    option,
+                    start_token: start_token.into(),
+                    end_token: self.last_consumed_token(),
+                });
             } else if let Some(option) = self.parse_optional_column_option()? {
-                options.push(ColumnOptionDef { name: None, option });
+                options.push(ColumnOptionDef {
+                    name: None,
+                    option,
+                    start_token: start_token.into(),
+                    end_token: self.last_consumed_token(),
+                });
             } else {
                 break;
             };
@@ -15979,10 +15997,14 @@ impl<'a> Parser<'a> {
             }
             let name = parser.parse_identifier()?;
             let data_type = parser.parse_data_type()?;
+            let data_type_end_token = parser.last_consumed_token();
+            let start_token = parser.peek_token_ref().clone();
             let options = if parser.parse_keywords(&[Keyword::NOT, Keyword::NULL]) {
                 vec![ColumnOptionDef {
                     name: None,
                     option: ColumnOption::NotNull,
+                    start_token: start_token.into(),
+                    end_token: parser.last_consumed_token(),
                 }]
             } else {
                 vec![]
@@ -15991,6 +16013,7 @@ impl<'a> Parser<'a> {
                 name,
                 data_type,
                 options,
+                data_type_end_token,
             })
         })?;
         self.expect_token(&Token::RParen)?;

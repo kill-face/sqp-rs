@@ -447,6 +447,7 @@ fn data_type_timestamp_ntz() {
                     name: "x".into(),
                     data_type: DataType::TimestampNtz(None),
                     options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 }]
             );
         }

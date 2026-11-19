@@ -43,6 +43,7 @@ use crate::parser::ParserError;
 /// # Example
 /// ```rust
 /// use sqlparser::ast::helpers::stmt_create_table::CreateTableBuilder;
+/// use sqlparser::ast::helpers::attached_token::AttachedToken;
 /// use sqlparser::ast::{ColumnDef, DataType, Ident, ObjectName};
 /// let builder = CreateTableBuilder::new(ObjectName::from(vec![Ident::new("table_name")]))
 ///    .if_not_exists(true)
@@ -50,6 +51,7 @@ use crate::parser::ParserError;
 ///        name: Ident::new("c1"),
 ///        data_type: DataType::Int(None),
 ///        options: vec![],
+///        data_type_end_token: AttachedToken::empty(),
 /// }]);
 /// // You can access internal elements with ease
 /// assert!(builder.if_not_exists);

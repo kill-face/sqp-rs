@@ -1949,6 +1949,7 @@ fn parse_create_table_with_valid_options() {
                         },
                         data_type: Int(None,),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident {
@@ -1958,6 +1959,7 @@ fn parse_create_table_with_valid_options() {
                         },
                         data_type: Int(None,),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                     ColumnDef {
                         name: Ident {
@@ -1967,6 +1969,7 @@ fn parse_create_table_with_valid_options() {
                         },
                         data_type: Int(None,),
                         options: vec![],
+                        data_type_end_token: AttachedToken::empty(),
                     },
                 ],
                 constraints: vec![],
@@ -2088,10 +2091,14 @@ fn parse_create_table_with_identity_column() {
                             order: None,
                         },
                     )),
+                    start_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 },
                 ColumnOptionDef {
                     name: None,
                     option: ColumnOption::NotNull,
+                    start_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 },
             ],
         ),
@@ -2111,10 +2118,14 @@ fn parse_create_table_with_identity_column() {
                             order: None,
                         },
                     )),
+                    start_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 },
                 ColumnOptionDef {
                     name: None,
                     option: ColumnOption::NotNull,
+                    start_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 },
             ],
         ),
@@ -2149,6 +2160,7 @@ fn parse_create_table_with_identity_column() {
                     data_type: Int(None,),
 
                     options: column_options,
+                    data_type_end_token: AttachedToken::empty(),
                 },],
                 constraints: vec![],
                 hive_distribution: HiveDistributionStyle::NONE,
@@ -2397,7 +2409,8 @@ fn parse_mssql_varbinary_max_length() {
                     name: Ident::new("var_binary_col"),
                     data_type: Varbinary(Some(BinaryLength::Max)),
 
-                    options: vec![]
+                    options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 },],
             );
         }
@@ -2422,7 +2435,8 @@ fn parse_mssql_varbinary_max_length() {
                     name: Ident::new("var_binary_col"),
                     data_type: Varbinary(Some(BinaryLength::IntegerLength { length: 50 })),
 
-                    options: vec![]
+                    options: vec![],
+                    data_type_end_token: AttachedToken::empty(),
                 },],
             );
         }
