@@ -4520,6 +4520,11 @@ pub enum Statement {
         exception: Option<Vec<ExceptionWhen>>,
         /// TRUE if the statement has an `END` keyword.
         has_end_keyword: bool,
+        /// The `BEGIN` or `START` keyword.
+        begin_token: AttachedToken,
+        /// The statement's last token: `END` for a block, otherwise the last
+        /// keyword, e.g. `TRANSACTION` in `BEGIN TRANSACTION`.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// COMMENT ON ...
@@ -4553,6 +4558,10 @@ pub enum Statement {
         end: bool,
         /// Optional transaction modifier for commit semantics.
         modifier: Option<TransactionModifier>,
+        /// The `COMMIT` or `END` keyword.
+        commit_token: AttachedToken,
+        /// The statement's last token, e.g. `TRY` in `END TRY`.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// ROLLBACK [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ] [ TO [ SAVEPOINT ] savepoint_name ]
@@ -4562,6 +4571,10 @@ pub enum Statement {
         chain: bool,
         /// Optional savepoint name to roll back to.
         savepoint: Option<Ident>,
+        /// The `ROLLBACK` or `ABORT` keyword.
+        rollback_token: AttachedToken,
+        /// The statement's last token.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// CREATE SCHEMA
@@ -6207,6 +6220,8 @@ impl fmt::Display for Statement {
                 statements,
                 exception,
                 has_end_keyword,
+                begin_token: _,
+                end_token: _,
             } => {
                 if *syntax_begin {
                     if let Some(modifier) = *modifier {
@@ -6242,6 +6257,8 @@ impl fmt::Display for Statement {
                 chain,
                 end: end_syntax,
                 modifier,
+                commit_token: _,
+                end_token: _,
             } => {
                 if *end_syntax {
                     write!(f, "END")?;
@@ -6256,7 +6273,9 @@ impl fmt::Display for Statement {
                 }
                 Ok(())
             }
-            Statement::Rollback { chain, savepoint } => {
+            Statement::Rollback {
+                chain, savepoint, ..
+            } => {
                 write!(f, "ROLLBACK")?;
 
                 if *chain {

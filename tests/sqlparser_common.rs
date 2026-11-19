@@ -10505,6 +10505,7 @@ fn parse_rollback() {
         Statement::Rollback {
             chain: false,
             savepoint: None,
+            ..
         } => (),
         _ => unreachable!(),
     }
@@ -10513,6 +10514,7 @@ fn parse_rollback() {
         Statement::Rollback {
             chain: true,
             savepoint: None,
+            ..
         } => (),
         _ => unreachable!(),
     }
@@ -10521,6 +10523,7 @@ fn parse_rollback() {
         Statement::Rollback {
             chain: false,
             savepoint,
+            ..
         } => {
             assert_eq!(savepoint, Some(Ident::new("test1")));
         }
@@ -10531,6 +10534,7 @@ fn parse_rollback() {
         Statement::Rollback {
             chain: true,
             savepoint,
+            ..
         } => {
             assert_eq!(savepoint, Some(Ident::new("test1")));
         }

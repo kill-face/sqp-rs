@@ -308,10 +308,7 @@ impl Spanned for Values {
 /// - [Statement::ShowColumns]
 /// - [Statement::ShowTables]
 /// - [Statement::ShowCollation]
-/// - [Statement::StartTransaction]
 /// - [Statement::Comment]
-/// - [Statement::Commit]
-/// - [Statement::Rollback]
 /// - [Statement::CreateSchema]
 /// - [Statement::CreateDatabase]
 /// - [Statement::CreateFunction]
@@ -475,10 +472,27 @@ impl Spanned for Statement {
             Statement::ShowCollation { .. } => Span::empty(),
             Statement::ShowCharset { .. } => Span::empty(),
             Statement::Use(u) => u.span(),
-            Statement::StartTransaction { .. } => Span::empty(),
+            Statement::StartTransaction {
+                statements,
+                begin_token,
+                end_token,
+                ..
+            } => union_spans(
+                iter::once(begin_token.0.span)
+                    .chain(statements.iter().map(|s| s.span()))
+                    .chain(iter::once(end_token.0.span)),
+            ),
             Statement::Comment { .. } => Span::empty(),
-            Statement::Commit { .. } => Span::empty(),
-            Statement::Rollback { .. } => Span::empty(),
+            Statement::Commit {
+                commit_token,
+                end_token,
+                ..
+            } => commit_token.0.span.union(&end_token.0.span),
+            Statement::Rollback {
+                rollback_token,
+                end_token,
+                ..
+            } => rollback_token.0.span.union(&end_token.0.span),
             Statement::CreateSchema { .. } => Span::empty(),
             Statement::CreateDatabase { .. } => Span::empty(),
             Statement::CreateFunction { .. } => Span::empty(),
@@ -3737,5 +3751,88 @@ SETTINGS update_parallel_mode = 'auto'"#;
             let constraint = test.0.parse_optional_table_constraint().unwrap().unwrap();
             assert_eq!(test.get_source(constraint.span()), expected, "{sql}");
         }
+    }
+
+    /// The source text that `span` covers; works across lines.
+    fn spanned_text(sql: &str, span: Span) -> &str {
+        let offset = |loc: Location| {
+            let line_start: usize = sql
+                .split_inclusive('\n')
+                .take(loc.line as usize - 1)
+                .map(str::len)
+                .sum();
+            line_start
+                + sql[line_start..]
+                    .chars()
+                    .take(loc.column as usize - 1)
+                    .map(char::len_utf8)
+                    .sum::<usize>()
+        };
+        &sql[offset(span.start)..offset(span.end)]
+    }
+
+    /// Parse T-SQL with optional semicolons, as SQL Server accepts it.
+    fn mssql_statements(sql: &str) -> Vec<Statement> {
+        let options = crate::parser::ParserOptions {
+            require_semicolon_stmt_delimiter: false,
+            ..Default::default()
+        };
+        Parser::new(&crate::dialect::MsSqlDialect {})
+            .with_options(options)
+            .try_with_sql(sql)
+            .unwrap()
+            .parse_statements()
+            .unwrap()
+    }
+
+    /// The source text of each statement's span.
+    fn statement_texts(sql: &str, stmts: &[Statement]) -> Vec<String> {
+        stmts
+            .iter()
+            .map(|s| spanned_text(sql, s.span()).to_string())
+            .collect()
+    }
+
+    #[test]
+    fn test_transaction_statement_spans() {
+        let sql = "BEGIN TRANSACTION; COMMIT TRAN; BEGIN TRAN; ROLLBACK TRANSACTION;\n\
+                   BEGIN TRY SELECT 1; END TRY BEGIN CATCH ROLLBACK END CATCH";
+        assert_eq!(
+            statement_texts(sql, &mssql_statements(sql)),
+            [
+                "BEGIN TRANSACTION",
+                "COMMIT TRAN",
+                "BEGIN TRAN",
+                "ROLLBACK TRANSACTION",
+                "BEGIN TRY",
+                "SELECT 1",
+                "END TRY",
+                "BEGIN CATCH",
+                "ROLLBACK",
+                "END CATCH",
+            ]
+        );
+
+        let sql = "START TRANSACTION ISOLATION LEVEL SERIALIZABLE; COMMIT AND NO CHAIN; ABORT WORK";
+        let stmts = Parser::parse_sql(&GenericDialect, sql).unwrap();
+        assert_eq!(
+            statement_texts(sql, &stmts),
+            [
+                "START TRANSACTION ISOLATION LEVEL SERIALIZABLE",
+                "COMMIT AND NO CHAIN",
+                "ABORT WORK",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_begin_end_block_span() {
+        let sql = "BEGIN\n    SELECT 1;\n    SELECT 2\nEND";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let Statement::StartTransaction { statements, .. } = &stmts[0] else {
+            panic!("expected BEGIN ... END, got {stmts:?}");
+        };
+        assert_eq!(statement_texts(sql, statements), ["SELECT 1", "SELECT 2"]);
     }
 }

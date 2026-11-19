@@ -4945,6 +4945,19 @@ impl<'a> Parser<'a> {
         self.token_at(self.index.saturating_sub(1))
     }
 
+    /// The last non-whitespace token consumed, e.g. to record where a
+    /// statement ends for its span. Unlike [Self::get_current_token], this
+    /// skips any whitespace that [Self::prev_token] leaves behind.
+    pub(crate) fn last_consumed_token(&self) -> AttachedToken {
+        self.tokens[..self.index.min(self.tokens.len())]
+            .iter()
+            .rev()
+            .find(|t| !matches!(t.token, Token::Whitespace(_)))
+            .cloned()
+            .map(AttachedToken)
+            .unwrap_or_else(AttachedToken::empty)
+    }
+
     /// Returns a reference to the previous token
     ///
     /// Does not advance the current token.
@@ -21770,15 +21783,19 @@ impl<'a> Parser<'a> {
 
     /// Parse a 'START TRANSACTION' statement
     pub fn parse_start_transaction(&mut self) -> Result<Statement, ParserError> {
+        let begin_token = self.get_current_token().clone();
         self.expect_keyword_is(Keyword::TRANSACTION)?;
+        let modes = self.parse_transaction_modes()?;
         Ok(Statement::StartTransaction {
-            modes: self.parse_transaction_modes()?,
+            modes,
             begin: false,
             transaction: Some(BeginTransactionKind::Transaction),
             modifier: None,
             statements: vec![],
             exception: None,
             has_end_keyword: false,
+            begin_token: AttachedToken(begin_token),
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -21803,6 +21820,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a 'BEGIN' statement
     pub fn parse_begin(&mut self) -> Result<Statement, ParserError> {
+        let begin_token = self.get_current_token().clone();
         let modifier = self.parse_transaction_modifier();
         let transaction =
             match self.parse_one_of_keywords(&[Keyword::TRANSACTION, Keyword::WORK, Keyword::TRAN])
@@ -21812,19 +21830,25 @@ impl<'a> Parser<'a> {
                 Some(Keyword::TRAN) => Some(BeginTransactionKind::Tran),
                 _ => None,
             };
+        let modes = self.parse_transaction_modes()?;
         Ok(Statement::StartTransaction {
-            modes: self.parse_transaction_modes()?,
+            modes,
             begin: true,
             transaction,
             modifier,
             statements: vec![],
             exception: None,
             has_end_keyword: false,
+            begin_token: AttachedToken(begin_token),
+            end_token: self.last_consumed_token(),
         })
     }
 
     /// Parse a 'BEGIN ... EXCEPTION ... END' block
+    ///
+    /// The `BEGIN` keyword must be the token just consumed.
     pub fn parse_begin_exception_end(&mut self) -> Result<Statement, ParserError> {
+        let begin_token = self.get_current_token().clone();
         let statements = self.parse_statement_list(&[Keyword::EXCEPTION, Keyword::END])?;
 
         let exception = if self.parse_keyword(Keyword::EXCEPTION) {
@@ -21856,7 +21880,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        self.expect_keyword(Keyword::END)?;
+        let end_token = self.expect_keyword(Keyword::END)?;
 
         Ok(Statement::StartTransaction {
             begin: true,
@@ -21866,11 +21890,14 @@ impl<'a> Parser<'a> {
             transaction: None,
             modifier: None,
             modes: Default::default(),
+            begin_token: AttachedToken(begin_token),
+            end_token: AttachedToken(end_token),
         })
     }
 
     /// Parse an 'END' statement
     pub fn parse_end(&mut self) -> Result<Statement, ParserError> {
+        let commit_token = self.get_current_token().clone();
         let modifier = if !self.dialect.supports_end_transaction_modifier() {
             None
         } else if self.parse_keyword(Keyword::TRY) {
@@ -21880,10 +21907,13 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+        let chain = self.parse_commit_rollback_chain()?;
         Ok(Statement::Commit {
-            chain: self.parse_commit_rollback_chain()?,
+            chain,
             end: true,
             modifier,
+            commit_token: AttachedToken(commit_token),
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -21928,19 +21958,29 @@ impl<'a> Parser<'a> {
 
     /// Parse a 'COMMIT' statement
     pub fn parse_commit(&mut self) -> Result<Statement, ParserError> {
+        let commit_token = self.get_current_token().clone();
+        let chain = self.parse_commit_rollback_chain()?;
         Ok(Statement::Commit {
-            chain: self.parse_commit_rollback_chain()?,
+            chain,
             end: false,
             modifier: None,
+            commit_token: AttachedToken(commit_token),
+            end_token: self.last_consumed_token(),
         })
     }
 
     /// Parse a 'ROLLBACK' statement
     pub fn parse_rollback(&mut self) -> Result<Statement, ParserError> {
+        let rollback_token = self.get_current_token().clone();
         let chain = self.parse_commit_rollback_chain()?;
         let savepoint = self.parse_rollback_savepoint()?;
 
-        Ok(Statement::Rollback { chain, savepoint })
+        Ok(Statement::Rollback {
+            chain,
+            savepoint,
+            rollback_token: AttachedToken(rollback_token),
+            end_token: self.last_consumed_token(),
+        })
     }
 
     /// Parse an 'ABORT' statement
@@ -21949,11 +21989,14 @@ impl<'a> Parser<'a> {
     /// ABORT [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]
     /// ```
     pub fn parse_abort(&mut self) -> Result<Statement, ParserError> {
+        let rollback_token = self.get_current_token().clone();
         let chain = self.parse_commit_rollback_chain()?;
 
         Ok(Statement::Rollback {
             chain,
             savepoint: None,
+            rollback_token: AttachedToken(rollback_token),
+            end_token: self.last_consumed_token(),
         })
     }
 

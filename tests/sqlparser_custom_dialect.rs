@@ -18,7 +18,9 @@
 //! Test the ability for dialects to override parsing
 
 use sqlparser::{
-    ast::{BinaryOperator, DataType, Expr, Statement, Value},
+    ast::{
+        helpers::attached_token::AttachedToken, BinaryOperator, DataType, Expr, Statement, Value,
+    },
     dialect::{Dialect, SQLiteDialect},
     keywords::Keyword,
     parser::{Parser, ParserError},
@@ -120,6 +122,8 @@ fn custom_statement_parser() -> Result<(), ParserError> {
                     chain: false,
                     end: false,
                     modifier: None,
+                    commit_token: AttachedToken::empty(),
+                    end_token: AttachedToken::empty(),
                 }))
             } else {
                 None

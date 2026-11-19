@@ -767,7 +767,7 @@ pub(crate) struct CreateTableConfiguration {
 #[cfg(test)]
 mod tests {
     use crate::ast::helpers::stmt_create_table::CreateTableBuilder;
-    use crate::ast::{Ident, ObjectName, Statement};
+    use crate::ast::{AttachedToken, Ident, ObjectName, Statement};
     use crate::parser::ParserError;
 
     #[test]
@@ -786,6 +786,8 @@ mod tests {
             chain: false,
             end: false,
             modifier: None,
+            commit_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         };
 
         assert_eq!(

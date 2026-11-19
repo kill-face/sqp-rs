@@ -367,7 +367,7 @@ impl TryFrom<Statement> for CreateDatabaseBuilder {
 #[cfg(test)]
 mod tests {
     use crate::ast::helpers::stmt_create_database::CreateDatabaseBuilder;
-    use crate::ast::{Ident, ObjectName, Statement};
+    use crate::ast::{AttachedToken, Ident, ObjectName, Statement};
     use crate::parser::ParserError;
 
     #[test]
@@ -385,6 +385,8 @@ mod tests {
             chain: false,
             end: false,
             modifier: None,
+            commit_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         };
 
         assert_eq!(
