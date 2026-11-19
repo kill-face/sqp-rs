@@ -102,6 +102,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/queries/option-clause-transact-sql>
+    fn supports_query_option_hints(&self) -> bool {
+        true
+    }
+
     /// SQL Server accepts a trailing comma after the last column definition.
     fn supports_column_definition_trailing_commas(&self) -> bool {
         true
@@ -247,6 +252,7 @@ impl MsSqlDialect {
                 | Keyword::THROW
                 | Keyword::RAISERROR
                 | Keyword::MERGE
+                | Keyword::OPTION
         )
     }
 

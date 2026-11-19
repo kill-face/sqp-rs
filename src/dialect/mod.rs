@@ -1371,6 +1371,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support query hints in an `OPTION` clause?
+    /// e.g. `SELECT * FROM t OPTION (RECOMPILE)`
+    fn supports_query_option_hints(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///

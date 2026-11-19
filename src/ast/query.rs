@@ -54,6 +54,8 @@ pub struct Query {
     /// `FOR JSON { AUTO | PATH } [ , INCLUDE_NULL_VALUES ]`
     /// (MSSQL-specific)
     pub for_clause: Option<ForClause>,
+    /// MSSQL query hints: `OPTION ( <query_hint> [ , ...n ] )`
+    pub query_hints: Option<QueryHints>,
     /// ClickHouse syntax: `SELECT * FROM t SETTINGS key1 = value1, key2 = value2`
     ///
     /// [ClickHouse](https://clickhouse.com/docs/en/sql-reference/statements/select#settings-in-select-query)
@@ -99,6 +101,10 @@ impl fmt::Display for Query {
             f.write_str(" ")?;
             for_clause.fmt(f)?;
         }
+        if let Some(ref query_hints) = self.query_hints {
+            f.write_str(" ")?;
+            query_hints.fmt(f)?;
+        }
         if let Some(ref format) = self.format_clause {
             f.write_str(" ")?;
             format.fmt(f)?;
@@ -106,6 +112,52 @@ impl fmt::Display for Query {
         for pipe_operator in &self.pipe_operators {
             f.write_str(" |> ")?;
             pipe_operator.fmt(f)?;
+        }
+        Ok(())
+    }
+}
+
+/// [MsSql] query hints: `OPTION ( <query_hint> [ , ...n ] )`
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/queries/option-clause-transact-sql
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct QueryHints {
+    /// The `OPTION` token.
+    pub option_token: AttachedToken,
+    /// The parenthesized hints.
+    pub hints: Parens<Vec<QueryHint>>,
+}
+
+impl fmt::Display for QueryHints {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "OPTION ({})", display_comma_separated(&self.hints))
+    }
+}
+
+/// A single [MsSql] query hint, such as `RECOMPILE`, `MAXDOP 4`,
+/// `MAX_GRANT_PERCENT = 10` or `USE HINT ('name')`.
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-query
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct QueryHint {
+    /// The words naming the hint, e.g. `HASH JOIN`.
+    pub name: Vec<Ident>,
+    /// Whether the value is preceded by `=`.
+    pub eq: bool,
+    /// The hint's value, if any.
+    pub value: Option<Expr>,
+}
+
+impl fmt::Display for QueryHint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", display_separated(&self.name, " "))?;
+        if let Some(value) = &self.value {
+            let eq = if self.eq { " =" } else { "" };
+            write!(f, "{eq} {value}")?;
         }
         Ok(())
     }

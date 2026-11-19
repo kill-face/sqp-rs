@@ -15904,6 +15904,7 @@ impl<'a> Parser<'a> {
                 fetch: None,
                 locks: vec![],
                 for_clause: None,
+                query_hints: None,
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
@@ -15918,6 +15919,7 @@ impl<'a> Parser<'a> {
                 fetch: None,
                 locks: vec![],
                 for_clause: None,
+                query_hints: None,
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
@@ -15932,6 +15934,7 @@ impl<'a> Parser<'a> {
                 fetch: None,
                 locks: vec![],
                 for_clause: None,
+                query_hints: None,
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
@@ -15946,6 +15949,7 @@ impl<'a> Parser<'a> {
                 fetch: None,
                 locks: vec![],
                 for_clause: None,
+                query_hints: None,
                 settings: None,
                 format_clause: None,
                 pipe_operators: vec![],
@@ -15986,6 +15990,14 @@ impl<'a> Parser<'a> {
                 limit_clause = self.parse_optional_limit_clause()?;
             }
 
+            let query_hints = if self.dialect.supports_query_option_hints()
+                && self.peek_keyword(Keyword::OPTION)
+            {
+                Some(self.parse_query_hints()?)
+            } else {
+                None
+            };
+
             let format_clause =
                 if self.dialect.supports_select_format() && self.parse_keyword(Keyword::FORMAT) {
                     if self.parse_keyword(Keyword::NULL) {
@@ -16012,12 +16024,45 @@ impl<'a> Parser<'a> {
                 fetch,
                 locks,
                 for_clause,
+                query_hints,
                 settings,
                 format_clause,
                 pipe_operators,
             }
             .into())
         }
+    }
+
+    /// Parse MsSql query hints: `OPTION ( <query_hint> [ , ...n ] )`
+    fn parse_query_hints(&mut self) -> Result<QueryHints, ParserError> {
+        let option_token = self.expect_keyword(Keyword::OPTION)?;
+        let opening_token = self.expect_token(&Token::LParen)?;
+        let hints = self.parse_comma_separated(Parser::parse_query_hint)?;
+        let closing_token = self.expect_token(&Token::RParen)?;
+        Ok(QueryHints {
+            option_token: AttachedToken(option_token),
+            hints: Parens {
+                opening_token: AttachedToken(opening_token),
+                content: hints,
+                closing_token: AttachedToken(closing_token),
+            },
+        })
+    }
+
+    /// Parse a query hint: one or more words, optionally followed by
+    /// `[=] <value>`.
+    fn parse_query_hint(&mut self) -> Result<QueryHint, ParserError> {
+        let mut name = vec![self.parse_identifier()?];
+        while let Token::Word(_) = self.peek_token_ref().token {
+            name.push(self.parse_identifier()?);
+        }
+        let eq = self.consume_token(&Token::Eq);
+        let value = if eq || !matches!(self.peek_token_ref().token, Token::Comma | Token::RParen) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+        Ok(QueryHint { name, eq, value })
     }
 
     fn parse_pipe_operators(&mut self) -> Result<Vec<PipeOperator>, ParserError> {
@@ -18011,6 +18056,7 @@ impl<'a> Parser<'a> {
                     fetch: None,
                     locks: vec![],
                     for_clause: None,
+                    query_hints: None,
                     settings: None,
                     format_clause: None,
                     pipe_operators: vec![],

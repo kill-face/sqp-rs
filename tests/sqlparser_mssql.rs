@@ -142,6 +142,7 @@ fn parse_create_procedure() {
                     fetch: None,
                     locks: vec![],
                     for_clause: None,
+                    query_hints: None,
                     order_by: None,
                     settings: None,
                     format_clause: None,
@@ -1366,6 +1367,7 @@ fn parse_substring_in_select() {
                     fetch: None,
                     locks: vec![],
                     for_clause: None,
+                    query_hints: None,
                     settings: None,
                     format_clause: None,
                     pipe_operators: vec![],
@@ -1470,6 +1472,7 @@ fn parse_mssql_declare() {
                 fetch: None,
                 locks: vec![],
                 for_clause: None,
+                query_hints: None,
                 order_by: None,
                 settings: None,
                 format_clause: None,
@@ -3227,5 +3230,46 @@ fn parse_mssql_computed_columns() {
 
     TestedDialects::new(vec![Box::new(PostgreSqlDialect {})])
         .parse_sql_statements("CREATE TABLE t (a INT, b AS a + 1)")
+        .unwrap_err();
+}
+
+#[test]
+fn parse_mssql_query_hints() {
+    let sql = "SELECT * FROM t OPTION (RECOMPILE)";
+    let query = ms().verified_query(sql);
+    let hints = query.query_hints.expect("query hints");
+    assert_eq!(
+        hints.hints.content,
+        vec![QueryHint {
+            name: vec![Ident::new("RECOMPILE")],
+            eq: false,
+            value: None,
+        }]
+    );
+
+    ms().verified_stmt(
+        "SELECT a FROM t ORDER BY a OPTION (HASH JOIN, MAXDOP 4, MAX_GRANT_PERCENT = 10, USE HINT ('DISABLE_OPTIMIZER_ROWGOAL'), OPTIMIZE FOR UNKNOWN)",
+    );
+    ms().verified_stmt("INSERT INTO t SELECT a FROM u OPTION (RECOMPILE)");
+    ms().verified_stmt("WITH c AS (SELECT 1 AS a) SELECT a FROM c OPTION (MAXRECURSION 0)");
+
+    let stmts = tsql()
+        .parse_sql_statements("SELECT 1 OPTION (RECOMPILE)\nSELECT 2")
+        .unwrap();
+    assert_eq!(stmts.len(), 2);
+
+    let sql = "SELECT 1 OPTION (RECOMPILE)";
+    let query = Parser::new(&MsSqlDialect {})
+        .try_with_sql(sql)
+        .unwrap()
+        .parse_query()
+        .unwrap();
+    assert_eq!(
+        query.span(),
+        Span::new(Location::new(1, 1), Location::new(1, 28))
+    );
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("SELECT 1 OPTION (RECOMPILE)")
         .unwrap_err();
 }

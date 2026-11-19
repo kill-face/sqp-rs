@@ -45,13 +45,13 @@ use super::{
     NamedParenthesizedList, NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart,
     Offset, OnConflict, OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy,
     OrderByExpr, OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue,
-    PivotValueSource, ProjectionSelect, Query, RaiseStatement, RaiseStatementValue,
-    ReferentialAction, RefreshMaterializedView, RenameSelectItem, ReplaceSelectElement,
-    ReplaceSelectItem, Select, SelectInto, SelectItem, SetExpr, Setting, SqlOption, Statement,
-    Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef, TableConstraint, TableFactor,
-    TableObject, TableOptionsClustered, TableWithJoins, Update, UpdateTableFromKind, Use,
-    UserMappingUser, Values, ViewColumnDef, WhileStatement, WildcardAdditionalOptions, With,
-    WithFill,
+    PivotValueSource, ProjectionSelect, Query, QueryHint, QueryHints, RaiseStatement,
+    RaiseStatementValue, ReferentialAction, RefreshMaterializedView, RenameSelectItem,
+    ReplaceSelectElement, ReplaceSelectItem, Select, SelectInto, SelectItem, SetExpr, Setting,
+    SqlOption, Statement, Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef,
+    TableConstraint, TableFactor, TableObject, TableOptionsClustered, TableWithJoins, Update,
+    UpdateTableFromKind, Use, UserMappingUser, Values, ViewColumnDef, WhileStatement,
+    WildcardAdditionalOptions, With, WithFill,
 };
 
 /// Given an iterator of spans, return the [Span::union] of all spans.
@@ -124,8 +124,9 @@ impl Spanned for Query {
             order_by,
             limit_clause,
             fetch,
-            locks: _,          // todo
-            for_clause: _,     // todo, mssql specific
+            locks: _,      // todo
+            for_clause: _, // todo, mssql specific
+            query_hints,
             settings: _,       // todo, clickhouse specific
             format_clause: _,  // todo, clickhouse specific
             pipe_operators: _, // todo bigquery specific
@@ -137,11 +138,28 @@ impl Spanned for Query {
                 .chain(core::iter::once(body.span()))
                 .chain(order_by.as_ref().map(|i| i.span()))
                 .chain(limit_clause.as_ref().map(|i| i.span()))
-                .chain(fetch.as_ref().map(|i| i.span())),
+                .chain(fetch.as_ref().map(|i| i.span()))
+                .chain(query_hints.as_ref().map(|i| i.span())),
         )
     }
 }
 
+impl Spanned for QueryHints {
+    fn span(&self) -> Span {
+        self.option_token.0.span.union(&self.hints.span())
+    }
+}
+
+impl Spanned for QueryHint {
+    fn span(&self) -> Span {
+        union_spans(
+            self.name
+                .iter()
+                .map(|i| i.span)
+                .chain(self.value.iter().map(|v| v.span())),
+        )
+    }
+}
 impl Spanned for LimitClause {
     fn span(&self) -> Span {
         match self {
