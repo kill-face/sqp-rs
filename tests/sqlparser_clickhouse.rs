@@ -343,6 +343,7 @@ fn parse_alter_table_add_projection() {
                                     nulls_first: None,
                                 },
                                 with_fill: None,
+                                end_token: AttachedToken::empty(),
                             }]),
                             interpolate: None,
                         }),
@@ -1211,6 +1212,7 @@ fn parse_select_order_by_with_fill_interpolate() {
                         to: Some(Expr::value(number("20"))),
                         step: Some(Expr::value(number("2"))),
                     }),
+                    end_token: AttachedToken::empty(),
                 },
                 OrderByExpr {
                     expr: Expr::Identifier(Ident::new("lname")),
@@ -1223,6 +1225,7 @@ fn parse_select_order_by_with_fill_interpolate() {
                         to: Some(Expr::value(number("40"))),
                         step: Some(Expr::value(number("3"))),
                     }),
+                    end_token: AttachedToken::empty(),
                 },
             ]),
             interpolate: Some(Interpolate {
@@ -2115,6 +2118,7 @@ fn parse_global_in() {
             ]),
             negated: false,
             global: true,
+            end_token: AttachedToken::empty(),
         }
     );
 
@@ -2127,6 +2131,7 @@ fn parse_global_in() {
             target: InTarget::Subquery(Box::new(clickhouse().verified_query("SELECT y FROM t2"))),
             negated: true,
             global: true,
+            end_token: AttachedToken::empty(),
         }
     );
 

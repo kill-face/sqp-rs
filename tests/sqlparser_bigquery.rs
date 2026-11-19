@@ -2493,6 +2493,8 @@ fn test_bigquery_trim() {
             trim_characters: Some(vec![Expr::Value(
                 Value::SingleQuotedString("a".to_owned()).with_empty_span()
             )]),
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -2801,6 +2803,7 @@ fn test_export_data() {
                             nulls_first: None,
                         },
                         with_fill: None,
+                        end_token: AttachedToken::empty(),
                     },]),
                     interpolate: None,
                 }),
@@ -2909,6 +2912,7 @@ fn test_export_data() {
                             nulls_first: None,
                         },
                         with_fill: None,
+                        end_token: AttachedToken::empty(),
                     },]),
                     interpolate: None,
                 }),

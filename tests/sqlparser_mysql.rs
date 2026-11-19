@@ -714,6 +714,7 @@ fn table_constraint_unique_primary_ctor(
                     nulls_first: None,
                 },
                 with_fill: None,
+                end_token: AttachedToken::empty(),
             },
             operator_class: None,
         })
@@ -2984,6 +2985,7 @@ fn parse_update_with_order_by() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 }],
                 order_by
             );
@@ -3011,6 +3013,7 @@ fn parse_update_with_order_by_and_limit() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 }],
                 order_by
             );
@@ -3037,6 +3040,7 @@ fn parse_delete_with_order_by() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 }],
                 order_by
             );
@@ -3542,6 +3546,8 @@ fn parse_substring_in_select() {
                             ))),
                             special: true,
                             shorthand: false,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         })],
                         exclude: None,
                         into: None,

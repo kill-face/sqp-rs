@@ -1044,6 +1044,8 @@ pub enum Expr {
         negated: bool,
         /// `true` when the ClickHouse `GLOBAL` modifier is present.
         global: bool,
+        /// The last token, e.g. the `)` that closes the list.
+        end_token: AttachedToken,
     },
     /// `<expr> [ NOT ] BETWEEN <low> AND <high>`
     Between {
@@ -1269,6 +1271,10 @@ pub enum Expr {
         /// true if the expression is represented using the `SUBSTR` shorthand
         /// This flag is used for formatting.
         shorthand: bool,
+        /// The `SUBSTRING` or `SUBSTR` keyword.
+        start_token: AttachedToken,
+        /// The closing `)`.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// TRIM([BOTH | LEADING | TRAILING] [<expr> FROM] <expr>)
@@ -1284,6 +1290,10 @@ pub enum Expr {
         expr: Box<Expr>,
         /// Optional list of characters to trim (dialect-specific).
         trim_characters: Option<Vec<Expr>>,
+        /// The `TRIM` keyword.
+        start_token: AttachedToken,
+        /// The closing `)`.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// OVERLAY(<expr> PLACING <expr> FROM <expr>[ FOR <expr> ]
@@ -1912,6 +1922,7 @@ impl fmt::Display for Expr {
                 target,
                 negated,
                 global,
+                ..
             } => write!(
                 f,
                 "{} {}{}IN {}",
@@ -2263,6 +2274,7 @@ impl fmt::Display for Expr {
                 substring_for,
                 special,
                 shorthand,
+                ..
             } => {
                 f.write_str("SUBSTR")?;
                 if !*shorthand {
@@ -2309,6 +2321,7 @@ impl fmt::Display for Expr {
                 trim_where,
                 trim_what,
                 trim_characters,
+                ..
             } => {
                 write!(f, "TRIM(")?;
                 if let Some(ident) = trim_where {

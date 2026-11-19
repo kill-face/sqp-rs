@@ -1357,6 +1357,8 @@ fn parse_substring_in_select() {
                             ))),
                             special: true,
                             shorthand: false,
+                            start_token: AttachedToken::empty(),
+                            end_token: AttachedToken::empty(),
                         })],
                         exclude: None,
                         into: None,

@@ -2336,6 +2336,7 @@ fn parse_not_precedence() {
                 )]),
                 negated: true,
                 global: false,
+                end_token: AttachedToken::empty(),
             }),
             op_token: AttachedToken::empty(),
         },
@@ -2660,6 +2661,7 @@ fn parse_in_list() {
                 ]),
                 negated,
                 global: false,
+                end_token: AttachedToken::empty(),
             },
             select.selection.unwrap()
         );
@@ -2678,6 +2680,7 @@ fn parse_in_subquery() {
             target: InTarget::Subquery(Box::new(verified_query("SELECT segm FROM bar"))),
             negated: false,
             global: false,
+            end_token: AttachedToken::empty(),
         },
         select.selection.unwrap()
     );
@@ -2695,6 +2698,7 @@ fn parse_in_union() {
             ))),
             negated: false,
             global: false,
+            end_token: AttachedToken::empty(),
         },
         select.selection.unwrap()
     );
@@ -2714,6 +2718,7 @@ fn parse_in_unnest() {
                 target: InTarget::Unnest(Box::new(verified_expr("expr"))),
                 negated,
                 global: false,
+                end_token: AttachedToken::empty(),
             },
             select.selection.unwrap()
         );
@@ -3156,6 +3161,7 @@ fn parse_select_order_by() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 },
                 OrderByExpr {
                     expr: Expr::Identifier(Ident::new("fname")),
@@ -3164,6 +3170,7 @@ fn parse_select_order_by() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 },
                 OrderByExpr {
                     expr: Expr::Identifier(Ident::new("id")),
@@ -3172,6 +3179,7 @@ fn parse_select_order_by() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 },
             ]),
             select.order_by.expect("ORDER BY expected").kind
@@ -3197,6 +3205,7 @@ fn parse_select_order_by_limit() {
                     nulls_first: None,
                 },
                 with_fill: None,
+                end_token: AttachedToken::empty(),
             },
             OrderByExpr {
                 expr: Expr::Identifier(Ident::new("fname")),
@@ -3205,6 +3214,7 @@ fn parse_select_order_by_limit() {
                     nulls_first: None,
                 },
                 with_fill: None,
+                end_token: AttachedToken::empty(),
             },
         ]),
         select.order_by.expect("ORDER BY expected").kind
@@ -3318,6 +3328,7 @@ fn parse_select_order_by_not_support_all() {
                     nulls_first: None,
                 },
                 with_fill: None,
+                end_token: AttachedToken::empty(),
             }]),
         ),
         (
@@ -3329,6 +3340,7 @@ fn parse_select_order_by_not_support_all() {
                     nulls_first: Some(true),
                 },
                 with_fill: None,
+                end_token: AttachedToken::empty(),
             }]),
         ),
         (
@@ -3340,6 +3352,7 @@ fn parse_select_order_by_not_support_all() {
                     nulls_first: Some(false),
                 },
                 with_fill: None,
+                end_token: AttachedToken::empty(),
             }]),
         ),
     ];
@@ -3363,6 +3376,7 @@ fn parse_select_order_by_nulls_order() {
                     nulls_first: Some(true),
                 },
                 with_fill: None,
+                end_token: AttachedToken::empty(),
             },
             OrderByExpr {
                 expr: Expr::Identifier(Ident::new("fname")),
@@ -3371,6 +3385,7 @@ fn parse_select_order_by_nulls_order() {
                     nulls_first: Some(false),
                 },
                 with_fill: None,
+                end_token: AttachedToken::empty(),
             },
         ]),
         select.order_by.expect("ORDER BY expeccted").kind
@@ -3655,6 +3670,7 @@ fn parse_select_qualify() {
                             nulls_first: None,
                         },
                         with_fill: None,
+                        end_token: AttachedToken::empty(),
                     }],
                     window_frame: None,
                     opening_paren_token: AttachedToken::empty(),
@@ -4118,6 +4134,7 @@ fn parse_listagg() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 },
                 OrderByExpr {
                     expr: Expr::Identifier(Ident {
@@ -4130,6 +4147,7 @@ fn parse_listagg() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 },
             ],
             closing_paren_token: AttachedToken::empty(),
@@ -6860,6 +6878,7 @@ fn parse_window_functions() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 }],
                 window_frame: None,
                 opening_paren_token: AttachedToken::empty(),
@@ -7097,6 +7116,7 @@ fn test_parse_named_window() {
                             nulls_first: None,
                         },
                         with_fill: None,
+                        end_token: AttachedToken::empty(),
                     }],
                     window_frame: None,
                     opening_paren_token: AttachedToken::empty(),
@@ -9384,6 +9404,8 @@ fn parse_trim() {
             trim_characters: Some(vec![Expr::Value(
                 Value::SingleQuotedString(" ".to_owned()).with_empty_span()
             )]),
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -9400,6 +9422,8 @@ fn parse_trim() {
             trim_characters: Some(vec![Expr::Value(
                 Value::SingleQuotedString("a".to_owned()).with_empty_span()
             )]),
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );
@@ -10784,6 +10808,7 @@ fn parse_create_index() {
                     sort: None,
                     nulls_first: None,
                 },
+                end_token: AttachedToken::empty(),
             },
         },
         IndexColumn {
@@ -10795,6 +10820,7 @@ fn parse_create_index() {
                     sort: Some(OrderBySort::Desc),
                     nulls_first: None,
                 },
+                end_token: AttachedToken::empty(),
             },
         },
     ];
@@ -10830,6 +10856,7 @@ fn test_create_index_with_using_function() {
                     sort: None,
                     nulls_first: None,
                 },
+                end_token: AttachedToken::empty(),
             },
         },
         IndexColumn {
@@ -10841,6 +10868,7 @@ fn test_create_index_with_using_function() {
                     sort: Some(OrderBySort::Desc),
                     nulls_first: None,
                 },
+                end_token: AttachedToken::empty(),
             },
         },
     ];
@@ -10895,6 +10923,7 @@ fn test_create_index_with_with_clause() {
                 nulls_first: None,
             },
             with_fill: None,
+            end_token: AttachedToken::empty(),
         },
         operator_class: None,
     }];
@@ -14912,6 +14941,7 @@ fn test_match_recognize() {
                     nulls_first: None,
                 },
                 with_fill: None,
+                end_token: AttachedToken::empty(),
             }],
             measures: vec![
                 Measure {
@@ -22332,6 +22362,7 @@ fn parse_in_list_leading_subquery() {
             target: InTarget::List(vec![subquery(), Expr::value(number("1"))]),
             negated: false,
             global: false,
+            end_token: AttachedToken::empty(),
         },
         select.selection.unwrap()
     );
@@ -22346,6 +22377,7 @@ fn parse_in_list_leading_subquery() {
             ]),
             negated: true,
             global: false,
+            end_token: AttachedToken::empty(),
         },
         select.selection.unwrap()
     );
@@ -22364,6 +22396,7 @@ fn parse_in_list_leading_subquery() {
             ]),
             negated: false,
             global: false,
+            end_token: AttachedToken::empty(),
         },
         select.selection.unwrap()
     );
@@ -22383,6 +22416,7 @@ fn parse_in_list_leading_subquery() {
             target: InTarget::Subquery(Box::new(verified_query("(SELECT a FROM u)"))),
             negated: false,
             global: false,
+            end_token: AttachedToken::empty(),
         },
         select.selection.unwrap()
     );

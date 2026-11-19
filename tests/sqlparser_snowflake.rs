@@ -2874,6 +2874,8 @@ fn test_snowflake_trim() {
             trim_characters: Some(vec![Expr::Value(
                 (Value::SingleQuotedString("a".to_owned())).with_empty_span()
             )]),
+            start_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         },
         expr_from_projection(only(&select.projection))
     );

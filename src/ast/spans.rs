@@ -1970,7 +1970,8 @@ impl Spanned for Expr {
                 target,
                 negated: _,
                 global: _,
-            } => match target {
+                end_token,
+            } => end_token.0.span.union(&match target {
                 InTarget::List(list) => union_spans(
                     core::iter::once(expr.span()).chain(list.iter().map(|item| item.span())),
                 ),
@@ -1981,7 +1982,7 @@ impl Spanned for Expr {
                         .into_iter()
                         .chain(args.iter().flatten().map(|arg| arg.span())),
                 ),
-            },
+            }),
             Expr::Between {
                 expr,
                 negated: _,
@@ -2100,24 +2101,32 @@ impl Spanned for Expr {
                 substring_for,
                 special: _,
                 shorthand: _,
+                start_token,
+                end_token,
             } => union_spans(
-                core::iter::once(expr.span())
+                core::iter::once(start_token.0.span)
+                    .chain(core::iter::once(expr.span()))
                     .chain(substring_from.as_ref().map(|i| i.span()))
-                    .chain(substring_for.as_ref().map(|i| i.span())),
+                    .chain(substring_for.as_ref().map(|i| i.span()))
+                    .chain(core::iter::once(end_token.0.span)),
             ),
             Expr::Trim {
                 expr,
                 trim_where: _,
                 trim_what,
                 trim_characters,
+                start_token,
+                end_token,
             } => union_spans(
-                core::iter::once(expr.span())
+                core::iter::once(start_token.0.span)
+                    .chain(core::iter::once(expr.span()))
                     .chain(trim_what.as_ref().map(|i| i.span()))
                     .chain(
                         trim_characters
                             .as_ref()
                             .map(|items| union_spans(items.iter().map(|i| i.span()))),
-                    ),
+                    )
+                    .chain(core::iter::once(end_token.0.span)),
             ),
             Expr::Prefixed { value, .. } => value.span(),
             Expr::Case {
@@ -2686,9 +2695,12 @@ impl Spanned for OrderByExpr {
             expr,
             options: _,
             with_fill,
+            end_token,
         } = self;
 
-        expr.span().union_opt(&with_fill.as_ref().map(|f| f.span()))
+        expr.span()
+            .union_opt(&with_fill.as_ref().map(|f| f.span()))
+            .union(&end_token.0.span)
     }
 }
 
@@ -3995,12 +4007,12 @@ SETTINGS update_parallel_mode = 'auto'"#;
     #[test]
     fn test_in_expression_spans() {
         for (sql, expected) in [
-            ("  needle IN (first, last)", "needle IN (first, last"),
+            ("  needle IN (first, last)", "needle IN (first, last)"),
             (
                 "  needle IN (SELECT last FROM items)",
-                "needle IN (SELECT last FROM items",
+                "needle IN (SELECT last FROM items)",
             ),
-            ("  needle IN UNNEST(items)", "needle IN UNNEST(items"),
+            ("  needle IN UNNEST(items)", "needle IN UNNEST(items)"),
         ] {
             let mut test = SpanTest::new(&GenericDialect, sql);
             let expr = test.0.parse_expr().unwrap();
@@ -4015,7 +4027,7 @@ SETTINGS update_parallel_mode = 'auto'"#;
             ("  needle IN main.items", "needle IN main.items"),
             (
                 "  needle IN main.f(first, last)",
-                "needle IN main.f(first, last",
+                "needle IN main.f(first, last)",
             ),
         ] {
             let mut test = SpanTest::new(dialect, sql);
@@ -4650,6 +4662,47 @@ SETTINGS update_parallel_mode = 'auto'"#;
         let sql = "SELECT a IS TRUE, b IS NOT UNKNOWN FROM t";
         let stmts = Parser::parse_sql(&GenericDialect, sql).unwrap();
         assert_eq!(statement_texts(sql, &stmts), [sql]);
+    }
+
+    #[test]
+    fn test_in_substring_trim_order_by_spans() {
+        let sql = "SELECT substring(a, 1, 2), trim(b), \
+                   row_number() OVER (ORDER BY c DESC, d ASC) \
+                   FROM t WHERE e IN (1, 2) AND f NOT IN (SELECT g FROM u) ORDER BY h DESC";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        let items: Vec<_> = select
+            .projection
+            .iter()
+            .map(|i| spanned_text(sql, i.span()))
+            .collect();
+        assert_eq!(
+            items,
+            [
+                "substring(a, 1, 2)",
+                "trim(b)",
+                "row_number() OVER (ORDER BY c DESC, d ASC)",
+            ]
+        );
+        let Some(Expr::BinaryOp { left, right, .. }) = &select.selection else {
+            panic!("expected AND, got {:?}", select.selection);
+        };
+        assert_eq!(spanned_text(sql, left.span()), "e IN (1, 2)");
+        assert_eq!(
+            spanned_text(sql, right.span()),
+            "f NOT IN (SELECT g FROM u)"
+        );
+        let order_by = query.order_by.as_ref().unwrap();
+        let OrderByKind::Expressions(exprs) = &order_by.kind else {
+            panic!("expected ORDER BY expressions, got {order_by:?}");
+        };
+        assert_eq!(spanned_text(sql, exprs[0].span()), "h DESC");
     }
 
     #[test]

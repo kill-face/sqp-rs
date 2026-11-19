@@ -797,6 +797,7 @@ fn sqlite_is_operators() {
             target: InTarget::List(list),
             negated,
             global,
+            ..
         } => {
             assert!(!negated);
             assert!(!global);
@@ -1800,6 +1801,7 @@ fn parse_comparison_binds_tighter_than_equality() {
             target: InTarget::List(vec![Expr::value(number("1"))]),
             negated: false,
             global: false,
+            end_token: AttachedToken::empty(),
         },
     );
     assert_eq!(

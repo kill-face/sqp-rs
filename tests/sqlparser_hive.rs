@@ -176,6 +176,7 @@ fn create_table_with_clustered_by() {
                                 nulls_first: None,
                             },
                             with_fill: None,
+                            end_token: AttachedToken::empty(),
                         },
                         OrderByExpr {
                             expr: Expr::Identifier(Ident::new("b")),
@@ -184,6 +185,7 @@ fn create_table_with_clustered_by() {
                                 nulls_first: None,
                             },
                             with_fill: None,
+                            end_token: AttachedToken::empty(),
                         },
                     ]),
                     num_buckets: Value::Number("4".parse().unwrap(), false),

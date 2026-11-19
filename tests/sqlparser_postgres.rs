@@ -3609,6 +3609,7 @@ fn parse_create_indices_with_operator_classes() {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 },
                 operator_class: expected_operator_class.clone(),
             };
@@ -3687,6 +3688,7 @@ fn parse_create_indices_with_operator_classes() {
                                     nulls_first: None,
                                 },
                                 with_fill: None,
+                                end_token: AttachedToken::empty(),
                             },
                             operator_class: None
                         },

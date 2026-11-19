@@ -3097,6 +3097,8 @@ pub struct OrderByExpr {
     pub options: OrderByOptions,
     /// Optional `WITH FILL` clause (ClickHouse extension) which specifies how to fill gaps.
     pub with_fill: Option<WithFill>,
+    /// The last token, so that the span covers `ASC` / `DESC` / `NULLS FIRST`.
+    pub end_token: AttachedToken,
 }
 
 impl From<Ident> for OrderByExpr {
@@ -3105,6 +3107,7 @@ impl From<Ident> for OrderByExpr {
             expr: Expr::Identifier(ident),
             options: OrderByOptions::default(),
             with_fill: None,
+            end_token: AttachedToken::empty(),
         }
     }
 }

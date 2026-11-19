@@ -3269,6 +3269,7 @@ impl<'a> Parser<'a> {
                 return self.expected_ref("SUBSTR or SUBSTRING", self.peek_token_ref());
             }
         };
+        let start_token = self.last_consumed_token();
         self.expect_token(&Token::LParen)?;
         let expr = self.parse_expr()?;
         let mut from_expr = None;
@@ -3289,6 +3290,8 @@ impl<'a> Parser<'a> {
             substring_for: to_expr.map(Box::new),
             special,
             shorthand,
+            start_token,
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -3323,6 +3326,7 @@ impl<'a> Parser<'a> {
     /// TRIM(<expr>, [, characters]) -- PostgreSQL, DuckDB, Snowflake, BigQuery, Generic
     /// ```
     pub fn parse_trim_expr(&mut self) -> Result<Expr, ParserError> {
+        let start_token = self.last_consumed_token();
         self.expect_token(&Token::LParen)?;
         let mut trim_where = None;
         if let Token::Word(word) = &self.peek_token_ref().token {
@@ -3343,6 +3347,8 @@ impl<'a> Parser<'a> {
                 trim_where,
                 trim_what: None,
                 trim_characters,
+                start_token: start_token.clone(),
+                end_token: self.last_consumed_token(),
             });
         }
         let expr = self.parse_expr()?;
@@ -3355,6 +3361,8 @@ impl<'a> Parser<'a> {
                 trim_where,
                 trim_what: Some(trim_what),
                 trim_characters: None,
+                start_token: start_token.clone(),
+                end_token: self.last_consumed_token(),
             })
         } else if self.dialect.supports_comma_separated_trim() && self.consume_token(&Token::Comma)
         {
@@ -3365,6 +3373,8 @@ impl<'a> Parser<'a> {
                 trim_where,
                 trim_what: None,
                 trim_characters: Some(characters),
+                start_token: start_token.clone(),
+                end_token: self.last_consumed_token(),
             })
         } else {
             self.expect_token(&Token::RParen)?;
@@ -3373,6 +3383,8 @@ impl<'a> Parser<'a> {
                 trim_where,
                 trim_what: None,
                 trim_characters: None,
+                start_token: start_token.clone(),
+                end_token: self.last_consumed_token(),
             })
         }
     }
@@ -4699,6 +4711,7 @@ impl<'a> Parser<'a> {
             target,
             negated,
             global,
+            end_token: self.last_consumed_token(),
         })
     }
 
@@ -21749,6 +21762,7 @@ impl<'a> Parser<'a> {
                 expr,
                 options,
                 with_fill,
+                end_token: self.last_consumed_token(),
             },
             operator_class,
         ))
@@ -24442,6 +24456,7 @@ mod tests {
                         nulls_first: None,
                     },
                     with_fill: None,
+                    end_token: AttachedToken::empty(),
                 },
                 operator_class: None,
             }
