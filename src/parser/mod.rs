@@ -1708,6 +1708,12 @@ impl<'a> Parser<'a> {
                     })))
                 }
             Keyword::NOT => Ok(Some(self.parse_not()?)),
+            Keyword::NEXT
+                if self.dialect.supports_next_value_for()
+                    && self.peek_keywords(&[Keyword::VALUE, Keyword::FOR]) =>
+            {
+                Ok(Some(self.parse_next_value_for()?))
+            }
             Keyword::MATCH if self.dialect.supports_match_against() => {
                 Ok(Some(self.parse_match_against()?))
             }
@@ -1742,6 +1748,30 @@ impl<'a> Parser<'a> {
                 None => Ok(None),
             },
         }
+    }
+
+    /// Parse the rest of `NEXT VALUE FOR <sequence> [ OVER (<order_by>) ]`
+    /// after `NEXT`.
+    fn parse_next_value_for(&mut self) -> Result<Expr, ParserError> {
+        let next_token = self.get_current_token().clone();
+        self.expect_keywords(&[Keyword::VALUE, Keyword::FOR])?;
+        let sequence_name = self.parse_object_name(false)?;
+        let over = if self.parse_keyword(Keyword::OVER) {
+            let opening_token = self.expect_token(&Token::LParen)?;
+            let content = self.parse_window_spec()?;
+            Some(Parens {
+                opening_token: AttachedToken(opening_token),
+                content,
+                closing_token: AttachedToken(self.get_current_token().clone()),
+            })
+        } else {
+            None
+        };
+        Ok(Expr::NextValueFor(Box::new(NextValueFor {
+            next_token: AttachedToken(next_token),
+            sequence_name,
+            over,
+        })))
     }
 
     fn geometric_type_kind(&self, keyword: Keyword) -> Option<GeometricTypeKind> {

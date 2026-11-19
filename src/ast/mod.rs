@@ -1442,6 +1442,10 @@ pub enum Expr {
     /// [Databricks](https://docs.databricks.com/en/sql/language-manual/sql-ref-lambda-functions.html)
     /// [DuckDB](https://duckdb.org/docs/stable/sql/functions/lambda)
     Lambda(LambdaFunction),
+    /// `NEXT VALUE FOR <sequence> [ OVER (<order_by>) ]`
+    ///
+    /// See [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/functions/next-value-for-transact-sql)
+    NextValueFor(Box<NextValueFor>),
     /// Checks membership of a value in a JSON array
     MemberOf(MemberOf),
 }
@@ -1450,6 +1454,31 @@ impl Expr {
     /// Creates a new [`Expr::Value`]
     pub fn value(value: impl Into<ValueWithSpan>) -> Self {
         Expr::Value(value.into())
+    }
+}
+
+/// `NEXT VALUE FOR <sequence> [ OVER (<order_by>) ]`
+///
+/// See [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/functions/next-value-for-transact-sql)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct NextValueFor {
+    /// The `NEXT` token.
+    pub next_token: AttachedToken,
+    /// The sequence name.
+    pub sequence_name: ObjectName,
+    /// The optional `OVER (...)` window, which may only contain `ORDER BY`.
+    pub over: Option<Parens<WindowSpec>>,
+}
+
+impl fmt::Display for NextValueFor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "NEXT VALUE FOR {}", self.sequence_name)?;
+        if let Some(over) = &self.over {
+            write!(f, " OVER ({})", over.content)?;
+        }
+        Ok(())
     }
 }
 
@@ -2315,6 +2344,7 @@ impl fmt::Display for Expr {
             Expr::Prior(expr) => write!(f, "PRIOR {expr}"),
             Expr::Lambda(lambda) => write!(f, "{lambda}"),
             Expr::MemberOf(member_of) => write!(f, "{member_of}"),
+            Expr::NextValueFor(next_value_for) => write!(f, "{next_value_for}"),
         }
     }
 }

@@ -1360,6 +1360,11 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support the `NEXT VALUE FOR <sequence>` expression?
+    fn supports_next_value_for(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///

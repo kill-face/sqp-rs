@@ -42,15 +42,16 @@ use super::{
     IndexColumn, Insert, Interpolate, InterpolateExpr, Join, JoinConstraint, JoinOperator,
     JsonPath, JsonPathElem, LateralView, LimitClause, MatchRecognizePattern, Measure, Merge,
     MergeAction, MergeClause, MergeInsertExpr, MergeInsertKind, MergeUpdateExpr, MergeUpdateKind,
-    NamedParenthesizedList, NamedWindowDefinition, ObjectName, ObjectNamePart, Offset, OnConflict,
-    OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy, OrderByExpr,
-    OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue, PivotValueSource,
-    ProjectionSelect, Query, RaiseStatement, RaiseStatementValue, ReferentialAction,
-    RefreshMaterializedView, RenameSelectItem, ReplaceSelectElement, ReplaceSelectItem, Select,
-    SelectInto, SelectItem, SetExpr, Setting, SqlOption, Statement, Subscript, SymbolDefinition,
-    TableAlias, TableAliasColumnDef, TableConstraint, TableFactor, TableObject,
-    TableOptionsClustered, TableWithJoins, Update, UpdateTableFromKind, Use, UserMappingUser,
-    Values, ViewColumnDef, WhileStatement, WildcardAdditionalOptions, With, WithFill,
+    NamedParenthesizedList, NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart,
+    Offset, OnConflict, OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy,
+    OrderByExpr, OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue,
+    PivotValueSource, ProjectionSelect, Query, RaiseStatement, RaiseStatementValue,
+    ReferentialAction, RefreshMaterializedView, RenameSelectItem, ReplaceSelectElement,
+    ReplaceSelectItem, Select, SelectInto, SelectItem, SetExpr, Setting, SqlOption, Statement,
+    Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef, TableConstraint, TableFactor,
+    TableObject, TableOptionsClustered, TableWithJoins, Update, UpdateTableFromKind, Use,
+    UserMappingUser, Values, ViewColumnDef, WhileStatement, WildcardAdditionalOptions, With,
+    WithFill,
 };
 
 /// Given an iterator of spans, return the [Span::union] of all spans.
@@ -1853,10 +1854,25 @@ impl Spanned for Expr {
             Expr::Prior(expr) => expr.span(),
             Expr::Lambda(_) => Span::empty(),
             Expr::MemberOf(member_of) => member_of.value.span().union(&member_of.array.span()),
+            Expr::NextValueFor(next_value_for) => next_value_for.span(),
         }
     }
 }
 
+impl Spanned for NextValueFor {
+    fn span(&self) -> Span {
+        let NextValueFor {
+            next_token,
+            sequence_name,
+            over,
+        } = self;
+        union_spans(
+            iter::once(next_token.0.span)
+                .chain(iter::once(sequence_name.span()))
+                .chain(over.iter().map(|o| o.span())),
+        )
+    }
+}
 impl Spanned for Subscript {
     fn span(&self) -> Span {
         match self {

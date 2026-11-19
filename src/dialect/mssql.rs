@@ -92,6 +92,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/functions/next-value-for-transact-sql>
+    fn supports_next_value_for(&self) -> bool {
+        true
+    }
+
     /// In MSSQL, there is no boolean type, and `true` and `false` are valid column names
     fn supports_boolean_literals(&self) -> bool {
         false

@@ -3150,3 +3150,37 @@ END"#;
         ParserError::ParserError("Expected: ;, found: SELECT".to_string())
     );
 }
+
+#[test]
+fn parse_mssql_next_value_for() {
+    let select = ms().verified_only_select("SELECT NEXT VALUE FOR dbo.seq");
+    let Expr::NextValueFor(next) = expr_from_projection(only(&select.projection)) else {
+        panic!("expected NEXT VALUE FOR, got {:?}", select.projection);
+    };
+    assert_eq!(
+        next.sequence_name,
+        ObjectName::from(vec![Ident::new("dbo"), Ident::new("seq")])
+    );
+    assert!(next.over.is_none());
+
+    let sql = "SELECT NEXT VALUE FOR seq OVER (ORDER BY a) FROM t";
+    ms().verified_stmt(sql);
+    let select = Parser::new(&MsSqlDialect {})
+        .try_with_sql(sql)
+        .unwrap()
+        .parse_select()
+        .unwrap();
+    assert_eq!(
+        select.projection[0].span(),
+        Span::new(Location::new(1, 8), Location::new(1, 44))
+    );
+
+    ms().verified_stmt("CREATE TABLE t (id INT DEFAULT (NEXT VALUE FOR s) NOT NULL)");
+    ms().verified_stmt("INSERT INTO t SELECT NEXT VALUE FOR s, a FROM u");
+    ms().verified_only_select("SELECT next FROM t");
+    ms().verified_only_select("SELECT next AS value FROM t");
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("SELECT NEXT VALUE FOR s")
+        .unwrap_err();
+}
