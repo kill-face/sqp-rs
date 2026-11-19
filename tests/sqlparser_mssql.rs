@@ -3544,3 +3544,33 @@ fn parse_mssql_create_partition_function_and_scheme() {
         .parse_sql_statements("CREATE PARTITION SCHEME ps AS PARTITION pf TO (fg1)")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_select_compound_assignment() {
+    let sql = "SELECT @s += name + ', ' FROM t";
+    let select = ms().verified_only_select(sql);
+    assert_eq!(
+        select.projection[0],
+        SelectItem::CompoundAssignment {
+            variable: Ident::new("@s"),
+            op: BinaryOperator::Plus,
+            value: Expr::BinaryOp {
+                left: Box::new(Expr::Identifier(Ident::new("name"))),
+                op: BinaryOperator::Plus,
+                right: Box::new(Expr::value(Value::SingleQuotedString(", ".to_string()))),
+            },
+        }
+    );
+    ms().verified_only_select("SELECT @n *= 2, @m -= 1");
+    ms().verified_only_select("SELECT a + b FROM t");
+
+    let select = Parser::new(&MsSqlDialect {})
+        .try_with_sql("SELECT @n += 1")
+        .unwrap()
+        .parse_select()
+        .unwrap();
+    assert_eq!(
+        select.projection[0].span(),
+        Span::new(Location::new(1, 8), Location::new(1, 15))
+    );
+}

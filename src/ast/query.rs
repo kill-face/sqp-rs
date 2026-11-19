@@ -936,6 +936,17 @@ pub enum SelectItem {
     QualifiedWildcard(SelectItemQualifiedWildcardKind, WildcardAdditionalOptions),
     /// An unqualified `*`
     Wildcard(WildcardAdditionalOptions),
+    /// [MsSql] compound assignment to a variable, e.g. `@s += name`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/compound-operators-transact-sql
+    CompoundAssignment {
+        /// The variable being assigned.
+        variable: Ident,
+        /// The operator applied before assigning, e.g. `+` in `+=`.
+        op: BinaryOperator,
+        /// The right-hand side.
+        value: Expr,
+    },
 }
 
 impl fmt::Display for SelectItemQualifiedWildcardKind {
@@ -1244,6 +1255,11 @@ impl fmt::Display for SelectItem {
                 kind.fmt(f)?;
                 additional_options.fmt(f)
             }
+            SelectItem::CompoundAssignment {
+                variable,
+                op,
+                value,
+            } => write!(f, "{variable} {op}= {value}"),
             SelectItem::Wildcard(additional_options) => {
                 f.write_char('*')?;
                 additional_options.fmt(f)

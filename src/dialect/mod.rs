@@ -1401,7 +1401,7 @@ pub trait Dialect: Debug + Any {
     }
 
     /// Does the dialect support compound assignment operators such as `+=`
-    /// in `SET`? e.g. `SET @x += 1`
+    /// in `SET` and `SELECT`? e.g. `SET @x += 1`
     fn supports_compound_assignment_operators(&self) -> bool {
         false
     }

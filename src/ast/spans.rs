@@ -2108,6 +2108,9 @@ impl Spanned for SelectItem {
                     .chain(iter::once(wildcard_additional_options.span())),
             ),
             SelectItem::Wildcard(wildcard_additional_options) => wildcard_additional_options.span(),
+            SelectItem::CompoundAssignment {
+                variable, value, ..
+            } => variable.span.union(&value.span()),
         }
     }
 }

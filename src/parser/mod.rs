@@ -17367,6 +17367,19 @@ impl<'a> Parser<'a> {
         set_token: TokenWithSpan,
     ) -> Result<Set, ParserError> {
         let variable = self.parse_object_name(false)?;
+        let op = self.parse_compound_assignment_operator()?;
+        let value = self.parse_expr()?;
+        Ok(Set::CompoundAssignment {
+            set_token: AttachedToken(set_token),
+            variable,
+            op,
+            value,
+        })
+    }
+
+    /// Parse a compound assignment operator such as `+=`, returning the
+    /// operator applied before assigning.
+    fn parse_compound_assignment_operator(&mut self) -> Result<BinaryOperator, ParserError> {
         let op = match self.next_token().token {
             Token::Plus => BinaryOperator::Plus,
             Token::Minus => BinaryOperator::Minus,
@@ -17381,9 +17394,15 @@ impl<'a> Parser<'a> {
             }
         };
         self.expect_token(&Token::Eq)?;
+        Ok(op)
+    }
+
+    /// Parse an MsSql `SELECT` list item `@variable <op>= <expr>`.
+    fn parse_select_item_compound_assignment(&mut self) -> Result<SelectItem, ParserError> {
+        let variable = self.parse_identifier()?;
+        let op = self.parse_compound_assignment_operator()?;
         let value = self.parse_expr()?;
-        Ok(Set::CompoundAssignment {
-            set_token: AttachedToken(set_token),
+        Ok(SelectItem::CompoundAssignment {
             variable,
             op,
             value,
@@ -21100,6 +21119,12 @@ impl<'a> Parser<'a> {
 
     /// Parse a comma-delimited list of projections after SELECT
     pub fn parse_select_item(&mut self) -> Result<SelectItem, ParserError> {
+        if self.dialect.supports_compound_assignment_operators() {
+            if let Some(item) = self.maybe_parse(|p| p.parse_select_item_compound_assignment())? {
+                return Ok(item);
+            }
+        }
+
         let prefix = self
             .parse_one_of_keywords(
                 self.dialect
