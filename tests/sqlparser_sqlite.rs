@@ -473,14 +473,17 @@ fn parse_window_function_with_filter() {
                     clauses: vec![],
                 }),
                 null_treatment: None,
-                over: Some(WindowType::WindowSpec(WindowSpec {
+                over: Some(Box::new(WindowType::WindowSpec(WindowSpec {
                     window_name: None,
                     partition_by: vec![],
                     order_by: vec![],
                     window_frame: None,
-                })),
+                    opening_paren_token: AttachedToken::empty(),
+                    closing_paren_token: AttachedToken::empty(),
+                }))),
                 filter: Some(Box::new(Expr::Identifier(Ident::new("y")))),
                 within_group: vec![],
+                closing_paren_token: AttachedToken::empty(),
             }))]
         );
     }

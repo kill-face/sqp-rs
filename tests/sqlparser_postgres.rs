@@ -3544,6 +3544,7 @@ fn parse_create_indices_with_operator_classes() {
                         null_treatment: None,
                         over: None,
                         within_group: vec![],
+                        closing_paren_token: AttachedToken::empty(),
                     }),
                     options: OrderByOptions {
                         sort: None,
@@ -4102,7 +4103,8 @@ fn parse_array_subquery_expr() {
             filter: None,
             null_treatment: None,
             over: None,
-            within_group: vec![]
+            within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(only(&select.projection)),
     );
@@ -4550,6 +4552,7 @@ fn test_composite_value() {
                 filter: None,
                 over: None,
                 within_group: vec![],
+                closing_paren_token: AttachedToken::empty(),
             })))),
             access_chain: vec![AccessExpr::Dot(Expr::Identifier(Ident::new("n")))],
         },
@@ -4779,6 +4782,7 @@ fn parse_current_functions() {
             filter: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(&select.projection[0])
     );
@@ -4792,6 +4796,7 @@ fn parse_current_functions() {
             filter: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(&select.projection[1])
     );
@@ -4805,6 +4810,7 @@ fn parse_current_functions() {
             filter: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(&select.projection[2])
     );
@@ -4818,6 +4824,7 @@ fn parse_current_functions() {
             filter: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(&select.projection[3])
     );
@@ -6018,7 +6025,7 @@ fn parse_drop_function() {
                 }]),
                 args: None
             }],
-            drop_behavior: None
+            drop_behavior: None,
         })
     );
 
@@ -6045,7 +6052,7 @@ fn parse_drop_function() {
                     }
                 ]),
             }],
-            drop_behavior: None
+            drop_behavior: None,
         })
     );
 
@@ -6092,7 +6099,7 @@ fn parse_drop_function() {
                     ]),
                 }
             ],
-            drop_behavior: None
+            drop_behavior: None,
         })
     );
 }
@@ -7839,7 +7846,7 @@ fn parse_trigger_related_functions() {
             language: Some(Ident::new("plpgsql")),
             determinism_specifier: None,
             options: None,
-            remote_connection: None
+            remote_connection: None,
         }
     ));
 

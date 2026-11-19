@@ -1903,6 +1903,7 @@ fn parse_create_table_with_valid_options() {
                             null_treatment: None,
                             over: None,
                             within_group: vec![],
+                            closing_paren_token: AttachedToken::empty(),
                         },
                     ),
                 },

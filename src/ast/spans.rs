@@ -53,7 +53,7 @@ use super::{
     Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef, TableConstraint, TableFactor,
     TableObject, TableOptionsClustered, TableWithJoins, ThrowStatement, Update,
     UpdateTableFromKind, Use, UserMappingUser, Values, ViewColumnDef, WaitForStatement,
-    WhileStatement, WildcardAdditionalOptions, With, WithFill,
+    WhileStatement, WildcardAdditionalOptions, WindowSpec, WindowType, With, WithFill,
 };
 
 /// Given an iterator of spans, return the [Span::union] of all spans.
@@ -2171,8 +2171,9 @@ impl Spanned for Function {
             args,
             filter,
             null_treatment: _, // enum
-            over: _,           // todo
+            over,
             within_group,
+            closing_paren_token,
         } = self;
 
         union_spans(
@@ -2181,8 +2182,40 @@ impl Spanned for Function {
                 .map(|i| i.span())
                 .chain(iter::once(args.span()))
                 .chain(iter::once(parameters.span()))
+                .chain(iter::once(closing_paren_token.0.span))
                 .chain(filter.iter().map(|i| i.span()))
-                .chain(within_group.iter().map(|i| i.span())),
+                .chain(within_group.iter().map(|i| i.span()))
+                .chain(over.iter().map(|i| i.span())),
+        )
+    }
+}
+
+impl Spanned for WindowType {
+    fn span(&self) -> Span {
+        match self {
+            WindowType::WindowSpec(spec) => spec.span(),
+            WindowType::NamedWindow(name) => name.span,
+        }
+    }
+}
+
+impl Spanned for WindowSpec {
+    fn span(&self) -> Span {
+        let WindowSpec {
+            window_name,
+            partition_by,
+            order_by,
+            window_frame: _, // keywords and bounds without spans, inside the parens
+            opening_paren_token,
+            closing_paren_token,
+        } = self;
+
+        union_spans(
+            iter::once(opening_paren_token.0.span)
+                .chain(window_name.iter().map(|i| i.span))
+                .chain(partition_by.iter().map(|i| i.span()))
+                .chain(order_by.iter().map(|i| i.span()))
+                .chain(iter::once(closing_paren_token.0.span)),
         )
     }
 }
@@ -4056,6 +4089,44 @@ SETTINGS update_parallel_mode = 'auto'"#;
                 "@c NVARCHAR(MAX)",
                 "@d AS dbo.MyType"
             ]
+        );
+    }
+
+    #[test]
+    fn test_function_spans_include_parens_and_over() {
+        let sql = "SELECT f(), g(a, b), count(DISTINCT x), CURRENT_TIMESTAMP, \
+                   row_number() OVER (PARTITION BY a, b ORDER BY c ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), \
+                   sum(y) OVER w, rank() OVER () FROM t";
+        let stmts = Parser::parse_sql(&GenericDialect, sql).unwrap();
+        let Statement::Query(query) = &stmts[0] else {
+            panic!("expected a query, got {stmts:?}");
+        };
+        let SetExpr::Select(select) = &*query.body else {
+            panic!("expected a select, got {query:?}");
+        };
+        let items: Vec<_> = select
+            .projection
+            .iter()
+            .map(|i| spanned_text(sql, i.span()))
+            .collect();
+        assert_eq!(
+            items,
+            [
+                "f()",
+                "g(a, b)",
+                "count(DISTINCT x)",
+                "CURRENT_TIMESTAMP",
+                "row_number() OVER (PARTITION BY a, b ORDER BY c ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)",
+                "sum(y) OVER w",
+                "rank() OVER ()",
+            ]
+        );
+        let SelectItem::UnnamedExpr(Expr::Function(f)) = &select.projection[4] else {
+            panic!("expected a function, got {:?}", select.projection[4]);
+        };
+        assert_eq!(
+            spanned_text(sql, f.over.as_ref().unwrap().span()),
+            "(PARTITION BY a, b ORDER BY c ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)"
         );
     }
 

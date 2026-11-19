@@ -19,6 +19,7 @@
 //! Test SQL syntax specific to Snowflake. The parser based on the
 //! generic dialect is also tested (on the inputs it can handle).
 
+use sqlparser::ast::helpers::attached_token::AttachedToken;
 use sqlparser::ast::helpers::key_value_options::{KeyValueOption, KeyValueOptionKind};
 use sqlparser::ast::helpers::stmt_data_loading::{StageLoadSelectItem, StageLoadSelectItemKind};
 use sqlparser::ast::*;
@@ -551,6 +552,7 @@ fn test_snowflake_create_table_cluster_by() {
                         null_treatment: None,
                         over: None,
                         within_group: vec![],
+                        closing_paren_token: AttachedToken::empty(),
                     }),
                 ])),
                 cluster_by
@@ -1614,7 +1616,8 @@ fn test_alter_table_clustering() {
                         filter: None,
                         null_treatment: None,
                         over: None,
-                        within_group: vec![]
+                        within_group: vec![],
+                        closing_paren_token: AttachedToken::empty(),
                     })
                 ],
             );
@@ -4729,7 +4732,7 @@ fn test_snowflake_identifier_function() {
                     name: Ident::new("IDENTIFIER"),
                     args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
                         Value::SingleQuotedString("tbl".to_string()).into()
-                    )))]
+                    )))],
                 })])
             );
         }
@@ -4746,7 +4749,7 @@ fn test_snowflake_identifier_function() {
                         name: Ident::new("IDENTIFIER"),
                         args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
                             Value::SingleQuotedString("db1.sc1".to_string()).into()
-                        )))]
+                        )))],
                     }
                 )]))
             );
@@ -4763,7 +4766,7 @@ fn test_snowflake_identifier_function() {
                     name: Ident::new("IDENTIFIER"),
                     args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(Expr::Value(
                         Value::SingleQuotedString("tbl".to_string()).into()
-                    )))]
+                    )))],
                 })])
             );
         }

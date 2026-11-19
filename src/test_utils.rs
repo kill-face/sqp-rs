@@ -31,6 +31,7 @@ use alloc::{
 };
 use core::fmt::Debug;
 
+use crate::ast::helpers::attached_token::AttachedToken;
 use crate::dialect::*;
 use crate::parser::{Parser, ParserError};
 use crate::tokenizer::{Token, Tokenizer};
@@ -456,6 +457,7 @@ pub fn call(function: &str, args: impl IntoIterator<Item = Expr>) -> Expr {
         null_treatment: None,
         over: None,
         within_group: vec![],
+        closing_paren_token: AttachedToken::empty(),
     })
 }
 

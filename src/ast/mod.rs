@@ -2426,6 +2426,10 @@ pub struct WindowSpec {
     pub order_by: Vec<OrderByExpr>,
     /// `OVER (window frame)`
     pub window_frame: Option<WindowFrame>,
+    /// The opening `(`.
+    pub opening_paren_token: AttachedToken,
+    /// The closing `)`.
+    pub closing_paren_token: AttachedToken,
 }
 
 impl fmt::Display for WindowSpec {
@@ -8561,7 +8565,12 @@ pub struct Function {
     /// [Snowflake](https://docs.snowflake.com/en/sql-reference/functions/first_value)
     pub null_treatment: Option<NullTreatment>,
     /// The `OVER` clause, indicating a window function call.
-    pub over: Option<WindowType>,
+    ///
+    /// Boxed to keep [Expr] small: most function calls have no window.
+    pub over: Option<Box<WindowType>>,
+    /// The `)` that closes the argument list; empty when there is none, as
+    /// in `CURRENT_TIMESTAMP`.
+    pub closing_paren_token: AttachedToken,
 }
 
 impl fmt::Display for Function {

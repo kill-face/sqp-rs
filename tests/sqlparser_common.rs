@@ -1450,7 +1450,8 @@ fn parse_select_count_wildcard() {
             null_treatment: None,
             filter: None,
             over: None,
-            within_group: vec![]
+            within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(only(&select.projection))
     );
@@ -1476,7 +1477,8 @@ fn parse_select_count_distinct() {
             null_treatment: None,
             within_group: vec![],
             filter: None,
-            over: None
+            over: None,
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(only(&select.projection))
     );
@@ -3581,7 +3583,8 @@ fn parse_select_having() {
                 null_treatment: None,
                 filter: None,
                 over: None,
-                within_group: vec![]
+                within_group: vec![],
+                closing_paren_token: AttachedToken::empty(),
             })),
             op: BinaryOperator::Gt,
             right: Box::new(Expr::value(number("1"))),
@@ -3611,7 +3614,7 @@ fn parse_select_qualify() {
                 }),
                 null_treatment: None,
                 filter: None,
-                over: Some(WindowType::WindowSpec(WindowSpec {
+                over: Some(Box::new(WindowType::WindowSpec(WindowSpec {
                     window_name: None,
                     partition_by: vec![Expr::Identifier(Ident::new("p"))],
                     order_by: vec![OrderByExpr {
@@ -3623,8 +3626,11 @@ fn parse_select_qualify() {
                         with_fill: None,
                     }],
                     window_frame: None,
-                })),
-                within_group: vec![]
+                    opening_paren_token: AttachedToken::empty(),
+                    closing_paren_token: AttachedToken::empty(),
+                }))),
+                within_group: vec![],
+                closing_paren_token: AttachedToken::empty(),
             })),
             op: BinaryOperator::Eq,
             right: Box::new(Expr::value(number("1"))),
@@ -4072,7 +4078,8 @@ fn parse_listagg() {
                     },
                     with_fill: None,
                 },
-            ]
+            ],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(only(&select.projection))
     );
@@ -6607,7 +6614,8 @@ fn parse_named_argument_function() {
             null_treatment: None,
             filter: None,
             over: None,
-            within_group: vec![]
+            within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(only(&select.projection))
     );
@@ -6648,6 +6656,7 @@ fn parse_named_argument_function_with_eq_operator() {
             filter: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(only(&select.projection))
     );
@@ -6706,7 +6715,7 @@ fn parse_window_functions() {
             }),
             null_treatment: None,
             filter: None,
-            over: Some(WindowType::WindowSpec(WindowSpec {
+            over: Some(Box::new(WindowType::WindowSpec(WindowSpec {
                 window_name: None,
                 partition_by: vec![],
                 order_by: vec![OrderByExpr {
@@ -6718,8 +6727,11 @@ fn parse_window_functions() {
                     with_fill: None,
                 }],
                 window_frame: None,
-            })),
+                opening_paren_token: AttachedToken::empty(),
+                closing_paren_token: AttachedToken::empty(),
+            }))),
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(&select.projection[0])
     );
@@ -6728,12 +6740,15 @@ fn parse_window_functions() {
         assert!(matches!(
             expr_from_projection(projection),
             Expr::Function(Function {
-                over: Some(WindowType::WindowSpec(WindowSpec {
+                over: Some(over),
+                ..
+            }) if matches!(
+                over.as_ref(),
+                WindowType::WindowSpec(WindowSpec {
                     window_name: None,
                     ..
-                })),
-                ..
-            })
+                })
+            )
         ));
     }
 }
@@ -6765,12 +6780,15 @@ fn parse_named_window_functions() {
         assert!(matches!(
             expr_from_projection(&select.projection[i]),
             Expr::Function(Function {
-                over: Some(WindowType::WindowSpec(WindowSpec {
+                over: Some(over),
+                ..
+            }) if matches!(
+                over.as_ref(),
+                WindowType::WindowSpec(WindowSpec {
                     window_name: Some(Ident { value, .. }),
                     ..
-                })),
-                ..
-            }) if value == win_name
+                }) if value == win_name
+            )
         ));
     }
 
@@ -6854,12 +6872,13 @@ fn test_parse_named_window() {
                     }),
                     null_treatment: None,
                     filter: None,
-                    over: Some(WindowType::NamedWindow(Ident {
+                    over: Some(Box::new(WindowType::NamedWindow(Ident {
                         value: "window1".to_string(),
                         quote_style: None,
                         span: Span::empty(),
-                    })),
+                    }))),
                     within_group: vec![],
+                    closing_paren_token: AttachedToken::empty(),
                 }),
                 alias: Ident {
                     value: "min1".to_string(),
@@ -6889,12 +6908,13 @@ fn test_parse_named_window() {
                     }),
                     null_treatment: None,
                     filter: None,
-                    over: Some(WindowType::NamedWindow(Ident {
+                    over: Some(Box::new(WindowType::NamedWindow(Ident {
                         value: "window2".to_string(),
                         quote_style: None,
                         span: Span::empty(),
-                    })),
+                    }))),
                     within_group: vec![],
+                    closing_paren_token: AttachedToken::empty(),
                 }),
                 alias: Ident {
                     value: "max1".to_string(),
@@ -6944,6 +6964,8 @@ fn test_parse_named_window() {
                         with_fill: None,
                     }],
                     window_frame: None,
+                    opening_paren_token: AttachedToken::empty(),
+                    closing_paren_token: AttachedToken::empty(),
                 }),
             ),
             NamedWindowDefinition(
@@ -6961,6 +6983,8 @@ fn test_parse_named_window() {
                     })],
                     order_by: vec![],
                     window_frame: None,
+                    opening_paren_token: AttachedToken::empty(),
+                    closing_paren_token: AttachedToken::empty(),
                 }),
             ),
         ],
@@ -11891,6 +11915,7 @@ fn parse_time_functions() {
             filter: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         };
         assert_eq!(
             &Expr::Function(select_localtime_func_call_ast.clone()),
@@ -13669,6 +13694,7 @@ fn parse_call() {
             null_treatment: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         })
     );
 }
@@ -14194,6 +14220,7 @@ fn parse_map_access_expr() {
                     over: None,
                     within_group: vec![],
                     uses_odbc_syntax: false,
+                    closing_paren_token: AttachedToken::empty(),
                 }),
             }),
         ],
@@ -14534,7 +14561,8 @@ fn test_selective_aggregation() {
                 ))))),
                 over: None,
                 within_group: vec![],
-                null_treatment: None
+                null_treatment: None,
+                closing_paren_token: AttachedToken::empty(),
             })),
             SelectItem::ExprWithAlias {
                 expr: Expr::Function(Function {
@@ -14559,7 +14587,8 @@ fn test_selective_aggregation() {
                     })),
                     null_treatment: None,
                     over: None,
-                    within_group: vec![]
+                    within_group: vec![],
+                    closing_paren_token: AttachedToken::empty(),
                 }),
                 alias: Ident::new("agg2")
             },
@@ -17468,7 +17497,8 @@ fn parse_composite_access_expr() {
                 null_treatment: None,
                 filter: None,
                 over: None,
-                within_group: vec![]
+                within_group: vec![],
+                closing_paren_token: AttachedToken::empty(),
             })),
             access_chain: vec![AccessExpr::Dot(Expr::Identifier(Ident::new("b")))]
         }
@@ -17492,7 +17522,8 @@ fn parse_composite_access_expr() {
                 null_treatment: None,
                 filter: None,
                 over: None,
-                within_group: vec![]
+                within_group: vec![],
+                closing_paren_token: AttachedToken::empty(),
             })),
             access_chain: vec![
                 AccessExpr::Dot(Expr::Identifier(Ident::new("b"))),
@@ -17519,6 +17550,7 @@ fn parse_composite_access_expr() {
             filter: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         })),
         access_chain: vec![AccessExpr::Dot(Expr::Identifier(Ident::new("b")))],
     };
@@ -22432,9 +22464,13 @@ fn parse_window_spec_keyword_base_window_name() {
         let select = dialects.verified_only_select(&sql);
         match expr_from_projection(&select.projection[0]) {
             Expr::Function(Function {
-                over: Some(WindowType::WindowSpec(spec)),
-                ..
-            }) => assert_eq!(spec.window_name, Some(Ident::new(name)), "{sql}"),
+                over: Some(over), ..
+            }) if matches!(over.as_ref(), WindowType::WindowSpec(_)) => {
+                let WindowType::WindowSpec(spec) = over.as_ref() else {
+                    unreachable!()
+                };
+                assert_eq!(spec.window_name, Some(Ident::new(name)), "{sql}")
+            }
             other => panic!("{sql}: unexpected {other:?}"),
         }
     }
@@ -22737,6 +22773,7 @@ fn parse_delimited_identifiers() {
             filter: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(&select.projection[1]),
     );

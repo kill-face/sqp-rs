@@ -858,6 +858,7 @@ fn parse_create_table_with_variant_default_expressions() {
                                 filter: None,
                                 over: None,
                                 within_group: vec![],
+                                closing_paren_token: AttachedToken::empty(),
                             }))
                         }],
                     },
@@ -879,6 +880,7 @@ fn parse_create_table_with_variant_default_expressions() {
                                 filter: None,
                                 over: None,
                                 within_group: vec![],
+                                closing_paren_token: AttachedToken::empty(),
                             })))
                         }],
                     },
@@ -910,6 +912,7 @@ fn parse_create_table_with_variant_default_expressions() {
                                 filter: None,
                                 over: None,
                                 within_group: vec![],
+                                closing_paren_token: AttachedToken::empty(),
                             }))
                         }],
                     }

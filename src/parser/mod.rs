@@ -1652,6 +1652,7 @@ impl<'a> Parser<'a> {
                         filter: None,
                         over: None,
                         within_group: vec![],
+                        closing_paren_token: AttachedToken::empty(),
                     })))
                 }
             Keyword::CURRENT_TIMESTAMP
@@ -1704,7 +1705,7 @@ impl<'a> Parser<'a> {
                 {
                     self.expect_token(&Token::LParen)?;
                     let query = self.parse_query()?;
-                    self.expect_token(&Token::RParen)?;
+                    let closing_paren_token = self.expect_token(&Token::RParen)?.into();
                     Ok(Some(Expr::Function(Function {
                         name: ObjectName::from(vec![w.to_ident(w_span)]),
                         uses_odbc_syntax: false,
@@ -1714,6 +1715,7 @@ impl<'a> Parser<'a> {
                         null_treatment: None,
                         over: None,
                         within_group: vec![],
+                        closing_paren_token,
                     })))
                 }
             Keyword::NOT => Ok(Some(self.parse_not()?)),
@@ -2716,7 +2718,7 @@ impl<'a> Parser<'a> {
         // an enclosing set of parens if it's the only argument.
         if self.dialect.supports_subquery_as_function_arg() && self.peek_sub_query() {
             let subquery = self.parse_query()?;
-            self.expect_token(&Token::RParen)?;
+            let closing_paren_token = self.expect_token(&Token::RParen)?.into();
             return Ok(Function {
                 name,
                 uses_odbc_syntax: false,
@@ -2726,6 +2728,7 @@ impl<'a> Parser<'a> {
                 null_treatment: None,
                 over: None,
                 within_group: vec![],
+                closing_paren_token,
             });
         }
 
@@ -2745,6 +2748,8 @@ impl<'a> Parser<'a> {
             parameters = FunctionArguments::List(args);
             args = self.parse_function_argument_list()?;
         }
+        // Both argument list parsers consume the closing `)`.
+        let closing_paren_token = self.last_consumed_token();
 
         let within_group = if self.parse_keywords(&[Keyword::WITHIN, Keyword::GROUP]) {
             self.expect_token(&Token::LParen)?;
@@ -2783,7 +2788,7 @@ impl<'a> Parser<'a> {
         let over = if self.parse_keyword(Keyword::OVER) {
             if self.consume_token(&Token::LParen) {
                 let window_spec = self.parse_window_spec()?;
-                Some(WindowType::WindowSpec(window_spec))
+                Some(Box::new(WindowType::WindowSpec(window_spec)))
             } else {
                 let over_is_alias = self.dialect.supports_over_keyword_as_column_alias()
                     && match &self.peek_token_ref().token {
@@ -2799,7 +2804,7 @@ impl<'a> Parser<'a> {
                     self.prev_token();
                     None
                 } else {
-                    Some(WindowType::NamedWindow(self.parse_identifier()?))
+                    Some(Box::new(WindowType::NamedWindow(self.parse_identifier()?)))
                 }
             }
         } else {
@@ -2815,6 +2820,7 @@ impl<'a> Parser<'a> {
             filter,
             over,
             within_group,
+            closing_paren_token,
         })
     }
 
@@ -2836,10 +2842,11 @@ impl<'a> Parser<'a> {
 
     /// Parse time-related function `name` possibly followed by `(...)` arguments.
     pub fn parse_time_functions(&mut self, name: ObjectName) -> Result<Expr, ParserError> {
-        let args = if self.consume_token(&Token::LParen) {
-            FunctionArguments::List(self.parse_function_argument_list()?)
+        let (args, closing_paren_token) = if self.consume_token(&Token::LParen) {
+            let args = self.parse_function_argument_list()?;
+            (FunctionArguments::List(args), self.last_consumed_token())
         } else {
-            FunctionArguments::None
+            (FunctionArguments::None, AttachedToken::empty())
         };
         Ok(Expr::Function(Function {
             name,
@@ -2850,6 +2857,7 @@ impl<'a> Parser<'a> {
             over: None,
             null_treatment: None,
             within_group: vec![],
+            closing_paren_token,
         }))
     }
 
@@ -13421,6 +13429,7 @@ impl<'a> Parser<'a> {
                 filter: None,
                 null_treatment: None,
                 within_group: vec![],
+                closing_paren_token: AttachedToken::empty(),
             }))
         }
     }
@@ -22823,7 +22832,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a window specification.
+    ///
+    /// The opening `(` must be the token just consumed; this parses up to and
+    /// including the closing `)`.
     pub fn parse_window_spec(&mut self) -> Result<WindowSpec, ParserError> {
+        let opening_paren_token = self.last_consumed_token();
         let window_name = match &self.peek_token_ref().token {
             Token::Word(w)
                 if !matches!(
@@ -22863,6 +22876,8 @@ impl<'a> Parser<'a> {
             partition_by,
             order_by,
             window_frame,
+            opening_paren_token,
+            closing_paren_token: self.last_consumed_token(),
         })
     }
 

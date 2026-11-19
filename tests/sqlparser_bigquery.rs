@@ -2295,6 +2295,7 @@ fn parse_map_access_expr() {
                     over: None,
                     within_group: vec![],
                     uses_odbc_syntax: false,
+                    closing_paren_token: AttachedToken::empty(),
                 }),
             }),
             AccessExpr::Dot(Expr::Identifier(Ident::with_span(

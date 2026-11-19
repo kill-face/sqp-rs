@@ -661,6 +661,7 @@ fn test_duckdb_named_argument_function_with_assignment_operator() {
             filter: None,
             over: None,
             within_group: vec![],
+            closing_paren_token: AttachedToken::empty(),
         }),
         expr_from_projection(only(&select.projection))
     );

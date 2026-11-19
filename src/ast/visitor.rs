@@ -676,6 +676,7 @@ where
 /// # use sqlparser::parser::Parser;
 /// # use sqlparser::dialect::GenericDialect;
 /// # use sqlparser::ast::*;
+/// # use sqlparser::ast::helpers::attached_token::AttachedToken;
 /// # use core::ops::ControlFlow;
 /// let sql = "SELECT x, y FROM t";
 /// let mut statements = Parser::parse_sql(&GenericDialect{}, sql).unwrap();
@@ -696,6 +697,7 @@ where
 ///           over: None,
 ///           parameters: FunctionArguments::None,
 ///           within_group: vec![],
+///           closing_paren_token: AttachedToken::empty(),
 ///      });
 ///   }
 ///   ControlFlow::<()>::Continue(())
