@@ -3360,3 +3360,19 @@ fn parse_mssql_create_spatial_index() {
         .parse_sql_statements("CREATE SPATIAL INDEX ix ON t(geo)")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_column_constraint_column_list() {
+    let sql = "CREATE TABLE t (id INT PRIMARY KEY CLUSTERED (id DESC) NOT NULL, c INT UNIQUE (c))";
+    let Statement::CreateTable(create) = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    let ColumnOption::PrimaryKey(pk) = &create.columns[0].options[0].option else {
+        panic!("expected PRIMARY KEY, got {:?}", create.columns[0].options);
+    };
+    assert_eq!(pk.columns.len(), 1);
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("CREATE TABLE t (id INT PRIMARY KEY (id))")
+        .unwrap_err();
+}

@@ -1360,6 +1360,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support a column list on a column-level `PRIMARY KEY`
+    /// or `UNIQUE` constraint? e.g. `CREATE TABLE t (id INT PRIMARY KEY (id))`
+    fn supports_column_constraint_column_list(&self) -> bool {
+        false
+    }
+
     /// Does the dialect support `CREATE SPATIAL INDEX`?
     fn supports_create_spatial_index(&self) -> bool {
         false

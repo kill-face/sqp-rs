@@ -10480,6 +10480,7 @@ impl<'a> Parser<'a> {
                 };
             let nulls_distinct = self.parse_optional_nulls_distinct()?;
             let clustering = self.parse_optional_index_clustering();
+            let columns = self.parse_optional_column_constraint_columns()?;
             let characteristics = self.parse_constraint_characteristics()?;
             Ok(Some(
                 UniqueConstraint {
@@ -10488,7 +10489,7 @@ impl<'a> Parser<'a> {
                     index_type_display,
                     index_type: None,
                     clustering,
-                    columns: vec![],
+                    columns,
                     include: vec![],
                     index_options: vec![],
                     characteristics,
@@ -10500,6 +10501,7 @@ impl<'a> Parser<'a> {
             || (self.dialect.supports_key_column_option() && self.parse_keyword(Keyword::KEY))
         {
             let clustering = self.parse_optional_index_clustering();
+            let columns = self.parse_optional_column_constraint_columns()?;
             let characteristics = self.parse_constraint_characteristics()?;
             Ok(Some(
                 PrimaryKeyConstraint {
@@ -10507,7 +10509,7 @@ impl<'a> Parser<'a> {
                     index_name: None,
                     index_type: None,
                     clustering,
-                    columns: vec![],
+                    columns,
                     include: vec![],
                     index_options: vec![],
                     characteristics,
@@ -11374,6 +11376,20 @@ impl<'a> Parser<'a> {
             Ok(None)
         } else {
             self.parse_optional_ident()
+        }
+    }
+
+    /// Parse the optional column list of a column-level `PRIMARY KEY` or
+    /// `UNIQUE` constraint, if the dialect supports it.
+    fn parse_optional_column_constraint_columns(
+        &mut self,
+    ) -> Result<Vec<IndexColumn>, ParserError> {
+        if self.dialect.supports_column_constraint_column_list()
+            && self.peek_token_ref().token == Token::LParen
+        {
+            self.parse_parenthesized_index_column_list()
+        } else {
+            Ok(vec![])
         }
     }
 

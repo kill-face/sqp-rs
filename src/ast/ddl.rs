@@ -2306,6 +2306,9 @@ impl fmt::Display for ColumnOption {
                 if let Some(clustering) = &constraint.clustering {
                     write!(f, " {clustering}")?;
                 }
+                if !constraint.columns.is_empty() {
+                    write!(f, " ({})", display_comma_separated(&constraint.columns))?;
+                }
                 if let Some(characteristics) = &constraint.characteristics {
                     write!(f, " {characteristics}")?;
                 }
@@ -2319,6 +2322,9 @@ impl fmt::Display for ColumnOption {
                 )?;
                 if let Some(clustering) = &constraint.clustering {
                     write!(f, " {clustering}")?;
+                }
+                if !constraint.columns.is_empty() {
+                    write!(f, " ({})", display_comma_separated(&constraint.columns))?;
                 }
                 if let Some(characteristics) = &constraint.characteristics {
                     write!(f, " {characteristics}")?;

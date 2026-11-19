@@ -92,6 +92,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql#column_constraint>
+    fn supports_column_constraint_column_list(&self) -> bool {
+        true
+    }
+
     /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-spatial-index-transact-sql>
     fn supports_create_spatial_index(&self) -> bool {
         true
