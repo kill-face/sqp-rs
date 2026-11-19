@@ -5399,7 +5399,8 @@ impl<'a> Parser<'a> {
         self.parse_comma_separated(f)
     }
 
-    /// Parses 0 or more statements, each followed by a semicolon.
+    /// Parses 0 or more statements, each followed by a semicolon, unless
+    /// [`ParserOptions::require_semicolon_stmt_delimiter`] is `false`.
     /// If the next token is any of `terminal_keywords` then no more
     /// statements will be parsed.
     pub(crate) fn parse_statement_list(
@@ -5410,8 +5411,11 @@ impl<'a> Parser<'a> {
         loop {
             match &self.peek_nth_token_ref(0).token {
                 Token::EOF => break,
+                // `END TRY` / `END CATCH` is a statement, not the end of the list
                 Token::Word(w)
-                    if w.quote_style.is_none() && terminal_keywords.contains(&w.keyword) =>
+                    if w.quote_style.is_none()
+                        && terminal_keywords.contains(&w.keyword)
+                        && !self.peek_end_with_transaction_modifier() =>
                 {
                     break;
                 }
@@ -5419,9 +5423,24 @@ impl<'a> Parser<'a> {
             }
 
             values.push(self.parse_statement()?);
-            self.expect_token(&Token::SemiColon)?;
+            if self.options.require_semicolon_stmt_delimiter {
+                self.expect_token(&Token::SemiColon)?;
+            } else {
+                while self.consume_token(&Token::SemiColon) {}
+            }
         }
         Ok(values)
+    }
+
+    /// Returns true if the next tokens are `END TRY` or `END CATCH` and the
+    /// dialect supports them.
+    pub(crate) fn peek_end_with_transaction_modifier(&self) -> bool {
+        self.dialect.supports_end_transaction_modifier()
+            && self.peek_keyword(Keyword::END)
+            && matches!(
+                &self.peek_nth_token_ref(1).token,
+                Token::Word(w) if matches!(w.keyword, Keyword::TRY | Keyword::CATCH)
+            )
     }
 
     /// Default implementation of a predicate that returns true if

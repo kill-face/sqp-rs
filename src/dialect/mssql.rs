@@ -372,7 +372,7 @@ impl MsSqlDialect {
                 break;
             }
             if let Some(term) = terminal_keyword {
-                if parser.peek_keyword(term) {
+                if parser.peek_keyword(term) && !parser.peek_end_with_transaction_modifier() {
                     break;
                 }
             }

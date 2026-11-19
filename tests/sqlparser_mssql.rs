@@ -3070,3 +3070,83 @@ fn parse_mssql_create_index_clustering() {
         .parse_sql_statements("CREATE CLUSTERED INDEX ix ON t(a)")
         .unwrap_err();
 }
+
+#[test]
+fn parse_mssql_block_statements_without_semicolons() {
+    let sql = r#"CREATE PROCEDURE p AS
+BEGIN
+    DECLARE @x INT
+    SET @x = 1
+    BEGIN TRY
+        SELECT 1
+    END TRY
+    BEGIN CATCH
+        SELECT 2;
+    END CATCH
+    IF @x = 1
+    BEGIN
+        SELECT 3
+        SELECT 4
+    END
+    WHILE @x < 3
+    BEGIN
+        SET @x = @x + 1
+    END
+END"#;
+    let stmts = tsql().parse_sql_statements(sql).unwrap();
+    assert_eq!(stmts.len(), 1);
+    let Statement::CreateProcedure {
+        body: CreateProcedureBody::As(ConditionalStatements::BeginEnd(body)),
+        ..
+    } = &stmts[0]
+    else {
+        panic!(
+            "expected CREATE PROCEDURE ... AS BEGIN ... END, got {:?}",
+            stmts[0]
+        );
+    };
+    assert_eq!(body.statements.len(), 10);
+    assert!(matches!(
+        body.statements[2],
+        Statement::StartTransaction {
+            modifier: Some(TransactionModifier::Try),
+            ..
+        }
+    ));
+    assert!(matches!(
+        body.statements[4],
+        Statement::Commit {
+            modifier: Some(TransactionModifier::Try),
+            ..
+        }
+    ));
+    assert!(matches!(
+        body.statements[7],
+        Statement::Commit {
+            modifier: Some(TransactionModifier::Catch),
+            ..
+        }
+    ));
+    // The canonical form has semicolons and parses without the option
+    ms().verified_stmt(&stmts[0].to_string());
+
+    let stmts = tsql()
+        .parse_sql_statements("BEGIN SELECT 1 SELECT 2 END")
+        .unwrap();
+    let Statement::StartTransaction { statements, .. } = &stmts[0] else {
+        panic!("expected BEGIN ... END, got {:?}", stmts[0]);
+    };
+    assert_eq!(statements.len(), 2);
+
+    let sql = "CREATE FUNCTION f() RETURNS INT AS BEGIN DECLARE @x INT = 1 RETURN @x END";
+    let stmts = tsql().parse_sql_statements(sql).unwrap();
+    ms().verified_stmt(&stmts[0].to_string());
+
+    ms().verified_stmt("BEGIN BEGIN TRY; SELECT 1; END TRY; BEGIN CATCH; SELECT 2; END CATCH; END");
+    // Semicolons are still required unless the option is disabled
+    assert_eq!(
+        ms().parse_sql_statements("BEGIN SELECT 1 SELECT 2 END")
+            .unwrap_err(),
+        ParserError::ParserError("Expected: ;, found: SELECT".to_string())
+    );
+}
