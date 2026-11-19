@@ -10342,12 +10342,15 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+        let readonly =
+            self.dialect.supports_readonly_parameters() && self.parse_keyword(Keyword::READONLY);
 
         Ok(ProcedureParam {
             name,
             data_type,
             mode,
             default,
+            readonly,
         })
     }
 

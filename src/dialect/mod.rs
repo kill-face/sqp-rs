@@ -1400,6 +1400,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support `READONLY` on procedure parameters?
+    /// e.g. `CREATE PROCEDURE p @t dbo.MyTableType READONLY AS ...`
+    fn supports_readonly_parameters(&self) -> bool {
+        false
+    }
+
     /// Does the dialect accept an option named without a value,
     /// e.g. `CREATE VIEW v WITH (security_barrier) AS SELECT 1`?
     ///

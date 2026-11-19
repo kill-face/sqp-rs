@@ -188,6 +188,7 @@ fn parse_create_procedure() {
                     data_type: DataType::Int(None),
                     mode: None,
                     default: None,
+                    readonly: false,
                 },
                 ProcedureParam {
                     name: Ident {
@@ -201,6 +202,7 @@ fn parse_create_procedure() {
                     })),
                     mode: None,
                     default: None,
+                    readonly: false,
                 }
             ]),
             name: ObjectName::from(vec![Ident {
@@ -3374,5 +3376,20 @@ fn parse_mssql_column_constraint_column_list() {
 
     TestedDialects::new(vec![Box::new(GenericDialect {})])
         .parse_sql_statements("CREATE TABLE t (id INT PRIMARY KEY (id))")
+        .unwrap_err();
+}
+
+#[test]
+fn parse_mssql_readonly_procedure_params() {
+    let sql = "CREATE PROCEDURE p (@rows dbo.RowTable READONLY, @n INT = 1) AS BEGIN SELECT 1; END";
+    let Statement::CreateProcedure { params, .. } = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    let params = params.unwrap();
+    assert!(params[0].readonly);
+    assert!(!params[1].readonly);
+
+    TestedDialects::new(vec![Box::new(GenericDialect {})])
+        .parse_sql_statements("CREATE PROCEDURE p (@rows t READONLY) AS BEGIN SELECT 1; END")
         .unwrap_err();
 }

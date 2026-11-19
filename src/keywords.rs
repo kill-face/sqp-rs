@@ -875,6 +875,7 @@ define_keywords!(
     RAW,
     RCFILE,
     READ,
+    READONLY,
     READS,
     READ_ONLY,
     READ_WRITE,

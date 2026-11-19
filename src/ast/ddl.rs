@@ -1733,21 +1733,29 @@ pub struct ProcedureParam {
     pub mode: Option<ArgMode>,
     /// Optional default expression for the parameter.
     pub default: Option<Expr>,
+    /// [MsSql] `READONLY`, required for table-valued parameters.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/relational-databases/tables/use-table-valued-parameters-database-engine
+    pub readonly: bool,
 }
 
 impl fmt::Display for ProcedureParam {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(mode) = &self.mode {
             if let Some(default) = &self.default {
-                write!(f, "{mode} {} {} = {}", self.name, self.data_type, default)
+                write!(f, "{mode} {} {} = {}", self.name, self.data_type, default)?;
             } else {
-                write!(f, "{mode} {} {}", self.name, self.data_type)
+                write!(f, "{mode} {} {}", self.name, self.data_type)?;
             }
         } else if let Some(default) = &self.default {
-            write!(f, "{} {} = {}", self.name, self.data_type, default)
+            write!(f, "{} {} = {}", self.name, self.data_type, default)?;
         } else {
-            write!(f, "{} {}", self.name, self.data_type)
+            write!(f, "{} {}", self.name, self.data_type)?;
         }
+        if self.readonly {
+            write!(f, " READONLY")?;
+        }
+        Ok(())
     }
 }
 

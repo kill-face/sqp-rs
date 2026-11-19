@@ -19750,6 +19750,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         data_type: DataType::Integer(None),
                         mode: Some(ArgMode::In),
                         default: None,
+                        readonly: false,
                     },
                     ProcedureParam {
                         name: Ident {
@@ -19760,6 +19761,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         data_type: DataType::Text,
                         mode: Some(ArgMode::Out),
                         default: None,
+                        readonly: false,
                     },
                     ProcedureParam {
                         name: Ident {
@@ -19770,6 +19772,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         data_type: DataType::Timestamp(None, TimezoneInfo::None),
                         mode: Some(ArgMode::InOut),
                         default: None,
+                        readonly: false,
                     },
                     ProcedureParam {
                         name: Ident {
@@ -19780,6 +19783,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         data_type: DataType::Bool,
                         mode: None,
                         default: None,
+                        readonly: false,
                     },
                 ])
             );
@@ -19806,6 +19810,7 @@ fn parse_create_procedure_with_parameter_modes() {
                         data_type: DataType::Integer(None),
                         mode: Some(ArgMode::In),
                         default: Some(Expr::Value((number("1")).with_empty_span())),
+                        readonly: false,
                     },
                     ProcedureParam {
                         name: Ident::new("b"),
@@ -19814,18 +19819,21 @@ fn parse_create_procedure_with_parameter_modes() {
                         default: Some(Expr::Value(
                             Value::SingleQuotedString("2".into()).with_empty_span()
                         )),
+                        readonly: false,
                     },
                     ProcedureParam {
                         name: Ident::new("c"),
                         data_type: DataType::Timestamp(None, TimezoneInfo::None),
                         mode: Some(ArgMode::InOut),
                         default: Some(Expr::Value(Value::Null.with_empty_span())),
+                        readonly: false,
                     },
                     ProcedureParam {
                         name: Ident::new("d"),
                         data_type: DataType::Bool,
                         mode: None,
                         default: Some(Expr::Value((number("0")).with_empty_span())),
+                        readonly: false,
                     }
                 ]),
             );

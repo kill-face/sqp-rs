@@ -127,6 +127,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql>
+    fn supports_readonly_parameters(&self) -> bool {
+        true
+    }
+
     /// SQL Server accepts a trailing comma after the last column definition.
     fn supports_column_definition_trailing_commas(&self) -> bool {
         true
