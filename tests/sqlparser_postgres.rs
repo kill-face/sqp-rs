@@ -2445,6 +2445,7 @@ fn parse_deallocate() {
         Statement::Deallocate {
             name: "a".into(),
             prepare: false,
+            deallocate_token: AttachedToken::empty(),
         }
     );
 
@@ -2454,6 +2455,7 @@ fn parse_deallocate() {
         Statement::Deallocate {
             name: "ALL".into(),
             prepare: false,
+            deallocate_token: AttachedToken::empty(),
         }
     );
 
@@ -2463,6 +2465,7 @@ fn parse_deallocate() {
         Statement::Deallocate {
             name: "a".into(),
             prepare: true,
+            deallocate_token: AttachedToken::empty(),
         }
     );
 
@@ -2472,6 +2475,7 @@ fn parse_deallocate() {
         Statement::Deallocate {
             name: "ALL".into(),
             prepare: true,
+            deallocate_token: AttachedToken::empty(),
         }
     );
 }

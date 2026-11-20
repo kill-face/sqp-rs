@@ -12461,7 +12461,7 @@ fn parse_discard() {
 fn parse_cursor() {
     let sql = r#"CLOSE my_cursor"#;
     match verified_stmt(sql) {
-        Statement::Close { cursor } => assert_eq!(
+        Statement::Close { cursor, .. } => assert_eq!(
             cursor,
             CloseCursor::Specific {
                 name: Ident::new("my_cursor"),
@@ -12472,7 +12472,7 @@ fn parse_cursor() {
 
     let sql = r#"CLOSE ALL"#;
     match verified_stmt(sql) {
-        Statement::Close { cursor } => assert_eq!(cursor, CloseCursor::All),
+        Statement::Close { cursor, .. } => assert_eq!(cursor, CloseCursor::All),
         _ => unreachable!(),
     }
 }
@@ -19597,6 +19597,7 @@ fn test_open() {
         stmt,
         Statement::Open(OpenStatement {
             cursor_name: Ident::new("Employee_Cursor"),
+            open_token: AttachedToken::empty(),
         })
     );
 }
@@ -24159,6 +24160,7 @@ fn parse_fetch_without_direction_and_into_list() {
                 ObjectName::from(vec![Ident::new("a")]),
                 ObjectName::from(vec![Ident::new("b")])
             ],
+            fetch_token: AttachedToken::empty(),
         }
     );
     let Statement::Fetch { direction, .. } = verified_stmt("FETCH RELATIVE -1 FROM c") else {

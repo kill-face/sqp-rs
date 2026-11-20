@@ -9267,6 +9267,7 @@ impl<'a> Parser<'a> {
     /// [MySQL](https://dev.mysql.com/doc/refman/8.4/en/fetch.html)
     /// [Snowflake](https://docs.snowflake.com/en/sql-reference/snowflake-scripting/fetch)
     pub fn parse_fetch_statement(&mut self) -> Result<Statement, ParserError> {
+        let fetch_token = AttachedToken(self.get_current_token().clone());
         let direction = if self.parse_keyword(Keyword::NEXT) {
             Some(FetchDirection::Next)
         } else if self.parse_keyword(Keyword::PRIOR) {
@@ -9332,6 +9333,7 @@ impl<'a> Parser<'a> {
             direction,
             position,
             into,
+            fetch_token,
         })
     }
 
@@ -13854,14 +13856,16 @@ impl<'a> Parser<'a> {
 
     /// Parse [Statement::Open]
     fn parse_open(&mut self) -> Result<Statement, ParserError> {
-        self.expect_keyword(Keyword::OPEN)?;
+        let open_token = AttachedToken(self.expect_keyword(Keyword::OPEN)?);
         Ok(Statement::Open(OpenStatement {
             cursor_name: self.parse_identifier()?,
+            open_token,
         }))
     }
 
     /// Parse a `CLOSE` cursor statement.
     pub fn parse_close(&mut self) -> Result<Statement, ParserError> {
+        let close_token = AttachedToken(self.get_current_token().clone());
         let cursor = if self.parse_keyword(Keyword::ALL) {
             CloseCursor::All
         } else {
@@ -13870,7 +13874,11 @@ impl<'a> Parser<'a> {
             CloseCursor::Specific { name }
         };
 
-        Ok(Statement::Close { cursor })
+        Ok(Statement::Close {
+            cursor,
+            close_token,
+            end_token: self.last_consumed_token(),
+        })
     }
 
     fn parse_copy_option(&mut self) -> Result<CopyOption, ParserError> {
@@ -22541,9 +22549,14 @@ impl<'a> Parser<'a> {
 
     /// Parse a SQL `DEALLOCATE` statement
     pub fn parse_deallocate(&mut self) -> Result<Statement, ParserError> {
+        let deallocate_token = AttachedToken(self.get_current_token().clone());
         let prepare = self.parse_keyword(Keyword::PREPARE);
         let name = self.parse_identifier()?;
-        Ok(Statement::Deallocate { name, prepare })
+        Ok(Statement::Deallocate {
+            name,
+            prepare,
+            deallocate_token,
+        })
     }
 
     /// Parse a SQL `EXECUTE` statement

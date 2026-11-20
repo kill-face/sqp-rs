@@ -32,30 +32,29 @@ use super::{
     AlterGenericOption, AlterIndexOperation, AlterTableOperation, AlterTrigger,
     AlterTriggerOperation, AlterView, AlterViewOperation, Analyze, Array, Assignment,
     AssignmentTarget, AttachedToken, BeginEndStatements, BreakStatement, CaseStatement,
-    CloseCursor, ClusteredIndex, ColumnDef, ColumnOption, ColumnOptionDef,
-    ConditionalStatementBlock, ConditionalStatements, ConflictTarget, ConnectByKind,
-    ConstraintCharacteristics, ContinueStatement, CopySource, CreateFunction, CreateFunctionBody,
-    CreateIndex, CreateProcedureBody, CreateRule, CreateRuleAction, CreateTable,
-    CreateTableOptions, CreateTrigger, CreateUserMapping, Cte, DataSpace, Declare,
-    DeclareAssignment, Delete, DoOption, DoStatement, DoUpdate, DropRule, ExceptSelectItem,
-    ExcludeConstraintElement, ExcludeSelectItem, Expr, ExprWithAlias, Fetch, ForValues, FromTable,
-    Function, FunctionArg, FunctionArgExpr, FunctionArgumentClause, FunctionArgumentList,
-    FunctionArguments, GroupByExpr, HavingBound, IfStatement, IlikeSelectItem, InTarget,
-    IndexColumn, Insert, Interpolate, InterpolateExpr, Join, JoinConstraint, JoinOperator,
-    JsonPath, JsonPathElem, LateralView, LimitClause, MatchRecognizePattern, Measure, Merge,
-    MergeAction, MergeClause, MergeInsertExpr, MergeInsertKind, MergeUpdateExpr, MergeUpdateKind,
-    NamedParenthesizedList, NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart,
-    Offset, OnConflict, OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy,
-    OrderByExpr, OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue,
-    PivotValueSource, PrintStatement, ProcedureParam, ProjectionSelect, Query, QueryHint,
-    QueryHints, RaiseStatement, RaiseStatementValue, ReferentialAction, RefreshMaterializedView,
-    RenameSelectItem, ReplaceSelectElement, ReplaceSelectItem, ReturnStatement,
-    ReturnStatementValue, Select, SelectInto, SelectItem, Set, SetExpr, SetSessionParamKind,
-    Setting, SqlOption, Statement, Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef,
-    TableConstraint, TableFactor, TableObject, TableOptionsClustered, TableWithJoins,
-    ThrowStatement, Update, UpdateTableFromKind, Use, UserMappingUser, Values, ViewColumnDef,
-    WaitForStatement, WhileStatement, WildcardAdditionalOptions, WindowSpec, WindowType, With,
-    WithFill,
+    ClusteredIndex, ColumnDef, ColumnOption, ColumnOptionDef, ConditionalStatementBlock,
+    ConditionalStatements, ConflictTarget, ConnectByKind, ConstraintCharacteristics,
+    ContinueStatement, CopySource, CreateFunction, CreateFunctionBody, CreateIndex,
+    CreateProcedureBody, CreateRule, CreateRuleAction, CreateTable, CreateTableOptions,
+    CreateTrigger, CreateUserMapping, Cte, DataSpace, Declare, DeclareAssignment, Delete, DoOption,
+    DoStatement, DoUpdate, DropRule, ExceptSelectItem, ExcludeConstraintElement, ExcludeSelectItem,
+    Expr, ExprWithAlias, Fetch, ForValues, FromTable, Function, FunctionArg, FunctionArgExpr,
+    FunctionArgumentClause, FunctionArgumentList, FunctionArguments, GroupByExpr, HavingBound,
+    IfStatement, IlikeSelectItem, InTarget, IndexColumn, Insert, Interpolate, InterpolateExpr,
+    Join, JoinConstraint, JoinOperator, JsonPath, JsonPathElem, LateralView, LimitClause,
+    MatchRecognizePattern, Measure, Merge, MergeAction, MergeClause, MergeInsertExpr,
+    MergeInsertKind, MergeUpdateExpr, MergeUpdateKind, NamedParenthesizedList,
+    NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart, Offset, OnConflict,
+    OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy, OrderByExpr,
+    OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue, PivotValueSource,
+    PrintStatement, ProcedureParam, ProjectionSelect, Query, QueryHint, QueryHints, RaiseStatement,
+    RaiseStatementValue, ReferentialAction, RefreshMaterializedView, RenameSelectItem,
+    ReplaceSelectElement, ReplaceSelectItem, ReturnStatement, ReturnStatementValue, Select,
+    SelectInto, SelectItem, Set, SetExpr, SetSessionParamKind, Setting, SqlOption, Statement,
+    Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef, TableConstraint, TableFactor,
+    TableObject, TableOptionsClustered, TableWithJoins, ThrowStatement, Update,
+    UpdateTableFromKind, Use, UserMappingUser, Values, ViewColumnDef, WaitForStatement,
+    WhileStatement, WildcardAdditionalOptions, WindowSpec, WindowType, With, WithFill,
 };
 
 /// Given an iterator of spans, return the [Span::union] of all spans.
@@ -300,7 +299,6 @@ impl Spanned for Values {
 /// - [Statement::CreateCollation]
 /// - [Statement::AlterCollation]
 /// - [Statement::AlterExtension]
-/// - [Statement::Fetch]
 /// - [Statement::Flush]
 /// - [Statement::Discard]
 /// - [Statement::ShowFunctions]
@@ -321,7 +319,6 @@ impl Spanned for Values {
 /// - [Statement::Revoke]
 /// - [Statement::GrantRole]
 /// - [Statement::RevokeRole]
-/// - [Statement::Deallocate]
 /// - [Statement::Prepare]
 /// - [Statement::Kill]
 /// - [Statement::ExplainTable]
@@ -383,10 +380,11 @@ impl Spanned for Statement {
                 partition: _,
             } => Span::empty(),
             Statement::Open(open) => open.span(),
-            Statement::Close { cursor } => match cursor {
-                CloseCursor::All => Span::empty(),
-                CloseCursor::Specific { name } => name.span,
-            },
+            Statement::Close {
+                close_token,
+                end_token,
+                ..
+            } => close_token.0.span.union(&end_token.0.span),
             Statement::Update(update) => update.span(),
             Statement::Delete(delete) => delete.span(),
             Statement::CreateView(create_view) => create_view.span(),
@@ -464,7 +462,16 @@ impl Spanned for Statement {
             } => {
                 union_spans(iter::once(declare_token.0.span).chain(stmts.iter().map(|d| d.span())))
             }
-            Statement::Fetch { .. } => Span::empty(),
+            Statement::Fetch {
+                name,
+                into,
+                fetch_token,
+                ..
+            } => union_spans(
+                iter::once(fetch_token.0.span)
+                    .chain(iter::once(name.span))
+                    .chain(into.iter().map(|i| i.span())),
+            ),
             Statement::Flush { .. } => Span::empty(),
             Statement::Discard { .. } => Span::empty(),
             Statement::Set(set) => set.span(),
@@ -535,7 +542,11 @@ impl Spanned for Statement {
             Statement::GrantRole { .. } => Span::empty(),
             Statement::RevokeRole { .. } => Span::empty(),
             Statement::AlterDefaultPrivileges(privileges) => privileges.span(),
-            Statement::Deallocate { .. } => Span::empty(),
+            Statement::Deallocate {
+                name,
+                deallocate_token,
+                ..
+            } => deallocate_token.0.span.union(&name.span),
             Statement::Execute {
                 execute_token,
                 end_token,
@@ -3051,8 +3062,11 @@ impl Spanned for BeginEndStatements {
 
 impl Spanned for OpenStatement {
     fn span(&self) -> Span {
-        let OpenStatement { cursor_name } = self;
-        cursor_name.span
+        let OpenStatement {
+            cursor_name,
+            open_token,
+        } = self;
+        open_token.0.span.union(&cursor_name.span)
     }
 }
 
@@ -4347,6 +4361,28 @@ SETTINGS update_parallel_mode = 'auto'"#;
         assert_eq!(
             spanned_text(sql, f.over.as_ref().unwrap().span()),
             "(PARTITION BY a, b ORDER BY c ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)"
+        );
+    }
+
+    #[test]
+    fn test_cursor_statement_spans() {
+        let sql = "OPEN c;\nFETCH NEXT FROM c INTO @a, @b;\nFETCH c;\nCLOSE c;\nDEALLOCATE c";
+        assert_eq!(
+            statement_texts(sql, &mssql_statements(sql)),
+            [
+                "OPEN c",
+                "FETCH NEXT FROM c INTO @a, @b",
+                "FETCH c",
+                "CLOSE c",
+                "DEALLOCATE c"
+            ]
+        );
+
+        let sql = "CLOSE ALL; DEALLOCATE PREPARE ALL";
+        let stmts = Parser::parse_sql(&crate::dialect::PostgreSqlDialect {}, sql).unwrap();
+        assert_eq!(
+            statement_texts(sql, &stmts),
+            ["CLOSE ALL", "DEALLOCATE PREPARE ALL"]
         );
     }
 

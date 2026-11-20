@@ -4031,6 +4031,10 @@ pub enum Statement {
     Close {
         /// Cursor name
         cursor: CloseCursor,
+        /// The `CLOSE` keyword.
+        close_token: AttachedToken,
+        /// The statement's last token (the cursor name or `ALL`).
+        end_token: AttachedToken,
     },
     /// ```sql
     /// UPDATE
@@ -4469,6 +4473,8 @@ pub enum Statement {
         /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/fetch.html
         /// [Snowflake]: https://docs.snowflake.com/en/sql-reference/snowflake-scripting/fetch
         into: Vec<ObjectName>,
+        /// The `FETCH` keyword.
+        fetch_token: AttachedToken,
     },
     /// ```sql
     /// FLUSH [NO_WRITE_TO_BINLOG | LOCAL] flush_option [, flush_option] ... | tables_option
@@ -5008,6 +5014,8 @@ pub enum Statement {
         name: Ident,
         /// Whether `PREPARE` keyword was present.
         prepare: bool,
+        /// The `DEALLOCATE` keyword.
+        deallocate_token: AttachedToken,
     },
     /// ```sql
     /// An `EXECUTE` statement
@@ -5678,6 +5686,7 @@ impl fmt::Display for Statement {
                 direction,
                 position,
                 into,
+                fetch_token: _,
             } => {
                 f.write_str("FETCH")?;
                 if let Some(direction) = direction {
@@ -5823,7 +5832,7 @@ impl fmt::Display for Statement {
             Statement::Update(update) => update.fmt(f),
             Statement::Delete(delete) => delete.fmt(f),
             Statement::Open(open) => open.fmt(f),
-            Statement::Close { cursor } => {
+            Statement::Close { cursor, .. } => {
                 write!(f, "CLOSE {cursor}")?;
 
                 Ok(())
@@ -6573,7 +6582,7 @@ impl fmt::Display for Statement {
             Statement::GrantRole(grant) => write!(f, "{grant}"),
             Statement::RevokeRole(revoke) => write!(f, "{revoke}"),
             Statement::AlterDefaultPrivileges(stmt) => write!(f, "{stmt}"),
-            Statement::Deallocate { name, prepare } => write!(
+            Statement::Deallocate { name, prepare, .. } => write!(
                 f,
                 "DEALLOCATE {prepare}{name}",
                 prepare = if *prepare { "PREPARE " } else { "" },
@@ -12298,6 +12307,8 @@ pub enum ReturnStatementValue {
 pub struct OpenStatement {
     /// Cursor name
     pub cursor_name: Ident,
+    /// The `OPEN` keyword.
+    pub open_token: AttachedToken,
 }
 
 impl fmt::Display for OpenStatement {
