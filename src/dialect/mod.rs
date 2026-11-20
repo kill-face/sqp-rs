@@ -1425,6 +1425,17 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support the `BREAK` and `CONTINUE` loop statements?
+    fn supports_break_continue_statements(&self) -> bool {
+        false
+    }
+
+    /// Does the dialect support a loop label after `BREAK` and `CONTINUE`?
+    /// e.g. `BREAK outer_loop`
+    fn supports_break_continue_labels(&self) -> bool {
+        false
+    }
+
     /// Does the dialect support view attributes in `CREATE VIEW`?
     /// e.g. `CREATE VIEW v WITH SCHEMABINDING AS SELECT 1`
     fn supports_create_view_attributes(&self) -> bool {

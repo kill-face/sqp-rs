@@ -147,6 +147,12 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/language-elements/break-transact-sql>
+    /// and <https://learn.microsoft.com/en-us/sql/t-sql/language-elements/continue-transact-sql>
+    fn supports_break_continue_statements(&self) -> bool {
+        true
+    }
+
     /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql>
     fn supports_create_view_attributes(&self) -> bool {
         true
@@ -334,6 +340,8 @@ impl MsSqlDialect {
                 | Keyword::COMMIT
                 | Keyword::ROLLBACK
                 | Keyword::REVOKE
+                | Keyword::BREAK
+                | Keyword::CONTINUE
         )
     }
 

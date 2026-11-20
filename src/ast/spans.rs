@@ -31,30 +31,31 @@ use super::{
     comments, dcl::SecondaryRoles, value::ValueWithSpan, AccessExpr, AlterColumnOperation,
     AlterGenericOption, AlterIndexOperation, AlterTableOperation, AlterTrigger,
     AlterTriggerOperation, AlterView, AlterViewOperation, Analyze, Array, Assignment,
-    AssignmentTarget, AttachedToken, BeginEndStatements, CaseStatement, CloseCursor,
-    ClusteredIndex, ColumnDef, ColumnOption, ColumnOptionDef, ConditionalStatementBlock,
-    ConditionalStatements, ConflictTarget, ConnectByKind, ConstraintCharacteristics, CopySource,
-    CreateFunction, CreateFunctionBody, CreateIndex, CreateProcedureBody, CreateRule,
-    CreateRuleAction, CreateTable, CreateTableOptions, CreateTrigger, CreateUserMapping, Cte,
-    DataSpace, Declare, DeclareAssignment, Delete, DoOption, DoStatement, DoUpdate, DropRule,
-    ExceptSelectItem, ExcludeConstraintElement, ExcludeSelectItem, Expr, ExprWithAlias, Fetch,
-    ForValues, FromTable, Function, FunctionArg, FunctionArgExpr, FunctionArgumentClause,
-    FunctionArgumentList, FunctionArguments, GroupByExpr, HavingBound, IfStatement,
-    IlikeSelectItem, InTarget, IndexColumn, Insert, Interpolate, InterpolateExpr, Join,
-    JoinConstraint, JoinOperator, JsonPath, JsonPathElem, LateralView, LimitClause,
-    MatchRecognizePattern, Measure, Merge, MergeAction, MergeClause, MergeInsertExpr,
-    MergeInsertKind, MergeUpdateExpr, MergeUpdateKind, NamedParenthesizedList,
-    NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart, Offset, OnConflict,
-    OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy, OrderByExpr,
-    OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue, PivotValueSource,
-    PrintStatement, ProcedureParam, ProjectionSelect, Query, QueryHint, QueryHints, RaiseStatement,
-    RaiseStatementValue, ReferentialAction, RefreshMaterializedView, RenameSelectItem,
-    ReplaceSelectElement, ReplaceSelectItem, ReturnStatement, ReturnStatementValue, Select,
-    SelectInto, SelectItem, Set, SetExpr, SetSessionParamKind, Setting, SqlOption, Statement,
-    Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef, TableConstraint, TableFactor,
-    TableObject, TableOptionsClustered, TableWithJoins, ThrowStatement, Update,
-    UpdateTableFromKind, Use, UserMappingUser, Values, ViewColumnDef, WaitForStatement,
-    WhileStatement, WildcardAdditionalOptions, WindowSpec, WindowType, With, WithFill,
+    AssignmentTarget, AttachedToken, BeginEndStatements, BreakStatement, CaseStatement,
+    CloseCursor, ClusteredIndex, ColumnDef, ColumnOption, ColumnOptionDef,
+    ConditionalStatementBlock, ConditionalStatements, ConflictTarget, ConnectByKind,
+    ConstraintCharacteristics, ContinueStatement, CopySource, CreateFunction, CreateFunctionBody,
+    CreateIndex, CreateProcedureBody, CreateRule, CreateRuleAction, CreateTable,
+    CreateTableOptions, CreateTrigger, CreateUserMapping, Cte, DataSpace, Declare,
+    DeclareAssignment, Delete, DoOption, DoStatement, DoUpdate, DropRule, ExceptSelectItem,
+    ExcludeConstraintElement, ExcludeSelectItem, Expr, ExprWithAlias, Fetch, ForValues, FromTable,
+    Function, FunctionArg, FunctionArgExpr, FunctionArgumentClause, FunctionArgumentList,
+    FunctionArguments, GroupByExpr, HavingBound, IfStatement, IlikeSelectItem, InTarget,
+    IndexColumn, Insert, Interpolate, InterpolateExpr, Join, JoinConstraint, JoinOperator,
+    JsonPath, JsonPathElem, LateralView, LimitClause, MatchRecognizePattern, Measure, Merge,
+    MergeAction, MergeClause, MergeInsertExpr, MergeInsertKind, MergeUpdateExpr, MergeUpdateKind,
+    NamedParenthesizedList, NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart,
+    Offset, OnConflict, OnConflictAction, OnInsert, OpenStatement, OperateFunctionArg, OrderBy,
+    OrderByExpr, OrderByKind, OutputClause, Parens, Partition, PartitionBoundValue,
+    PivotValueSource, PrintStatement, ProcedureParam, ProjectionSelect, Query, QueryHint,
+    QueryHints, RaiseStatement, RaiseStatementValue, ReferentialAction, RefreshMaterializedView,
+    RenameSelectItem, ReplaceSelectElement, ReplaceSelectItem, ReturnStatement,
+    ReturnStatementValue, Select, SelectInto, SelectItem, Set, SetExpr, SetSessionParamKind,
+    Setting, SqlOption, Statement, Subscript, SymbolDefinition, TableAlias, TableAliasColumnDef,
+    TableConstraint, TableFactor, TableObject, TableOptionsClustered, TableWithJoins,
+    ThrowStatement, Update, UpdateTableFromKind, Use, UserMappingUser, Values, ViewColumnDef,
+    WaitForStatement, WhileStatement, WildcardAdditionalOptions, WindowSpec, WindowType, With,
+    WithFill,
 };
 
 /// Given an iterator of spans, return the [Span::union] of all spans.
@@ -596,6 +597,8 @@ impl Spanned for Statement {
             Statement::Print(s) => s.span(),
             Statement::WaitFor(s) => s.span(),
             Statement::Return(s) => s.span(),
+            Statement::Break(s) => s.span(),
+            Statement::Continue(s) => s.span(),
             Statement::List(..) | Statement::Put { .. } | Statement::Remove(..) => Span::empty(),
             Statement::ExportData(ExportData {
                 options,
@@ -740,6 +743,23 @@ impl Spanned for ReturnStatement {
             Some(ReturnStatementValue::Expr(expr)) => return_token.0.span.union(&expr.span()),
             None => return_token.0.span,
         }
+    }
+}
+
+impl Spanned for BreakStatement {
+    fn span(&self) -> Span {
+        let BreakStatement { label, break_token } = self;
+        union_spans(iter::once(break_token.0.span).chain(label.iter().map(|l| l.span)))
+    }
+}
+
+impl Spanned for ContinueStatement {
+    fn span(&self) -> Span {
+        let ContinueStatement {
+            label,
+            continue_token,
+        } = self;
+        union_spans(iter::once(continue_token.0.span).chain(label.iter().map(|l| l.span)))
     }
 }
 
@@ -4343,6 +4363,10 @@ SETTINGS update_parallel_mode = 'auto'"#;
             params,
             ["@a INT", "@b NVARCHAR(50) = N'x'", "@t dbo.T READONLY"]
         );
+
+        let sql = "WHILE 1 = 1\nBEGIN\n    IF @a = 1 BREAK\n    CONTINUE\nEND";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
 
         let sql = "CREATE PROC p AS SELECT 1";
         assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);

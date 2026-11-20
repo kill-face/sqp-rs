@@ -24094,3 +24094,44 @@ fn parse_alter_sequence() {
         ParserError::ParserError("Expected: end of statement, found: RESTART".to_string())
     );
 }
+
+#[test]
+fn parse_break_continue() {
+    let dialects = all_dialects_where(|d| d.supports_break_continue_statements());
+    assert_eq!(
+        dialects.verified_stmt("BREAK"),
+        Statement::Break(BreakStatement {
+            label: None,
+            break_token: AttachedToken::empty(),
+        })
+    );
+    assert_eq!(
+        dialects.verified_stmt("CONTINUE"),
+        Statement::Continue(ContinueStatement {
+            label: None,
+            continue_token: AttachedToken::empty(),
+        })
+    );
+
+    let dialects = all_dialects_where(|d| d.supports_break_continue_labels());
+    let Statement::Break(BreakStatement { label, .. }) = dialects.verified_stmt("BREAK outer_loop")
+    else {
+        unreachable!()
+    };
+    assert_eq!(label, Some(Ident::new("outer_loop")));
+    dialects.verified_stmt("CONTINUE outer_loop");
+
+    let dialects = all_dialects_where(|d| {
+        d.supports_break_continue_statements() && !d.supports_break_continue_labels()
+    });
+    assert_eq!(
+        dialects
+            .parse_sql_statements("BREAK outer_loop")
+            .unwrap_err(),
+        ParserError::ParserError("Expected: end of statement, found: outer_loop".to_string())
+    );
+
+    let dialects = all_dialects_where(|d| !d.supports_break_continue_statements());
+    dialects.parse_sql_statements("BREAK").unwrap_err();
+    dialects.parse_sql_statements("CONTINUE").unwrap_err();
+}

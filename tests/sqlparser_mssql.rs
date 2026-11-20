@@ -3798,3 +3798,26 @@ fn parse_create_procedure_trailing_param_attributes() {
         Parser::parse_sql(&*dialect, "CREATE PROCEDURE p (a INT OUTPUT) AS SELECT 1").unwrap_err();
     }
 }
+
+#[test]
+fn parse_mssql_break_continue_in_while() {
+    let sql = r#"WHILE @i < 10
+BEGIN
+    SET @i = @i + 1
+    IF @i = 5 CONTINUE
+    IF @i = 8 BREAK
+END
+SELECT @i"#;
+    let stmts = tsql().parse_sql_statements(sql).unwrap();
+    let [Statement::While(w), Statement::Query(_)] = &stmts[..] else {
+        panic!("{stmts:?}")
+    };
+    assert!(matches!(
+        w.while_block.statements()[..],
+        [Statement::Set(_), Statement::If(_), Statement::If(_)]
+    ));
+
+    for sql in ["select 1\nbreak", "select * from t\ncontinue"] {
+        assert_eq!(tsql().parse_sql_statements(sql).unwrap().len(), 2, "{sql}");
+    }
+}

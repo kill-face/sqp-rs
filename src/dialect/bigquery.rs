@@ -188,4 +188,14 @@ impl Dialect for BigQueryDialect {
     fn supports_add_column_if_not_exists(&self) -> bool {
         true
     }
+
+    /// See <https://cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#break>
+    fn supports_break_continue_statements(&self) -> bool {
+        true
+    }
+
+    /// See <https://cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#labels>
+    fn supports_break_continue_labels(&self) -> bool {
+        true
+    }
 }

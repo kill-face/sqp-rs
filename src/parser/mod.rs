@@ -783,6 +783,12 @@ impl<'a> Parser<'a> {
                 // `WAITFOR` is MSSQL specific https://learn.microsoft.com/en-us/sql/t-sql/language-elements/waitfor-transact-sql
                 Keyword::WAITFOR => self.parse_waitfor(),
                 Keyword::RETURN => self.parse_return(),
+                Keyword::BREAK if self.dialect.supports_break_continue_statements() => {
+                    self.parse_break().map(Into::into)
+                }
+                Keyword::CONTINUE if self.dialect.supports_break_continue_statements() => {
+                    self.parse_continue().map(Into::into)
+                }
                 Keyword::EXPORT => {
                     self.prev_token();
                     self.parse_export_data()
@@ -23604,6 +23610,38 @@ impl<'a> Parser<'a> {
                 value: None,
                 return_token,
             })),
+        }
+    }
+
+    /// Parse a `BREAK` statement, after the `BREAK` keyword.
+    ///
+    /// See [BreakStatement]
+    fn parse_break(&mut self) -> Result<BreakStatement, ParserError> {
+        let break_token = AttachedToken(self.get_current_token().clone());
+        Ok(BreakStatement {
+            label: self.parse_break_continue_label()?,
+            break_token,
+        })
+    }
+
+    /// Parse a `CONTINUE` statement, after the `CONTINUE` keyword.
+    ///
+    /// See [ContinueStatement]
+    fn parse_continue(&mut self) -> Result<ContinueStatement, ParserError> {
+        let continue_token = AttachedToken(self.get_current_token().clone());
+        Ok(ContinueStatement {
+            label: self.parse_break_continue_label()?,
+            continue_token,
+        })
+    }
+
+    fn parse_break_continue_label(&mut self) -> Result<Option<Ident>, ParserError> {
+        if self.dialect.supports_break_continue_labels()
+            && matches!(&self.peek_token_ref().token, Token::Word(w) if w.keyword == Keyword::NoKeyword)
+        {
+            Ok(Some(self.parse_identifier()?))
+        } else {
+            Ok(None)
         }
     }
 

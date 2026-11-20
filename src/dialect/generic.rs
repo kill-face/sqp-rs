@@ -388,4 +388,12 @@ impl Dialect for GenericDialect {
     fn supports_trailing_procedure_param_attributes(&self) -> bool {
         true
     }
+
+    fn supports_break_continue_statements(&self) -> bool {
+        true
+    }
+
+    fn supports_break_continue_labels(&self) -> bool {
+        true
+    }
 }

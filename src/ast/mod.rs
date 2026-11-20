@@ -5304,6 +5304,18 @@ pub enum Statement {
     ///
     /// See [ReturnStatement]
     Return(ReturnStatement),
+    /// ```sql
+    /// BREAK [ label ]
+    /// ```
+    ///
+    /// See [BreakStatement]
+    Break(BreakStatement),
+    /// ```sql
+    /// CONTINUE [ label ]
+    /// ```
+    ///
+    /// See [ContinueStatement]
+    Continue(ContinueStatement),
     /// Export data statement
     ///
     /// Example:
@@ -6843,6 +6855,8 @@ impl fmt::Display for Statement {
             Statement::Print(s) => write!(f, "{s}"),
             Statement::WaitFor(s) => write!(f, "{s}"),
             Statement::Return(r) => write!(f, "{r}"),
+            Statement::Break(s) => write!(f, "{s}"),
+            Statement::Continue(s) => write!(f, "{s}"),
             Statement::List(command) => write!(f, "LIST {command}"),
             Statement::Put {
                 source,
@@ -12100,6 +12114,58 @@ impl fmt::Display for ReturnStatement {
     }
 }
 
+/// A `BREAK` statement, which exits the innermost loop, or the loop with the
+/// given label.
+///
+/// [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/break-transact-sql)
+/// [Snowflake](https://docs.snowflake.com/en/sql-reference/snowflake-scripting/break)
+/// [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#break)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct BreakStatement {
+    /// Label of the loop to exit.
+    pub label: Option<Ident>,
+    /// The `BREAK` keyword.
+    pub break_token: AttachedToken,
+}
+
+impl fmt::Display for BreakStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("BREAK")?;
+        if let Some(label) = &self.label {
+            write!(f, " {label}")?;
+        }
+        Ok(())
+    }
+}
+
+/// A `CONTINUE` statement, which starts the next iteration of the innermost
+/// loop, or of the loop with the given label.
+///
+/// [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/continue-transact-sql)
+/// [Snowflake](https://docs.snowflake.com/en/sql-reference/snowflake-scripting/continue)
+/// [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#continue)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct ContinueStatement {
+    /// Label of the loop to continue.
+    pub label: Option<Ident>,
+    /// The `CONTINUE` keyword.
+    pub continue_token: AttachedToken,
+}
+
+impl fmt::Display for ContinueStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("CONTINUE")?;
+        if let Some(label) = &self.label {
+            write!(f, " {label}")?;
+        }
+        Ok(())
+    }
+}
+
 /// Variants of a `RETURN` statement
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -13193,6 +13259,18 @@ impl From<Vec<RenameTable>> for Statement {
 impl From<PrintStatement> for Statement {
     fn from(p: PrintStatement) -> Self {
         Self::Print(p)
+    }
+}
+
+impl From<BreakStatement> for Statement {
+    fn from(b: BreakStatement) -> Self {
+        Self::Break(b)
+    }
+}
+
+impl From<ContinueStatement> for Statement {
+    fn from(c: ContinueStatement) -> Self {
+        Self::Continue(c)
     }
 }
 

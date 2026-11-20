@@ -179,6 +179,7 @@ define_keywords!(
     BOOST,
     BOTH,
     BOX,
+    BREAK,
     BRIN,
     BROWSE,
     BTREE,

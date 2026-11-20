@@ -730,6 +730,16 @@ impl Dialect for SnowflakeDialect {
     fn supports_add_column_if_not_exists(&self) -> bool {
         true
     }
+
+    /// See <https://docs.snowflake.com/en/sql-reference/snowflake-scripting/break>
+    /// and <https://docs.snowflake.com/en/sql-reference/snowflake-scripting/continue>
+    fn supports_break_continue_statements(&self) -> bool {
+        true
+    }
+
+    fn supports_break_continue_labels(&self) -> bool {
+        true
+    }
 }
 
 // Peeks ahead to identify tokens that are expected after
