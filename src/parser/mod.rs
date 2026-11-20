@@ -5792,6 +5792,8 @@ impl<'a> Parser<'a> {
             self.advance_token(); // USER
             self.advance_token(); // MAPPING
             self.parse_create_user_mapping().map(Into::into)
+        } else if self.dialect.supports_create_login() && self.parse_keyword(Keyword::LOGIN) {
+            self.parse_create_login(create_token).map(Into::into)
         } else if self.parse_keyword(Keyword::USER) {
             self.parse_create_user(or_replace).map(Into::into)
         } else if self.parse_keyword(Keyword::AGGREGATE) {
@@ -6030,6 +6032,65 @@ impl<'a> Parser<'a> {
                 options: tags,
                 delimiter: KeyValueOptionsDelimiter::Comma,
             },
+        })
+    }
+
+    /// Parse a [MsSql] `CREATE LOGIN` statement, after `CREATE LOGIN`.
+    ///
+    /// See [CreateLogin]
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-login-transact-sql
+    fn parse_create_login(
+        &mut self,
+        create_token: TokenWithSpan,
+    ) -> Result<CreateLogin, ParserError> {
+        let name = self.parse_identifier()?;
+        let mut password = None;
+        let mut options = vec![];
+        let source = if self.parse_keyword(Keyword::FROM) {
+            let source = if self.parse_keyword(Keyword::WINDOWS) {
+                CreateLoginSource::Windows
+            } else if self.parse_keywords(&[Keyword::EXTERNAL, Keyword::PROVIDER]) {
+                CreateLoginSource::ExternalProvider
+            } else if self.parse_keyword(Keyword::CERTIFICATE) {
+                CreateLoginSource::Certificate(self.parse_identifier()?)
+            } else if self.parse_keywords(&[Keyword::ASYMMETRIC, Keyword::KEY]) {
+                CreateLoginSource::AsymmetricKey(self.parse_identifier()?)
+            } else {
+                return self.expected_ref(
+                    "WINDOWS, EXTERNAL PROVIDER, CERTIFICATE or ASYMMETRIC KEY",
+                    self.peek_token_ref(),
+                );
+            };
+            if matches!(
+                source,
+                CreateLoginSource::Windows | CreateLoginSource::ExternalProvider
+            ) && self.parse_keyword(Keyword::WITH)
+            {
+                options = self.parse_comma_separated(Parser::parse_sql_option)?;
+            }
+            Some(source)
+        } else {
+            self.expect_keyword_is(Keyword::WITH)?;
+            self.expect_keyword_is(Keyword::PASSWORD)?;
+            self.expect_token(&Token::Eq)?;
+            password = Some(LoginPassword {
+                password: self.parse_expr()?,
+                hashed: self.parse_keyword(Keyword::HASHED),
+                must_change: self.parse_keyword(Keyword::MUST_CHANGE),
+            });
+            if self.consume_token(&Token::Comma) {
+                options = self.parse_comma_separated(Parser::parse_sql_option)?;
+            }
+            None
+        };
+        Ok(CreateLogin {
+            name,
+            source,
+            password,
+            options,
+            create_token: AttachedToken(create_token),
+            end_token: self.last_consumed_token(),
         })
     }
 

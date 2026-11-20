@@ -623,6 +623,7 @@ impl Spanned for Statement {
                     .chain(connection.iter().map(|i| i.span())),
             ),
             Statement::CreateUser(..) => Span::empty(),
+            Statement::CreateLogin(s) => s.create_token.0.span.union(&s.end_token.0.span),
             Statement::AlterSchema(s) => s.span(),
             Statement::Vacuum(..) => Span::empty(),
             Statement::AlterUser(..) => Span::empty(),
@@ -4361,6 +4362,19 @@ SETTINGS update_parallel_mode = 'auto'"#;
         assert_eq!(
             spanned_text(sql, f.over.as_ref().unwrap().span()),
             "(PARTITION BY a, b ORDER BY c ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)"
+        );
+    }
+
+    #[test]
+    fn test_create_login_spans() {
+        let sql =
+            "CREATE LOGIN lg WITH PASSWORD = 'pw' MUST_CHANGE;\nCREATE LOGIN [d\\u] FROM WINDOWS";
+        assert_eq!(
+            statement_texts(sql, &mssql_statements(sql)),
+            [
+                "CREATE LOGIN lg WITH PASSWORD = 'pw' MUST_CHANGE",
+                "CREATE LOGIN [d\\u] FROM WINDOWS"
+            ]
         );
     }
 

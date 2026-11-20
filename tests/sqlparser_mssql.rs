@@ -3934,3 +3934,53 @@ fn parse_mssql_offset_fetch_variables() {
         "SELECT a FROM t ORDER BY a OFFSET 0 ROWS FETCH FIRST (@take) ROWS ONLY",
     );
 }
+
+#[test]
+fn parse_create_login() {
+    let sql = "CREATE LOGIN lg WITH PASSWORD = N'pw' MUST_CHANGE, DEFAULT_DATABASE = db1, CHECK_POLICY = OFF";
+    let Statement::CreateLogin(login) = ms_and_generic().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(login.name, Ident::new("lg"));
+    assert_eq!(login.source, None);
+    let password = login.password.unwrap();
+    assert!(password.must_change && !password.hashed);
+    assert_eq!(login.options.len(), 2);
+
+    for sql in [
+        "CREATE LOGIN lg WITH PASSWORD = 'pw'",
+        "CREATE LOGIN lg WITH PASSWORD = 'pw' HASHED, SID = 'abc', DEFAULT_LANGUAGE = us_english, CHECK_EXPIRATION = ON, CREDENTIAL = cred",
+        "CREATE LOGIN dom_user FROM WINDOWS",
+        "CREATE LOGIN dom_user FROM WINDOWS WITH DEFAULT_DATABASE = db1, DEFAULT_LANGUAGE = us_english",
+        "CREATE LOGIN ext_user FROM EXTERNAL PROVIDER WITH OBJECT_ID = 'abc'",
+        "CREATE LOGIN lg FROM CERTIFICATE cert1",
+        "CREATE LOGIN lg FROM ASYMMETRIC KEY key1",
+    ] {
+        ms_and_generic().verified_stmt(sql);
+    }
+    let Statement::CreateLogin(login) =
+        ms().verified_stmt("CREATE LOGIN lg FROM ASYMMETRIC KEY key1")
+    else {
+        unreachable!()
+    };
+    assert_eq!(
+        login.source,
+        Some(CreateLoginSource::AsymmetricKey(Ident::new("key1")))
+    );
+
+    assert_eq!(
+        ms().parse_sql_statements("CREATE LOGIN lg").unwrap_err(),
+        ParserError::ParserError("Expected: WITH, found: EOF".to_string())
+    );
+    ms().parse_sql_statements("CREATE LOGIN lg FROM CERTIFICATE c WITH DEFAULT_DATABASE = d")
+        .unwrap_err();
+    for dialect in all_dialects_where(|d| !d.supports_create_login()).dialects {
+        Parser::parse_sql(&*dialect, "CREATE LOGIN lg WITH PASSWORD = 'pw'").unwrap_err();
+    }
+}
+
+#[test]
+fn parse_create_login_quoted_names() {
+    ms().verified_stmt("CREATE LOGIN [dom\\u] FROM WINDOWS WITH DEFAULT_DATABASE = [db1]");
+    ms().verified_stmt("CREATE LOGIN [someone@example.com] FROM EXTERNAL PROVIDER");
+}

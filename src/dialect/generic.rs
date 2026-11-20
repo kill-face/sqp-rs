@@ -396,4 +396,8 @@ impl Dialect for GenericDialect {
     fn supports_break_continue_labels(&self) -> bool {
         true
     }
+
+    fn supports_create_login(&self) -> bool {
+        true
+    }
 }

@@ -5448,6 +5448,10 @@ pub enum Statement {
     /// ```
     /// [Snowflake](https://docs.snowflake.com/en/sql-reference/sql/create-user)
     CreateUser(CreateUser),
+    /// `CREATE LOGIN`
+    ///
+    /// See [CreateLogin]
+    CreateLogin(CreateLogin),
     /// ```sql
     /// ALTER USER \[ IF EXISTS \] \[ <name> \]
     /// ```
@@ -6997,6 +7001,7 @@ impl fmt::Display for Statement {
             Statement::Remove(command) => write!(f, "REMOVE {command}"),
             Statement::ExportData(e) => write!(f, "{e}"),
             Statement::CreateUser(s) => write!(f, "{s}"),
+            Statement::CreateLogin(s) => write!(f, "{s}"),
             Statement::AlterSchema(s) => write!(f, "{s}"),
             Statement::Vacuum(s) => write!(f, "{s}"),
             Statement::AlterUser(s) => write!(f, "{s}"),
@@ -12394,6 +12399,115 @@ impl fmt::Display for ExportData {
         }
     }
 }
+/// A `CREATE LOGIN` statement.
+///
+/// ```sql
+/// CREATE LOGIN login_name { WITH <option_list1> | FROM <sources> }
+///
+/// <option_list1> ::= PASSWORD = { 'password' | hashed_password HASHED } [ MUST_CHANGE ]
+///     [ , <option_list2> [ ,... ] ]
+/// <sources> ::= WINDOWS [ WITH <windows_options> [ ,... ] ]
+///     | EXTERNAL PROVIDER [ WITH OBJECT_ID = 'objectid' ]
+///     | CERTIFICATE certname
+///     | ASYMMETRIC KEY asym_key_name
+/// ```
+///
+/// [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-login-transact-sql)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct CreateLogin {
+    /// The login name.
+    pub name: Ident,
+    /// The `FROM` source, `None` for a login with a password.
+    pub source: Option<CreateLoginSource>,
+    /// The `PASSWORD = ...` option, which comes first in the `WITH` list.
+    pub password: Option<LoginPassword>,
+    /// The other `WITH` options, such as `DEFAULT_DATABASE = db`.
+    pub options: Vec<SqlOption>,
+    /// The `CREATE` keyword.
+    pub create_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
+}
+
+impl fmt::Display for CreateLogin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "CREATE LOGIN {}", self.name)?;
+        if let Some(source) = &self.source {
+            write!(f, " FROM {source}")?;
+        }
+        match (&self.password, self.options.is_empty()) {
+            (Some(password), true) => write!(f, " WITH {password}")?,
+            (Some(password), false) => write!(
+                f,
+                " WITH {password}, {}",
+                display_comma_separated(&self.options)
+            )?,
+            (None, false) => write!(f, " WITH {}", display_comma_separated(&self.options))?,
+            (None, true) => {}
+        }
+        Ok(())
+    }
+}
+
+/// The source of a login created with `CREATE LOGIN ... FROM`.
+///
+/// [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-login-transact-sql)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum CreateLoginSource {
+    /// `WINDOWS`
+    Windows,
+    /// `EXTERNAL PROVIDER`
+    ExternalProvider,
+    /// `CERTIFICATE certname`
+    Certificate(Ident),
+    /// `ASYMMETRIC KEY asym_key_name`
+    AsymmetricKey(Ident),
+}
+
+impl fmt::Display for CreateLoginSource {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CreateLoginSource::Windows => f.write_str("WINDOWS"),
+            CreateLoginSource::ExternalProvider => f.write_str("EXTERNAL PROVIDER"),
+            CreateLoginSource::Certificate(name) => write!(f, "CERTIFICATE {name}"),
+            CreateLoginSource::AsymmetricKey(name) => write!(f, "ASYMMETRIC KEY {name}"),
+        }
+    }
+}
+
+/// `PASSWORD = { 'password' | hashed_password HASHED } [ MUST_CHANGE ]` in
+/// `CREATE LOGIN`.
+///
+/// [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-login-transact-sql)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct LoginPassword {
+    /// The password, or its hash when `hashed`.
+    pub password: Expr,
+    /// `HASHED`
+    pub hashed: bool,
+    /// `MUST_CHANGE`
+    pub must_change: bool,
+}
+
+impl fmt::Display for LoginPassword {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PASSWORD = {}", self.password)?;
+        if self.hashed {
+            f.write_str(" HASHED")?;
+        }
+        if self.must_change {
+            f.write_str(" MUST_CHANGE")?;
+        }
+        Ok(())
+    }
+}
+
 /// Creates a user
 ///
 /// Syntax:
@@ -13416,6 +13530,12 @@ impl From<ExportData> for Statement {
 impl From<CreateUser> for Statement {
     fn from(c: CreateUser) -> Self {
         Self::CreateUser(c)
+    }
+}
+
+impl From<CreateLogin> for Statement {
+    fn from(c: CreateLogin) -> Self {
+        Self::CreateLogin(c)
     }
 }
 
