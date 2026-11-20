@@ -622,11 +622,11 @@ impl Spanned for Statement {
                     .chain(core::iter::once(query.span()))
                     .chain(connection.iter().map(|i| i.span())),
             ),
-            Statement::CreateUser(..) => Span::empty(),
+            Statement::CreateUser(s) => s.create_token.0.span.union(&s.end_token.0.span),
             Statement::CreateLogin(s) => s.create_token.0.span.union(&s.end_token.0.span),
             Statement::AlterSchema(s) => s.span(),
             Statement::Vacuum(..) => Span::empty(),
-            Statement::AlterUser(..) => Span::empty(),
+            Statement::AlterUser(s) => s.alter_token.0.span.union(&s.end_token.0.span),
             Statement::Reset(..) => Span::empty(),
             Statement::RefreshMaterializedView(refresh) => refresh.span(),
             Statement::CreateAggregate(create_aggregate) => create_aggregate.span(),
@@ -4374,6 +4374,19 @@ SETTINGS update_parallel_mode = 'auto'"#;
             [
                 "CREATE LOGIN lg WITH PASSWORD = 'pw' MUST_CHANGE",
                 "CREATE LOGIN [d\\u] FROM WINDOWS"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_create_alter_user_spans() {
+        let sql = "CREATE USER u FOR LOGIN lg;\nALTER USER u WITH LOGIN = lg;\nCREATE USER u WITHOUT LOGIN";
+        assert_eq!(
+            statement_texts(sql, &mssql_statements(sql)),
+            [
+                "CREATE USER u FOR LOGIN lg",
+                "ALTER USER u WITH LOGIN = lg",
+                "CREATE USER u WITHOUT LOGIN"
             ]
         );
     }

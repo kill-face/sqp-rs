@@ -12508,6 +12508,58 @@ impl fmt::Display for LoginPassword {
     }
 }
 
+/// What a [MsSql] database user is created for, after its name in
+/// `CREATE USER`.
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum CreateUserSource {
+    /// `{ FOR | FROM } LOGIN login_name`
+    Login {
+        /// Whether `FROM` rather than `FOR` was written.
+        from: bool,
+        /// The login name.
+        name: Ident,
+    },
+    /// `WITHOUT LOGIN`
+    WithoutLogin,
+    /// `{ FOR | FROM } CERTIFICATE cert_name`
+    Certificate {
+        /// Whether `FROM` rather than `FOR` was written.
+        from: bool,
+        /// The certificate name.
+        name: Ident,
+    },
+    /// `{ FOR | FROM } ASYMMETRIC KEY asym_key_name`
+    AsymmetricKey {
+        /// Whether `FROM` rather than `FOR` was written.
+        from: bool,
+        /// The key name.
+        name: Ident,
+    },
+    /// `FROM EXTERNAL PROVIDER`
+    ExternalProvider,
+}
+
+impl fmt::Display for CreateUserSource {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let keyword = |from: &bool| if *from { "FROM" } else { "FOR" };
+        match self {
+            CreateUserSource::Login { from, name } => write!(f, "{} LOGIN {name}", keyword(from)),
+            CreateUserSource::WithoutLogin => f.write_str("WITHOUT LOGIN"),
+            CreateUserSource::Certificate { from, name } => {
+                write!(f, "{} CERTIFICATE {name}", keyword(from))
+            }
+            CreateUserSource::AsymmetricKey { from, name } => {
+                write!(f, "{} ASYMMETRIC KEY {name}", keyword(from))
+            }
+            CreateUserSource::ExternalProvider => f.write_str("FROM EXTERNAL PROVIDER"),
+        }
+    }
+}
+
 /// Creates a user
 ///
 /// Syntax:
@@ -12526,12 +12578,24 @@ pub struct CreateUser {
     pub if_not_exists: bool,
     /// The name of the user to create.
     pub name: Ident,
+    /// [MsSql] login, certificate or key the user is created for.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql
+    pub source: Option<CreateUserSource>,
+    /// [MsSql] `WITH option = value [, ...]`, such as `DEFAULT_SCHEMA = dbo`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql
+    pub with_options: Vec<SqlOption>,
     /// Key/value options for user creation.
     pub options: KeyValueOptions,
     /// Whether tags are specified using `WITH TAG`.
     pub with_tags: bool,
     /// Tags for the user.
     pub tags: KeyValueOptions,
+    /// The `CREATE` keyword.
+    pub create_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl fmt::Display for CreateUser {
@@ -12545,6 +12609,12 @@ impl fmt::Display for CreateUser {
             write!(f, " IF NOT EXISTS")?;
         }
         write!(f, " {}", self.name)?;
+        if let Some(source) = &self.source {
+            write!(f, " {source}")?;
+        }
+        if !self.with_options.is_empty() {
+            write!(f, " WITH {}", display_comma_separated(&self.with_options))?;
+        }
         if !self.options.options.is_empty() {
             write!(f, " {}", self.options)?;
         }
@@ -12616,6 +12686,10 @@ pub struct AlterUser {
     pub if_exists: bool,
     /// The name of the user to alter.
     pub name: Ident,
+    /// [MsSql] `WITH option = value [, ...]`, such as `LOGIN = login_name`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-user-transact-sql
+    pub with_options: Vec<SqlOption>,
     /// Optional new name for the user (Snowflake-specific).
     /// See: <https://docs.snowflake.com/en/sql-reference/sql/alter-user#syntax>
     pub rename_to: Option<Ident>,
@@ -12651,6 +12725,10 @@ pub struct AlterUser {
     pub unset_props: Vec<String>,
     /// The following options are PostgreSQL-specific: <https://www.postgresql.org/docs/current/sql-alteruser.html>
     pub password: Option<AlterUserPassword>,
+    /// The `ALTER` keyword.
+    pub alter_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 /// ```sql
@@ -12770,6 +12848,9 @@ impl fmt::Display for AlterUser {
             write!(f, " IF EXISTS")?;
         }
         write!(f, " {}", self.name)?;
+        if !self.with_options.is_empty() {
+            write!(f, " WITH {}", display_comma_separated(&self.with_options))?;
+        }
         if let Some(new_name) = &self.rename_to {
             write!(f, " RENAME TO {new_name}")?;
         }

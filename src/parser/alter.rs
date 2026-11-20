@@ -18,6 +18,7 @@ use alloc::{string::ToString, vec};
 use super::{Parser, ParserError};
 use crate::{
     ast::{
+        helpers::attached_token::AttachedToken,
         helpers::key_value_options::{KeyValueOptions, KeyValueOptionsDelimiter},
         AlterConnectorOwner, AlterPolicy, AlterPolicyOperation, AlterRoleOperation, AlterTrigger,
         AlterTriggerOperation, AlterUser, AlterUserAddMfaMethodOtp, AlterUserAddRoleDelegation,
@@ -27,7 +28,7 @@ use crate::{
     },
     dialect::{MsSqlDialect, PostgreSqlDialect},
     keywords::Keyword,
-    tokenizer::Token,
+    tokenizer::{Token, TokenWithSpan},
 };
 
 impl Parser<'_> {
@@ -193,10 +194,24 @@ impl Parser<'_> {
     /// ```sql
     /// ALTER USER [ IF EXISTS ] [ <name> ] [ OPTIONS ]
     /// ```
-    pub fn parse_alter_user(&mut self) -> Result<AlterUser, ParserError> {
+    pub fn parse_alter_user(
+        &mut self,
+        alter_token: TokenWithSpan,
+    ) -> Result<AlterUser, ParserError> {
         let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
         let name = self.parse_identifier()?;
-        let _ = self.parse_keyword(Keyword::WITH);
+        // [MsSql]: `WITH option = value [, ...]`, see
+        // https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-user-transact-sql
+        let with_options = if self.dialect.supports_user_login_mapping()
+            && self.peek_keyword(Keyword::WITH)
+            && self.peek_nth_token_ref(2).token == Token::Eq
+        {
+            self.advance_token();
+            self.parse_comma_separated(Parser::parse_sql_option)?
+        } else {
+            let _ = self.parse_keyword(Keyword::WITH);
+            vec![]
+        };
         let rename_to = if self.parse_keywords(&[Keyword::RENAME, Keyword::TO]) {
             Some(self.parse_identifier()?)
         } else {
@@ -357,6 +372,7 @@ impl Parser<'_> {
         Ok(AlterUser {
             if_exists,
             name,
+            with_options,
             rename_to,
             reset_password,
             abort_all_queries,
@@ -374,6 +390,8 @@ impl Parser<'_> {
             set_props,
             unset_props,
             password,
+            alter_token: AttachedToken(alter_token),
+            end_token: self.last_consumed_token(),
         })
     }
 

@@ -5795,7 +5795,8 @@ impl<'a> Parser<'a> {
         } else if self.dialect.supports_create_login() && self.parse_keyword(Keyword::LOGIN) {
             self.parse_create_login(create_token).map(Into::into)
         } else if self.parse_keyword(Keyword::USER) {
-            self.parse_create_user(or_replace).map(Into::into)
+            self.parse_create_user(or_replace, create_token)
+                .map(Into::into)
         } else if self.parse_keyword(Keyword::AGGREGATE) {
             self.parse_create_aggregate(or_replace).map(Into::into)
         } else if self.parse_keyword(Keyword::SCHEMA) {
@@ -6007,12 +6008,37 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_create_user(&mut self, or_replace: bool) -> Result<CreateUser, ParserError> {
+    fn parse_create_user(
+        &mut self,
+        or_replace: bool,
+        create_token: TokenWithSpan,
+    ) -> Result<CreateUser, ParserError> {
         let if_not_exists = self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let name = self.parse_identifier()?;
-        let options = self
-            .parse_key_value_options(false, &[Keyword::WITH, Keyword::TAG])?
-            .options;
+        let (source, with_options) = if self.dialect.supports_user_login_mapping() {
+            let source = self.parse_create_user_source()?;
+            let with_options = if !self.peek_keywords(&[Keyword::WITH, Keyword::TAG])
+                && self.parse_keyword(Keyword::WITH)
+            {
+                self.parse_comma_separated(Parser::parse_sql_option)?
+            } else {
+                vec![]
+            };
+            (source, with_options)
+        } else {
+            (None, vec![])
+        };
+        // Snowflake's `name = value` properties; with T-SQL's clauses, a word
+        // not followed by `=` starts the next statement.
+        let options = if self.dialect.supports_user_login_mapping()
+            && !(matches!(self.peek_token_ref().token, Token::Word(_))
+                && self.peek_nth_token_ref(1).token == Token::Eq)
+        {
+            vec![]
+        } else {
+            self.parse_key_value_options(false, &[Keyword::WITH, Keyword::TAG])?
+                .options
+        };
         let with_tags = self.parse_keyword(Keyword::WITH);
         let tags = if self.parse_keyword(Keyword::TAG) {
             self.parse_key_value_options(true, &[])?.options
@@ -6023,6 +6049,8 @@ impl<'a> Parser<'a> {
             or_replace,
             if_not_exists,
             name,
+            source,
+            with_options,
             options: KeyValueOptions {
                 options,
                 delimiter: KeyValueOptionsDelimiter::Space,
@@ -6032,7 +6060,46 @@ impl<'a> Parser<'a> {
                 options: tags,
                 delimiter: KeyValueOptionsDelimiter::Comma,
             },
+            create_token: AttachedToken(create_token),
+            end_token: self.last_consumed_token(),
         })
+    }
+
+    /// Parse what a [MsSql] database user is created for.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql
+    fn parse_create_user_source(&mut self) -> Result<Option<CreateUserSource>, ParserError> {
+        if self.parse_keywords(&[Keyword::WITHOUT, Keyword::LOGIN]) {
+            return Ok(Some(CreateUserSource::WithoutLogin));
+        }
+        if self.parse_keywords(&[Keyword::FROM, Keyword::EXTERNAL, Keyword::PROVIDER]) {
+            return Ok(Some(CreateUserSource::ExternalProvider));
+        }
+        let from = match self.parse_one_of_keywords(&[Keyword::FOR, Keyword::FROM]) {
+            Some(keyword) => keyword == Keyword::FROM,
+            None => return Ok(None),
+        };
+        Ok(Some(if self.parse_keyword(Keyword::LOGIN) {
+            CreateUserSource::Login {
+                from,
+                name: self.parse_identifier()?,
+            }
+        } else if self.parse_keyword(Keyword::CERTIFICATE) {
+            CreateUserSource::Certificate {
+                from,
+                name: self.parse_identifier()?,
+            }
+        } else if self.parse_keywords(&[Keyword::ASYMMETRIC, Keyword::KEY]) {
+            CreateUserSource::AsymmetricKey {
+                from,
+                name: self.parse_identifier()?,
+            }
+        } else {
+            return self.expected_ref(
+                "LOGIN, CERTIFICATE or ASYMMETRIC KEY",
+                self.peek_token_ref(),
+            );
+        }))
     }
 
     /// Parse a [MsSql] `CREATE LOGIN` statement, after `CREATE LOGIN`.
@@ -12858,7 +12925,7 @@ impl<'a> Parser<'a> {
             Keyword::USER if self.dialect.supports_alter_user_as_alter_role() => {
                 self.parse_alter_role()
             }
-            Keyword::USER => self.parse_alter_user().map(Into::into),
+            Keyword::USER => self.parse_alter_user(alter_token).map(Into::into),
             _ => {
                 self.index = index;
                 self.expected_ref(

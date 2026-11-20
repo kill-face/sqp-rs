@@ -3984,3 +3984,56 @@ fn parse_create_login_quoted_names() {
     ms().verified_stmt("CREATE LOGIN [dom\\u] FROM WINDOWS WITH DEFAULT_DATABASE = [db1]");
     ms().verified_stmt("CREATE LOGIN [someone@example.com] FROM EXTERNAL PROVIDER");
 }
+
+#[test]
+fn parse_create_and_alter_user_logins() {
+    let Statement::CreateUser(user) =
+        ms_and_generic().verified_stmt("CREATE USER u FOR LOGIN lg WITH DEFAULT_SCHEMA = s1")
+    else {
+        unreachable!()
+    };
+    assert_eq!(
+        user.source,
+        Some(CreateUserSource::Login {
+            from: false,
+            name: Ident::new("lg")
+        })
+    );
+    assert_eq!(user.with_options.len(), 1);
+
+    for sql in [
+        "CREATE USER u FROM LOGIN lg",
+        "CREATE USER u WITHOUT LOGIN",
+        "CREATE USER u WITHOUT LOGIN WITH DEFAULT_SCHEMA = s1",
+        "CREATE USER u FOR CERTIFICATE cert1",
+        "CREATE USER u FROM ASYMMETRIC KEY key1",
+        "CREATE USER u FROM EXTERNAL PROVIDER",
+        "CREATE USER u WITH PASSWORD = 'pw', DEFAULT_SCHEMA = s1, DEFAULT_LANGUAGE = us_english",
+        "ALTER USER u WITH LOGIN = lg",
+        "ALTER USER u WITH NAME = u2, DEFAULT_SCHEMA = NULL, ALLOW_ENCRYPTED_VALUE_MODIFICATIONS = ON",
+    ] {
+        ms_and_generic().verified_stmt(sql);
+    }
+    ms().verified_stmt("CREATE USER [u] FOR LOGIN [lg]");
+    let stmts = tsql()
+        .parse_sql_statements(
+            "CREATE USER u WITHOUT LOGIN\nALTER USER u WITH LOGIN = lg\nCREATE USER v\nSELECT 1",
+        )
+        .unwrap();
+    assert_eq!(stmts.len(), 4);
+    let Statement::AlterUser(alter) = ms().verified_stmt("ALTER USER [u] WITH LOGIN = [lg]") else {
+        unreachable!()
+    };
+    assert_eq!(alter.with_options.len(), 1);
+
+    assert_eq!(
+        ms().parse_sql_statements("CREATE USER u FOR SCHEMA s")
+            .unwrap_err(),
+        ParserError::ParserError(
+            "Expected: LOGIN, CERTIFICATE or ASYMMETRIC KEY, found: SCHEMA".to_string()
+        )
+    );
+    for dialect in all_dialects_where(|d| !d.supports_user_login_mapping()).dialects {
+        Parser::parse_sql(&*dialect, "CREATE USER u FOR LOGIN lg").unwrap_err();
+    }
+}

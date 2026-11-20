@@ -400,4 +400,8 @@ impl Dialect for GenericDialect {
     fn supports_create_login(&self) -> bool {
         true
     }
+
+    fn supports_user_login_mapping(&self) -> bool {
+        true
+    }
 }

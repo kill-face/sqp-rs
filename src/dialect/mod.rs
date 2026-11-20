@@ -1423,6 +1423,13 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support mapping database users to logins, and `WITH`
+    /// options, in `CREATE USER` and `ALTER USER`?
+    /// e.g. `CREATE USER u FOR LOGIN l WITH DEFAULT_SCHEMA = s`
+    fn supports_user_login_mapping(&self) -> bool {
+        false
+    }
+
     /// Does the dialect support `VARYING`, `NULL` / `NOT NULL` and an `OUT` /
     /// `OUTPUT` mode after a procedure parameter's data type?
     /// e.g. `CREATE PROCEDURE p @a INT NULL = 0 OUTPUT AS ...`
