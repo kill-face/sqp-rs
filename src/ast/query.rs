@@ -229,6 +229,10 @@ pub enum SetExpr {
     Delete(Statement),
     /// `MERGE` statement
     Merge(Statement),
+    /// An `EXECUTE` statement, as the source of an [MsSql] `INSERT`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/insert-transact-sql
+    Execute(Statement),
     /// `TABLE` command
     Table(Box<Table>),
 }
@@ -259,6 +263,7 @@ impl fmt::Display for SetExpr {
             SetExpr::Update(v) => v.fmt(f),
             SetExpr::Delete(v) => v.fmt(f),
             SetExpr::Merge(v) => v.fmt(f),
+            SetExpr::Execute(v) => v.fmt(f),
             SetExpr::Table(t) => t.fmt(f),
             SetExpr::SetOperation {
                 left,

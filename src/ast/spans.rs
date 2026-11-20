@@ -261,6 +261,7 @@ impl Spanned for SetExpr {
             SetExpr::Update(statement) => statement.span(),
             SetExpr::Delete(statement) => statement.span(),
             SetExpr::Merge(statement) => statement.span(),
+            SetExpr::Execute(statement) => statement.span(),
         }
     }
 }
@@ -4471,6 +4472,12 @@ SETTINGS update_parallel_mode = 'auto'"#;
                 "ALTER DATABASE db1 SET QUERY_STORE = ON (OPERATION_MODE = READ_WRITE)"
             ]
         );
+    }
+
+    #[test]
+    fn test_insert_exec_spans() {
+        let sql = "INSERT INTO t (a) EXEC dbo.p @x = 1 OUTPUT";
+        assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);
     }
 
     #[test]

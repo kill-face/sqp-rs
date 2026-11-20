@@ -21321,6 +21321,27 @@ impl<'a> Parser<'a> {
                     (None, vec![])
                 } else if self.dialect.supports_insert_set() && self.parse_keyword(Keyword::SET) {
                     (None, self.parse_comma_separated(Parser::parse_assignment)?)
+                } else if self.dialect.supports_insert_exec()
+                    && self
+                        .parse_one_of_keywords(&[Keyword::EXEC, Keyword::EXECUTE])
+                        .is_some()
+                {
+                    let body = Box::new(SetExpr::Execute(self.parse_execute()?));
+                    let source = Query {
+                        with: None,
+                        body,
+                        order_by: None,
+                        limit_clause: None,
+                        fetch: None,
+                        locks: vec![],
+                        for_clause: None,
+                        query_hints: None,
+                        settings: None,
+                        format_clause: None,
+                        pipe_operators: vec![],
+                        end_token: self.last_consumed_token(),
+                    };
+                    (Some(Box::new(source)), vec![])
                 } else {
                     (Some(self.parse_query()?), vec![])
                 };

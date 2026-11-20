@@ -4152,3 +4152,28 @@ fn parse_mssql_exec_without_arguments_before_next_statement() {
     };
     assert!(parameters.is_empty());
 }
+
+#[test]
+fn parse_insert_exec() {
+    let sql = "INSERT INTO t (a, b) EXECUTE dbo.p @x = 1";
+    let Statement::Insert(insert) = ms_and_generic().verified_stmt(sql) else {
+        unreachable!()
+    };
+    let source = insert.source.unwrap();
+    let SetExpr::Execute(Statement::Execute { name, .. }) = *source.body else {
+        panic!("expected EXECUTE source, got {source:?}");
+    };
+    assert_eq!(name.unwrap().to_string(), "dbo.p");
+    ms().verified_stmt("INSERT INTO @t EXECUTE sp_executesql @sql, N'@a INT', @a = 1");
+    ms().verified_stmt("INSERT #t EXECUTE (@sql)");
+    ms().one_statement_parses_to("INSERT INTO t EXEC p", "INSERT INTO t EXECUTE p");
+
+    let stmts = tsql()
+        .parse_sql_statements("INSERT INTO t EXEC p\nSELECT * FROM t")
+        .unwrap();
+    assert_eq!(stmts.len(), 2);
+
+    for dialect in all_dialects_where(|d| !d.supports_insert_exec()).dialects {
+        Parser::parse_sql(&*dialect, "INSERT INTO t EXECUTE p").unwrap_err();
+    }
+}

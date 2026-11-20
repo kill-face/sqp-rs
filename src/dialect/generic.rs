@@ -412,4 +412,8 @@ impl Dialect for GenericDialect {
     fn supports_alter_database_set_options(&self) -> bool {
         true
     }
+
+    fn supports_insert_exec(&self) -> bool {
+        true
+    }
 }
