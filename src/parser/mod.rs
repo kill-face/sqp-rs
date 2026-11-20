@@ -10672,6 +10672,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse procedure parameter.
+    ///
+    /// [MsSql] has attributes after the data type:
+    /// `@name type [ VARYING ] [ NULL | NOT NULL ] [ = default ] [ OUT | OUTPUT ] [ READONLY ]`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql
     pub fn parse_procedure_param(&mut self) -> Result<ProcedureParam, ParserError> {
         let mode = if self.parse_keyword(Keyword::IN) {
             Some(ArgMode::In)
@@ -10684,10 +10689,31 @@ impl<'a> Parser<'a> {
         };
         let name = self.parse_identifier()?;
         let data_type = self.parse_data_type()?;
+        let trailing_attributes = self.dialect.supports_trailing_procedure_param_attributes();
+        let varying = trailing_attributes && self.parse_keyword(Keyword::VARYING);
+        let nullable = if !trailing_attributes {
+            None
+        } else if self.parse_keywords(&[Keyword::NOT, Keyword::NULL]) {
+            Some(false)
+        } else if self.parse_keyword(Keyword::NULL) {
+            Some(true)
+        } else {
+            None
+        };
         let default = if self.consume_token(&Token::Eq) {
             Some(self.parse_expr()?)
         } else {
             None
+        };
+        let (mode, trailing_mode) = match mode {
+            None if trailing_attributes => {
+                match self.parse_one_of_keywords(&[Keyword::OUT, Keyword::OUTPUT]) {
+                    Some(Keyword::OUT) => (Some(ArgMode::Out), true),
+                    Some(_) => (Some(ArgMode::Output), true),
+                    None => (None, false),
+                }
+            }
+            mode => (mode, false),
         };
         let readonly =
             self.dialect.supports_readonly_parameters() && self.parse_keyword(Keyword::READONLY);
@@ -10695,7 +10721,10 @@ impl<'a> Parser<'a> {
         Ok(ProcedureParam {
             name,
             data_type,
+            varying,
+            nullable,
             mode,
+            trailing_mode,
             default,
             readonly,
             end_token: self.last_consumed_token(),

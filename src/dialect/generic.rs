@@ -384,4 +384,8 @@ impl Dialect for GenericDialect {
     fn supports_procedure_params_without_parentheses(&self) -> bool {
         true
     }
+
+    fn supports_trailing_procedure_param_attributes(&self) -> bool {
+        true
+    }
 }

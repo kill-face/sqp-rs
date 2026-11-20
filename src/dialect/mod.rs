@@ -1418,6 +1418,13 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support `VARYING`, `NULL` / `NOT NULL` and an `OUT` /
+    /// `OUTPUT` mode after a procedure parameter's data type?
+    /// e.g. `CREATE PROCEDURE p @a INT NULL = 0 OUTPUT AS ...`
+    fn supports_trailing_procedure_param_attributes(&self) -> bool {
+        false
+    }
+
     /// Does the dialect support view attributes in `CREATE VIEW`?
     /// e.g. `CREATE VIEW v WITH SCHEMABINDING AS SELECT 1`
     fn supports_create_view_attributes(&self) -> bool {

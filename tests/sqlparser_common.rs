@@ -20093,6 +20093,9 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::In),
                         default: None,
                         readonly: false,
+                        varying: false,
+                        nullable: None,
+                        trailing_mode: false,
                         end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
@@ -20105,6 +20108,9 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::Out),
                         default: None,
                         readonly: false,
+                        varying: false,
+                        nullable: None,
+                        trailing_mode: false,
                         end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
@@ -20117,6 +20123,9 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::InOut),
                         default: None,
                         readonly: false,
+                        varying: false,
+                        nullable: None,
+                        trailing_mode: false,
                         end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
@@ -20129,6 +20138,9 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: None,
                         default: None,
                         readonly: false,
+                        varying: false,
+                        nullable: None,
+                        trailing_mode: false,
                         end_token: AttachedToken::empty(),
                     },
                 ])
@@ -20157,6 +20169,9 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::In),
                         default: Some(Expr::Value((number("1")).with_empty_span())),
                         readonly: false,
+                        varying: false,
+                        nullable: None,
+                        trailing_mode: false,
                         end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
@@ -20167,6 +20182,9 @@ fn parse_create_procedure_with_parameter_modes() {
                             Value::SingleQuotedString("2".into()).with_empty_span()
                         )),
                         readonly: false,
+                        varying: false,
+                        nullable: None,
+                        trailing_mode: false,
                         end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
@@ -20175,6 +20193,9 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: Some(ArgMode::InOut),
                         default: Some(Expr::Value(Value::Null.with_empty_span())),
                         readonly: false,
+                        varying: false,
+                        nullable: None,
+                        trailing_mode: false,
                         end_token: AttachedToken::empty(),
                     },
                     ProcedureParam {
@@ -20183,6 +20204,9 @@ fn parse_create_procedure_with_parameter_modes() {
                         mode: None,
                         default: Some(Expr::Value((number("0")).with_empty_span())),
                         readonly: false,
+                        varying: false,
+                        nullable: None,
+                        trailing_mode: false,
                         end_token: AttachedToken::empty(),
                     }
                 ]),

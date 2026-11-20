@@ -1745,8 +1745,22 @@ pub struct ProcedureParam {
     pub name: Ident,
     /// Parameter data type.
     pub data_type: DataType,
+    /// [MsSql] `VARYING`, for a cursor output parameter.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql
+    pub varying: bool,
+    /// [MsSql] `NULL` (`Some(true)`) or `NOT NULL` (`Some(false)`) after the
+    /// data type.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql
+    pub nullable: Option<bool>,
     /// Optional mode (`IN`, `OUT`, `INOUT`, etc.).
     pub mode: Option<ArgMode>,
+    /// Whether `mode` is written after the data type and default, as
+    /// [MsSql]'s `OUT` / `OUTPUT` is, rather than before the name.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql
+    pub trailing_mode: bool,
     /// Optional default expression for the parameter.
     pub default: Option<Expr>,
     /// [MsSql] `READONLY`, required for table-valued parameters.
@@ -1760,16 +1774,23 @@ pub struct ProcedureParam {
 
 impl fmt::Display for ProcedureParam {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(mode) = &self.mode {
-            if let Some(default) = &self.default {
-                write!(f, "{mode} {} {} = {}", self.name, self.data_type, default)?;
-            } else {
-                write!(f, "{mode} {} {}", self.name, self.data_type)?;
-            }
-        } else if let Some(default) = &self.default {
-            write!(f, "{} {} = {}", self.name, self.data_type, default)?;
-        } else {
-            write!(f, "{} {}", self.name, self.data_type)?;
+        if let (Some(mode), false) = (&self.mode, self.trailing_mode) {
+            write!(f, "{mode} ")?;
+        }
+        write!(f, "{} {}", self.name, self.data_type)?;
+        if self.varying {
+            write!(f, " VARYING")?;
+        }
+        match self.nullable {
+            Some(true) => write!(f, " NULL")?,
+            Some(false) => write!(f, " NOT NULL")?,
+            None => {}
+        }
+        if let Some(default) = &self.default {
+            write!(f, " = {default}")?;
+        }
+        if let (Some(mode), true) = (&self.mode, self.trailing_mode) {
+            write!(f, " {mode}")?;
         }
         if self.readonly {
             write!(f, " READONLY")?;

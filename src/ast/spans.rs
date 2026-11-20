@@ -3136,7 +3136,10 @@ impl Spanned for ProcedureParam {
         let ProcedureParam {
             name,
             data_type: _, // no span, covered by end_token
+            varying: _,
+            nullable: _,
             mode: _,
+            trailing_mode: _,
             default,
             readonly: _,
             end_token,
@@ -4344,7 +4347,7 @@ SETTINGS update_parallel_mode = 'auto'"#;
         let sql = "CREATE PROC p AS SELECT 1";
         assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);
 
-        let sql = "CREATE PROCEDURE p @a INT,\n    @b INT = 1\nAS\n    SELECT @a";
+        let sql = "CREATE PROCEDURE p @a INT,\n    @b INT = 1 OUTPUT\nAS\n    SELECT @a";
         let stmts = mssql_statements(sql);
         assert_eq!(statement_texts(sql, &stmts), [sql]);
         let Statement::CreateProcedure { params, .. } = &stmts[0] else {
@@ -4355,7 +4358,7 @@ SETTINGS update_parallel_mode = 'auto'"#;
             .flatten()
             .map(|p| spanned_text(sql, p.span()))
             .collect();
-        assert_eq!(params, ["@a INT", "@b INT = 1"]);
+        assert_eq!(params, ["@a INT", "@b INT = 1 OUTPUT"]);
 
         let sql = "CREATE FUNCTION dbo.f (@a INT, @b DECIMAL(10, 2) = 0)\nRETURNS INT\nAS\nBEGIN\n    RETURN @a\nEND";
         let stmts = mssql_statements(sql);

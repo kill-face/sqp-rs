@@ -191,6 +191,9 @@ fn parse_create_procedure() {
                     mode: None,
                     default: None,
                     readonly: false,
+                    varying: false,
+                    nullable: None,
+                    trailing_mode: false,
                     end_token: AttachedToken::empty(),
                 },
                 ProcedureParam {
@@ -206,6 +209,9 @@ fn parse_create_procedure() {
                     mode: None,
                     default: None,
                     readonly: false,
+                    varying: false,
+                    nullable: None,
+                    trailing_mode: false,
                     end_token: AttachedToken::empty(),
                 }
             ]),
@@ -3753,5 +3759,42 @@ fn parse_create_procedure_params_without_parentheses() {
         all_dialects_where(|d| !d.supports_procedure_params_without_parentheses()).dialects
     {
         Parser::parse_sql(&*dialect, "CREATE PROCEDURE p @a INT AS SELECT 1").unwrap_err();
+    }
+}
+
+#[test]
+fn parse_create_procedure_trailing_param_attributes() {
+    let sql = "CREATE PROCEDURE p @a INT, @b INT = 1 OUTPUT, @c NVARCHAR(MAX) OUT, @d INT NULL = NULL AS BEGIN SELECT @a; END";
+    let Statement::CreateProcedure { params, .. } = ms_and_generic().verified_stmt(sql) else {
+        unreachable!()
+    };
+    let params = params.unwrap();
+    assert_eq!(
+        params
+            .iter()
+            .map(|p| (p.mode.clone(), p.trailing_mode))
+            .collect::<Vec<_>>(),
+        [
+            (None, false),
+            (Some(ArgMode::Output), true),
+            (Some(ArgMode::Out), true),
+            (None, false),
+        ]
+    );
+    assert_eq!(params[3].nullable, Some(true));
+
+    let sql = "CREATE PROCEDURE p @c CURSOR VARYING OUTPUT AS SELECT 1;";
+    let Statement::CreateProcedure { params, .. } = ms_and_generic().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert!(params.unwrap()[0].varying);
+    ms_and_generic().verified_stmt("CREATE PROCEDURE p (@a INT NOT NULL = 0 OUTPUT) AS SELECT 1;");
+    // a leading mode stays leading
+    ms_and_generic().verified_stmt("CREATE PROCEDURE p (OUT @a INT) AS SELECT 1;");
+
+    for dialect in
+        all_dialects_where(|d| !d.supports_trailing_procedure_param_attributes()).dialects
+    {
+        Parser::parse_sql(&*dialect, "CREATE PROCEDURE p (a INT OUTPUT) AS SELECT 1").unwrap_err();
     }
 }

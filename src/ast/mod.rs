@@ -10577,6 +10577,10 @@ pub enum ArgMode {
     InOut,
     /// `VARIADIC` mode.
     Variadic,
+    /// [MsSql] `OUTPUT`, a synonym of `OUT`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql
+    Output,
 }
 
 impl fmt::Display for ArgMode {
@@ -10586,6 +10590,7 @@ impl fmt::Display for ArgMode {
             ArgMode::Out => write!(f, "OUT"),
             ArgMode::InOut => write!(f, "INOUT"),
             ArgMode::Variadic => write!(f, "VARIADIC"),
+            ArgMode::Output => write!(f, "OUTPUT"),
         }
     }
 }
