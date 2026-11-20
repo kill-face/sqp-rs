@@ -65,33 +65,34 @@ pub use self::dcl::{
 };
 pub use self::ddl::{
     AggregateArgs, AggregateModifyKind, AggregateSignature, Alignment, AlterCollation,
-    AlterCollationOperation, AlterColumnOperation, AlterConnectorOwner, AlterExtension,
-    AlterExtensionMember, AlterExtensionOperation, AlterFunction, AlterFunctionAction,
-    AlterFunctionOperation, AlterFunctionSignature, AlterGenericOption, AlterIndexOperation,
-    AlterOperator, AlterOperatorClass, AlterOperatorClassOperation, AlterOperatorFamily,
-    AlterOperatorFamilyOperation, AlterOperatorOperation, AlterPolicy, AlterPolicyOperation,
-    AlterSchema, AlterSchemaOperation, AlterSequence, AlterTable, AlterTableAlgorithm,
-    AlterTableLock, AlterTableOperation, AlterTableType, AlterTextSearch, AlterTextSearchOperation,
-    AlterTextSearchOption, AlterTrigger, AlterTriggerOperation, AlterType, AlterTypeAddValue,
-    AlterTypeAddValuePosition, AlterTypeOperation, AlterTypeRename, AlterTypeRenameValue,
-    AlterView, AlterViewOperation, ClusteredBy, ColumnDef, ColumnOption, ColumnOptionDef,
-    ColumnOptions, ColumnPolicy, ColumnPolicyProperty, ComputedColumn, ConstraintCharacteristics,
-    CreateAggregate, CreateAggregateArgs, CreateAggregateOption, CreateCollation,
-    CreateCollationDefinition, CreateConnector, CreateDomain, CreateExtension,
-    CreateForeignDataWrapper, CreateForeignTable, CreateFunction, CreateIndex, CreateOperator,
-    CreateOperatorClass, CreateOperatorFamily, CreatePartitionFunction, CreatePartitionScheme,
-    CreatePolicy, CreatePolicyCommand, CreatePolicyType, CreateRule, CreateRuleAction,
-    CreateRuleDoKind, CreateRuleEvent, CreateTable, CreateTextSearch, CreateTrigger,
-    CreateUserMapping, CreateView, DataSpace, Deduplicate, DeferrableInitial, DetachPartitionMode,
-    DistStyle, DropBehavior, DropExtension, DropFunction, DropOperator, DropOperatorClass,
-    DropOperatorFamily, DropOperatorSignature, DropPolicy, DropRule, DropTrigger, ForValues,
-    ForeignDataWrapperRoutineClause, FunctionReturnType, GeneratedAs, GeneratedExpressionMode,
-    IdentityParameters, IdentityProperty, IdentityPropertyFormatKind, IdentityPropertyKind,
-    IdentityPropertyOrder, IndexClustering, IndexColumn, IndexOption, IndexType, KeyOrIndexDisplay,
-    Msck, NullsDistinctOption, OperatorArgTypes, OperatorClassItem, OperatorFamilyDropItem,
-    OperatorFamilyItem, OperatorOption, OperatorPurpose, Owner, Partition, PartitionBoundValue,
-    ProcedureParam, ReferentialAction, RenameTableNameKind, ReplicaIdentity, SqliteTableOption,
-    SqliteTableOptions, TagsColumnOption, TextSearchObjectType, TriggerObjectKind, Truncate,
+    AlterCollationOperation, AlterColumnOperation, AlterConnectorOwner, AlterDatabase,
+    AlterDatabaseOperation, AlterExtension, AlterExtensionMember, AlterExtensionOperation,
+    AlterFunction, AlterFunctionAction, AlterFunctionOperation, AlterFunctionSignature,
+    AlterGenericOption, AlterIndexOperation, AlterOperator, AlterOperatorClass,
+    AlterOperatorClassOperation, AlterOperatorFamily, AlterOperatorFamilyOperation,
+    AlterOperatorOperation, AlterPolicy, AlterPolicyOperation, AlterSchema, AlterSchemaOperation,
+    AlterSequence, AlterTable, AlterTableAlgorithm, AlterTableLock, AlterTableOperation,
+    AlterTableType, AlterTextSearch, AlterTextSearchOperation, AlterTextSearchOption, AlterTrigger,
+    AlterTriggerOperation, AlterType, AlterTypeAddValue, AlterTypeAddValuePosition,
+    AlterTypeOperation, AlterTypeRename, AlterTypeRenameValue, AlterView, AlterViewOperation,
+    ClusteredBy, ColumnDef, ColumnOption, ColumnOptionDef, ColumnOptions, ColumnPolicy,
+    ColumnPolicyProperty, ComputedColumn, ConstraintCharacteristics, CreateAggregate,
+    CreateAggregateArgs, CreateAggregateOption, CreateCollation, CreateCollationDefinition,
+    CreateConnector, CreateDomain, CreateExtension, CreateForeignDataWrapper, CreateForeignTable,
+    CreateFunction, CreateIndex, CreateOperator, CreateOperatorClass, CreateOperatorFamily,
+    CreatePartitionFunction, CreatePartitionScheme, CreatePolicy, CreatePolicyCommand,
+    CreatePolicyType, CreateRule, CreateRuleAction, CreateRuleDoKind, CreateRuleEvent, CreateTable,
+    CreateTextSearch, CreateTrigger, CreateUserMapping, CreateView, DataSpace, Deduplicate,
+    DeferrableInitial, DetachPartitionMode, DistStyle, DropBehavior, DropExtension, DropFunction,
+    DropOperator, DropOperatorClass, DropOperatorFamily, DropOperatorSignature, DropPolicy,
+    DropRule, DropTrigger, ForValues, ForeignDataWrapperRoutineClause, FunctionReturnType,
+    GeneratedAs, GeneratedExpressionMode, IdentityParameters, IdentityProperty,
+    IdentityPropertyFormatKind, IdentityPropertyKind, IdentityPropertyOrder, IndexClustering,
+    IndexColumn, IndexOption, IndexType, KeyOrIndexDisplay, Msck, NullsDistinctOption,
+    OperatorArgTypes, OperatorClassItem, OperatorFamilyDropItem, OperatorFamilyItem,
+    OperatorOption, OperatorPurpose, Owner, Partition, PartitionBoundValue, ProcedureParam,
+    ReferentialAction, RenameTableNameKind, ReplicaIdentity, SqliteTableOption, SqliteTableOptions,
+    TagsColumnOption, TextSearchObjectType, TriggerObjectKind, Truncate,
     UserDefinedTypeCompositeAttributeDef, UserDefinedTypeInternalLength,
     UserDefinedTypeRangeOption, UserDefinedTypeRepresentation, UserDefinedTypeSqlDefinitionOption,
     UserDefinedTypeStorage, UserMappingUser, ViewColumnDef, WithData,
@@ -4203,6 +4204,11 @@ pub enum Statement {
     /// See [PostgreSQL](https://www.postgresql.org/docs/current/sql-alterextension.html)
     AlterExtension(AlterExtension),
     /// ```sql
+    /// ALTER DATABASE
+    /// ```
+    /// See [PostgreSQL](https://www.postgresql.org/docs/current/sql-alterdatabase.html)
+    AlterDatabase(AlterDatabase),
+    /// ```sql
     /// ALTER OPERATOR
     /// ```
     /// See [PostgreSQL](https://www.postgresql.org/docs/current/sql-alteroperator.html)
@@ -6170,6 +6176,7 @@ impl fmt::Display for Statement {
                 write!(f, "ALTER TYPE {name} {operation}")
             }
             Statement::AlterCollation(alter_collation) => write!(f, "{alter_collation}"),
+            Statement::AlterDatabase(alter_database) => write!(f, "{alter_database}"),
             Statement::AlterExtension(alter_extension) => write!(f, "{alter_extension}"),
             Statement::AlterOperator(alter_operator) => write!(f, "{alter_operator}"),
             Statement::AlterOperatorFamily(alter_operator_family) => {
@@ -13629,6 +13636,12 @@ impl From<AlterCollation> for Statement {
 impl From<AlterExtension> for Statement {
     fn from(a: AlterExtension) -> Self {
         Self::AlterExtension(a)
+    }
+}
+
+impl From<AlterDatabase> for Statement {
+    fn from(a: AlterDatabase) -> Self {
+        Self::AlterDatabase(a)
     }
 }
 
