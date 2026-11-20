@@ -628,13 +628,16 @@ impl Spanned for Declare {
             names,
             data_type: _, // no span, see data_type_end_token
             assignment,
-            declare_type: _, // enum
+            declare_type: _,   // enum
+            cursor_options: _, // keywords, covered by cursor_end_token
             binary: _,
             sensitive: _,
             scroll: _,
             hold: _,
             for_query,
+            cursor_updatability: _, // keywords, covered by cursor_end_token
             data_type_end_token,
+            cursor_end_token,
         } = self;
         union_spans(
             names
@@ -642,7 +645,8 @@ impl Spanned for Declare {
                 .map(|n| n.span)
                 .chain(iter::once(data_type_end_token.0.span))
                 .chain(assignment.iter().map(|a| a.span()))
-                .chain(for_query.iter().map(|q| q.span())),
+                .chain(for_query.iter().map(|q| q.span()))
+                .chain(iter::once(cursor_end_token.0.span)),
         )
     }
 }
@@ -4365,6 +4369,17 @@ SETTINGS update_parallel_mode = 'auto'"#;
         );
 
         let sql = "WHILE 1 = 1\nBEGIN\n    IF @a = 1 BREAK\n    CONTINUE\nEND";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+
+        let sql =
+            "DECLARE c CURSOR LOCAL FAST_FORWARD FOR\n    SELECT a FROM t\n    FOR UPDATE OF a, b";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let sql = "DECLARE c SCROLL CURSOR FOR SELECT a FROM t FOR READ ONLY";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let sql = "DECLARE @c CURSOR";
         let stmts = mssql_statements(sql);
         assert_eq!(statement_texts(sql, &stmts), [sql]);
 

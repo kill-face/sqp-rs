@@ -3271,6 +3271,89 @@ impl fmt::Display for DeclareType {
     }
 }
 
+/// A [MsSql] cursor option, written after the `CURSOR` keyword.
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-cursor-transact-sql
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum MsSqlCursorOption {
+    /// `LOCAL` scope.
+    Local,
+    /// `GLOBAL` scope.
+    Global,
+    /// `FORWARD_ONLY` scrolling.
+    ForwardOnly,
+    /// `SCROLL` scrolling.
+    Scroll,
+    /// `STATIC` cursor type.
+    Static,
+    /// `KEYSET` cursor type.
+    Keyset,
+    /// `DYNAMIC` cursor type.
+    Dynamic,
+    /// `FAST_FORWARD` cursor type.
+    FastForward,
+    /// `READ_ONLY` concurrency.
+    ReadOnly,
+    /// `SCROLL_LOCKS` concurrency.
+    ScrollLocks,
+    /// `OPTIMISTIC` concurrency.
+    Optimistic,
+    /// `TYPE_WARNING`.
+    TypeWarning,
+}
+
+impl fmt::Display for MsSqlCursorOption {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match self {
+            MsSqlCursorOption::Local => "LOCAL",
+            MsSqlCursorOption::Global => "GLOBAL",
+            MsSqlCursorOption::ForwardOnly => "FORWARD_ONLY",
+            MsSqlCursorOption::Scroll => "SCROLL",
+            MsSqlCursorOption::Static => "STATIC",
+            MsSqlCursorOption::Keyset => "KEYSET",
+            MsSqlCursorOption::Dynamic => "DYNAMIC",
+            MsSqlCursorOption::FastForward => "FAST_FORWARD",
+            MsSqlCursorOption::ReadOnly => "READ_ONLY",
+            MsSqlCursorOption::ScrollLocks => "SCROLL_LOCKS",
+            MsSqlCursorOption::Optimistic => "OPTIMISTIC",
+            MsSqlCursorOption::TypeWarning => "TYPE_WARNING",
+        })
+    }
+}
+
+/// Whether a cursor's rows can be updated through it, written after the
+/// cursor's query: `FOR READ ONLY` or `FOR UPDATE [ OF column [, ...] ]`.
+///
+/// [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-cursor-transact-sql)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum CursorUpdatability {
+    /// `FOR READ ONLY`
+    ReadOnly,
+    /// `FOR UPDATE [ OF column [, ...] ]`; `columns` is empty without `OF`.
+    Update {
+        /// The updatable columns.
+        columns: Vec<Ident>,
+    },
+}
+
+impl fmt::Display for CursorUpdatability {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CursorUpdatability::ReadOnly => f.write_str("FOR READ ONLY"),
+            CursorUpdatability::Update { columns } if columns.is_empty() => {
+                f.write_str("FOR UPDATE")
+            }
+            CursorUpdatability::Update { columns } => {
+                write!(f, "FOR UPDATE OF {}", display_comma_separated(columns))
+            }
+        }
+    }
+}
+
 /// Separator written between the declarations collected by one `DECLARE` keyword.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -3313,6 +3396,10 @@ pub struct Declare {
     pub assignment: Option<DeclareAssignment>,
     /// Represents the type of the declared variable.
     pub declare_type: Option<DeclareType>,
+    /// [MsSql] cursor options after the `CURSOR` keyword.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-cursor-transact-sql
+    pub cursor_options: Vec<MsSqlCursorOption>,
     /// Causes the cursor to return data in binary rather than in text format.
     pub binary: Option<bool>,
     /// None = Not specified
@@ -3329,9 +3416,14 @@ pub struct Declare {
     pub hold: Option<bool>,
     /// `FOR <query>` clause in a CURSOR declaration.
     pub for_query: Option<Box<Query>>,
+    /// `FOR READ ONLY` or `FOR UPDATE [ OF ... ]` after the cursor's query.
+    pub cursor_updatability: Option<CursorUpdatability>,
     /// The last token of `data_type`, so that the declaration's span covers
     /// the type ([DataType] has no span of its own).
     pub data_type_end_token: AttachedToken,
+    /// The last token of a cursor declaration, so that its span covers the
+    /// keywords after the name (`CURSOR`, its options and updatability).
+    pub cursor_end_token: AttachedToken,
 }
 
 impl fmt::Display for Declare {
@@ -3341,12 +3433,15 @@ impl fmt::Display for Declare {
             data_type,
             assignment,
             declare_type,
+            cursor_options,
             binary,
             sensitive,
             scroll,
             hold,
             for_query,
+            cursor_updatability,
             data_type_end_token: _,
+            cursor_end_token: _,
         } = self;
         write!(f, "{}", display_comma_separated(names))?;
 
@@ -3374,6 +3469,10 @@ impl fmt::Display for Declare {
             write!(f, " {declare_type}")?;
         }
 
+        if !cursor_options.is_empty() {
+            write!(f, " {}", display_separated(cursor_options, " "))?;
+        }
+
         if let Some(hold) = hold {
             if *hold {
                 write!(f, " WITH HOLD")?;
@@ -3384,6 +3483,10 @@ impl fmt::Display for Declare {
 
         if let Some(query) = for_query {
             write!(f, " FOR {query}")?;
+        }
+
+        if let Some(updatability) = cursor_updatability {
+            write!(f, " {updatability}")?;
         }
 
         if let Some(data_type) = data_type {

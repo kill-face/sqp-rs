@@ -1428,12 +1428,15 @@ fn parse_mssql_declare() {
                     data_type: None,
                     assignment: None,
                     declare_type: Some(DeclareType::Cursor),
+                    cursor_options: vec![],
                     binary: None,
                     sensitive: None,
                     scroll: None,
                     hold: None,
                     for_query: None,
+                    cursor_updatability: None,
                     data_type_end_token: AttachedToken::empty(),
+                    cursor_end_token: AttachedToken::empty(),
                 },
                 Declare {
                     names: vec![Ident {
@@ -1444,12 +1447,15 @@ fn parse_mssql_declare() {
                     data_type: Some(Int(None)),
                     assignment: None,
                     declare_type: None,
+                    cursor_options: vec![],
                     binary: None,
                     sensitive: None,
                     scroll: None,
                     hold: None,
                     for_query: None,
+                    cursor_updatability: None,
                     data_type_end_token: AttachedToken::empty(),
+                    cursor_end_token: AttachedToken::empty(),
                 },
                 Declare {
                     names: vec![Ident {
@@ -1462,12 +1468,15 @@ fn parse_mssql_declare() {
                         (SingleQuotedString("foobar".to_string())).with_empty_span()
                     )))),
                     declare_type: None,
+                    cursor_options: vec![],
                     binary: None,
                     sensitive: None,
                     scroll: None,
                     hold: None,
                     for_query: None,
+                    cursor_updatability: None,
                     data_type_end_token: AttachedToken::empty(),
+                    cursor_end_token: AttachedToken::empty(),
                 }
             ],
             separator: DeclareSeparator::Comma,
@@ -1486,12 +1495,15 @@ fn parse_mssql_declare() {
                     data_type: Some(Int(None)),
                     assignment: None,
                     declare_type: None,
+                    cursor_options: vec![],
                     binary: None,
                     sensitive: None,
                     scroll: None,
                     hold: None,
                     for_query: None,
+                    cursor_updatability: None,
                     data_type_end_token: AttachedToken::empty(),
+                    cursor_end_token: AttachedToken::empty(),
                 }],
                 separator: DeclareSeparator::Comma,
                 declare_token: AttachedToken::empty(),
@@ -3820,4 +3832,74 @@ SELECT @i"#;
     for sql in ["select 1\nbreak", "select * from t\ncontinue"] {
         assert_eq!(tsql().parse_sql_statements(sql).unwrap().len(), 2, "{sql}");
     }
+}
+
+#[test]
+fn parse_mssql_declare_cursor_options() {
+    let sql =
+        "DECLARE c CURSOR LOCAL FORWARD_ONLY STATIC READ_ONLY TYPE_WARNING FOR SELECT a FROM t";
+    let Statement::Declare { stmts, .. } = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(
+        stmts[0].cursor_options,
+        [
+            MsSqlCursorOption::Local,
+            MsSqlCursorOption::ForwardOnly,
+            MsSqlCursorOption::Static,
+            MsSqlCursorOption::ReadOnly,
+            MsSqlCursorOption::TypeWarning,
+        ]
+    );
+    for sql in [
+        "DECLARE c CURSOR GLOBAL SCROLL KEYSET SCROLL_LOCKS FOR SELECT a FROM t",
+        "DECLARE c CURSOR DYNAMIC OPTIMISTIC FOR SELECT a FROM t",
+        "DECLARE c CURSOR FAST_FORWARD FOR SELECT a FROM t",
+        "DECLARE c CURSOR FOR SELECT a FROM t",
+        "DECLARE @c CURSOR",
+    ] {
+        ms().verified_stmt(sql);
+    }
+
+    let sql = "DECLARE c CURSOR LOCAL FOR SELECT a, b FROM t WHERE a > 1 FOR UPDATE OF a, b";
+    let Statement::Declare { stmts, .. } = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert!(stmts[0].for_query.as_ref().unwrap().locks.is_empty());
+    assert_eq!(
+        stmts[0].cursor_updatability,
+        Some(CursorUpdatability::Update {
+            columns: vec![Ident::new("a"), Ident::new("b")]
+        })
+    );
+    ms().verified_stmt("DECLARE c CURSOR FOR SELECT a FROM t FOR UPDATE");
+
+    // ISO syntax
+    let sql = "DECLARE c INSENSITIVE SCROLL CURSOR FOR SELECT a FROM t FOR READ ONLY";
+    let Statement::Declare { stmts, .. } = ms().verified_stmt(sql) else {
+        unreachable!()
+    };
+    assert_eq!(stmts[0].sensitive, Some(true));
+    assert_eq!(stmts[0].scroll, Some(true));
+    assert_eq!(
+        stmts[0].cursor_updatability,
+        Some(CursorUpdatability::ReadOnly)
+    );
+    ms().verified_stmt("DECLARE c SCROLL CURSOR FOR SELECT a FROM t");
+
+    // the cursor clause ends the query, which keeps its own FOR clauses
+    ms().verified_stmt("DECLARE c CURSOR FOR SELECT a FROM t FOR XML PATH('')");
+
+    assert_eq!(
+        ms().parse_sql_statements("DECLARE c INSENSITIVE FOR SELECT 1")
+            .unwrap_err(),
+        ParserError::ParserError("Expected: CURSOR, found: FOR".to_string())
+    );
+    ms().parse_sql_statements("DECLARE c CURSOR FOR SELECT a FROM t FOR READ")
+        .unwrap_err();
+
+    let stmts = tsql()
+        .parse_sql_statements("DECLARE c CURSOR FAST_FORWARD FOR SELECT a FROM t\nOPEN c")
+        .unwrap();
+    assert_eq!(stmts.len(), 2);
 }

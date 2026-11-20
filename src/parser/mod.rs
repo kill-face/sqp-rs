@@ -306,6 +306,12 @@ enum ParserState {
     /// CREATE TABLE foo (abc BIGINT NOT NULL);
     /// ```
     ColumnDefinition,
+    /// The state when parsing the query of a [MsSql] cursor declaration,
+    /// which leaves a trailing `FOR READ ONLY` or `FOR UPDATE` to the
+    /// declaration.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-cursor-transact-sql
+    CursorQuery,
 }
 
 /// A SQL Parser
@@ -8846,12 +8852,15 @@ impl<'a> Parser<'a> {
                 data_type: None,
                 assignment: None,
                 declare_type,
+                cursor_options: vec![],
                 binary,
                 sensitive,
                 scroll,
                 hold,
                 for_query: query,
+                cursor_updatability: None,
                 data_type_end_token: AttachedToken::empty(),
+                cursor_end_token: AttachedToken::empty(),
             }],
             separator: DeclareSeparator::Semicolon,
             declare_token,
@@ -8898,12 +8907,15 @@ impl<'a> Parser<'a> {
                 data_type,
                 assignment: expr.map(|expr| DeclareAssignment::Default(Box::new(expr))),
                 declare_type: None,
+                cursor_options: vec![],
                 binary: None,
                 sensitive: None,
                 scroll: None,
                 hold: None,
                 for_query: None,
+                cursor_updatability: None,
                 data_type_end_token,
+                cursor_end_token: AttachedToken::empty(),
             }],
             separator: DeclareSeparator::Semicolon,
             declare_token,
@@ -8998,12 +9010,15 @@ impl<'a> Parser<'a> {
                 data_type,
                 assignment: assigned_expr,
                 declare_type,
+                cursor_options: vec![],
                 binary: None,
                 sensitive: None,
                 scroll: None,
                 hold: None,
                 for_query,
+                cursor_updatability: None,
                 data_type_end_token,
+                cursor_end_token: AttachedToken::empty(),
             };
 
             stmts.push(stmt);
@@ -9062,17 +9077,26 @@ impl<'a> Parser<'a> {
     /// ```text
     // {
     //   { @local_variable [AS] data_type [ = value ] }
-    //   | { @cursor_variable_name CURSOR [ FOR ]}
+    //   | { @cursor_variable_name CURSOR }
+    //   | { cursor_name [ INSENSITIVE ] [ SCROLL ] CURSOR FOR select_statement
+    //       [ FOR { READ ONLY | UPDATE [ OF column_name [ ,...n ] ] } ] }
+    //   | { cursor_name CURSOR [ cursor_option [ ...n ] ] FOR select_statement
+    //       [ FOR UPDATE [ OF column_name [ ,...n ] ] ] }
     // } [ ,...n ]
     /// ```
     /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-local-variable-transact-sql?view=sql-server-ver16
+    ///
+    /// Cursors: <https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-cursor-transact-sql>
     pub fn parse_mssql_declare_stmt(&mut self) -> Result<Declare, ParserError> {
         let name = {
             let ident = self.parse_identifier()?;
             if !ident.value.starts_with('@')
                 && !matches!(
                     &self.peek_token_ref().token,
-                    Token::Word(w) if w.keyword == Keyword::CURSOR
+                    Token::Word(w) if matches!(
+                        w.keyword,
+                        Keyword::CURSOR | Keyword::INSENSITIVE | Keyword::SCROLL
+                    )
                 )
             {
                 Err(ParserError::TokenizerError(
@@ -9083,19 +9107,18 @@ impl<'a> Parser<'a> {
             }
         }?;
 
-        let (declare_type, data_type) = match &self.peek_token_ref().token {
-            Token::Word(w) => match w.keyword {
-                Keyword::CURSOR => {
-                    self.next_token();
-                    (Some(DeclareType::Cursor), None)
-                }
-                Keyword::AS => {
-                    self.next_token();
-                    (None, Some(self.parse_data_type()?))
-                }
-                _ => (None, Some(self.parse_data_type()?)),
-            },
-            _ => (None, Some(self.parse_data_type()?)),
+        let sensitive = self.parse_keyword(Keyword::INSENSITIVE).then_some(true);
+        let scroll = self.parse_keyword(Keyword::SCROLL).then_some(true);
+        let mut cursor_options = vec![];
+        let (declare_type, data_type) = if sensitive.is_some() || scroll.is_some() {
+            self.expect_keyword_is(Keyword::CURSOR)?;
+            (Some(DeclareType::Cursor), None)
+        } else if self.parse_keyword(Keyword::CURSOR) {
+            cursor_options = self.parse_mssql_cursor_options();
+            (Some(DeclareType::Cursor), None)
+        } else {
+            let _ = self.parse_keyword(Keyword::AS);
+            (None, Some(self.parse_data_type()?))
         };
         let data_type_end_token = if data_type.is_some() {
             self.last_consumed_token()
@@ -9105,11 +9128,32 @@ impl<'a> Parser<'a> {
 
         let (for_query, assignment) = if self.peek_keyword(Keyword::FOR) {
             self.next_token();
-            let query = Some(self.parse_query()?);
-            (query, None)
+            let query = self.with_state(ParserState::CursorQuery, |p| p.parse_query())?;
+            (Some(query), None)
         } else {
             let assignment = self.parse_mssql_variable_declaration_expression()?;
             (None, assignment)
+        };
+
+        let cursor_updatability = if for_query.is_none() {
+            None
+        } else if self.parse_keywords(&[Keyword::FOR, Keyword::READ, Keyword::ONLY]) {
+            Some(CursorUpdatability::ReadOnly)
+        } else if self.parse_keywords(&[Keyword::FOR, Keyword::UPDATE]) {
+            let columns = if self.parse_keyword(Keyword::OF) {
+                self.parse_comma_separated(|p| p.parse_identifier())?
+            } else {
+                vec![]
+            };
+            Some(CursorUpdatability::Update { columns })
+        } else {
+            None
+        };
+
+        let cursor_end_token = if declare_type.is_some() {
+            self.last_consumed_token()
+        } else {
+            AttachedToken::empty()
         };
 
         Ok(Declare {
@@ -9117,13 +9161,54 @@ impl<'a> Parser<'a> {
             data_type,
             assignment,
             declare_type,
+            cursor_options,
             binary: None,
-            sensitive: None,
-            scroll: None,
+            sensitive,
+            scroll,
             hold: None,
             for_query,
+            cursor_updatability,
             data_type_end_token,
+            cursor_end_token,
         })
+    }
+
+    /// Parse the [MsSql] cursor options after `CURSOR`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-cursor-transact-sql
+    fn parse_mssql_cursor_options(&mut self) -> Vec<MsSqlCursorOption> {
+        let mut options = vec![];
+        loop {
+            let option = match self.parse_one_of_keywords(&[
+                Keyword::LOCAL,
+                Keyword::GLOBAL,
+                Keyword::FORWARD_ONLY,
+                Keyword::SCROLL,
+                Keyword::STATIC,
+                Keyword::KEYSET,
+                Keyword::DYNAMIC,
+                Keyword::FAST_FORWARD,
+                Keyword::READ_ONLY,
+                Keyword::SCROLL_LOCKS,
+                Keyword::OPTIMISTIC,
+                Keyword::TYPE_WARNING,
+            ]) {
+                Some(Keyword::LOCAL) => MsSqlCursorOption::Local,
+                Some(Keyword::GLOBAL) => MsSqlCursorOption::Global,
+                Some(Keyword::FORWARD_ONLY) => MsSqlCursorOption::ForwardOnly,
+                Some(Keyword::SCROLL) => MsSqlCursorOption::Scroll,
+                Some(Keyword::STATIC) => MsSqlCursorOption::Static,
+                Some(Keyword::KEYSET) => MsSqlCursorOption::Keyset,
+                Some(Keyword::DYNAMIC) => MsSqlCursorOption::Dynamic,
+                Some(Keyword::FAST_FORWARD) => MsSqlCursorOption::FastForward,
+                Some(Keyword::READ_ONLY) => MsSqlCursorOption::ReadOnly,
+                Some(Keyword::SCROLL_LOCKS) => MsSqlCursorOption::ScrollLocks,
+                Some(Keyword::OPTIMISTIC) => MsSqlCursorOption::Optimistic,
+                Some(Keyword::TYPE_WARNING) => MsSqlCursorOption::TypeWarning,
+                _ => return options,
+            };
+            options.push(option);
+        }
     }
 
     /// Parses the assigned expression in a variable declaration.
@@ -16504,7 +16589,14 @@ impl<'a> Parser<'a> {
 
             let mut for_clause = None;
             let mut locks = Vec::new();
-            while self.parse_keyword(Keyword::FOR) {
+            while self.peek_keyword(Keyword::FOR) {
+                if self.state == ParserState::CursorQuery
+                    && (self.peek_keywords(&[Keyword::FOR, Keyword::UPDATE])
+                        || self.peek_keywords(&[Keyword::FOR, Keyword::READ]))
+                {
+                    break;
+                }
+                self.advance_token();
                 if let Some(parsed_for_clause) = self.parse_for_clause()? {
                     for_clause = Some(parsed_for_clause);
                     break;
