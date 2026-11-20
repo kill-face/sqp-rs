@@ -23018,7 +23018,27 @@ impl<'a> Parser<'a> {
             (false, _) => Token::SemiColon,
         };
 
-        let parameters = self.parse_comma_separated0(Parser::parse_expr, end_token)?;
+        // Without parentheses, a keyword that cannot follow an expression starts
+        // the next statement rather than an argument, as in `EXEC p` followed by
+        // `SELECT ...` without a semicolon.
+        let next_statement = !has_parentheses
+            && match &self.peek_token_ref().token {
+                Token::Word(w)
+                    if w.keyword != Keyword::NoKeyword
+                        && !matches!(w.keyword, Keyword::NULL | Keyword::DEFAULT)
+                        && !end_kws.contains(&w.keyword) =>
+                {
+                    let keyword = w.keyword;
+                    let dialect = self.dialect;
+                    !dialect.is_select_item_alias(false, &keyword, self)
+                }
+                _ => false,
+            };
+        let parameters = if next_statement {
+            vec![]
+        } else {
+            self.parse_comma_separated0(Parser::parse_expr, end_token)?
+        };
 
         if has_parentheses {
             self.expect_token(&Token::RParen)?;

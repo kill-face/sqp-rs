@@ -4132,3 +4132,23 @@ fn parse_alter_database_set_options() {
         Parser::parse_sql(&*dialect, "ALTER DATABASE db1 MODIFY NAME = db2").unwrap_err();
     }
 }
+
+#[test]
+fn parse_mssql_exec_without_arguments_before_next_statement() {
+    for (sql, expected) in [
+        ("EXEC p\nSELECT 1", 2),
+        ("EXEC dbo.p\nINSERT INTO t VALUES (1)", 2),
+        ("EXECUTE p\nEXEC q", 2),
+        ("EXEC p\nIF 1 = 1 PRINT 'x'", 2),
+        ("EXEC p NULL, 1\nSELECT 1", 2),
+        ("EXEC sp_help t1\nSELECT 1", 2),
+    ] {
+        let stmts = tsql().parse_sql_statements(sql).unwrap();
+        assert_eq!(stmts.len(), expected, "{sql}");
+    }
+    let stmts = tsql().parse_sql_statements("EXEC p\nSELECT 1").unwrap();
+    let Statement::Execute { parameters, .. } = &stmts[0] else {
+        unreachable!()
+    };
+    assert!(parameters.is_empty());
+}
