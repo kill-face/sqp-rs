@@ -4462,6 +4462,18 @@ SETTINGS update_parallel_mode = 'auto'"#;
     }
 
     #[test]
+    fn test_alter_database_spans() {
+        let sql = "ALTER DATABASE db1 SET SINGLE_USER WITH ROLLBACK IMMEDIATE;\nALTER DATABASE db1 SET QUERY_STORE = ON (OPERATION_MODE = READ_WRITE)";
+        assert_eq!(
+            statement_texts(sql, &mssql_statements(sql)),
+            [
+                "ALTER DATABASE db1 SET SINGLE_USER WITH ROLLBACK IMMEDIATE",
+                "ALTER DATABASE db1 SET QUERY_STORE = ON (OPERATION_MODE = READ_WRITE)"
+            ]
+        );
+    }
+
+    #[test]
     fn test_cursor_statement_spans() {
         let sql = "OPEN c;\nFETCH NEXT FROM c INTO @a, @b;\nFETCH c;\nCLOSE c;\nDEALLOCATE c";
         assert_eq!(

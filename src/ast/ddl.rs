@@ -5531,6 +5531,10 @@ pub struct AlterDatabase {
     pub name: ObjectName,
     /// The operation to perform on the database.
     pub operation: AlterDatabaseOperation,
+    /// The `ALTER` keyword.
+    pub alter_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 /// Operations supported by `ALTER DATABASE`.
@@ -5543,12 +5547,46 @@ pub enum AlterDatabaseOperation {
         /// New database name.
         new_name: Ident,
     },
+    /// [MsSql] `SET option [, ...] [ WITH termination ]`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-set-options
+    SetOptions {
+        /// The options to set.
+        options: Vec<AlterDatabaseSetOption>,
+        /// How open transactions are ended.
+        termination: Option<AlterDatabaseTermination>,
+    },
+    /// [MsSql] `MODIFY NAME = new_name`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql
+    ModifyName {
+        /// New database name.
+        new_name: Ident,
+    },
+    /// [MsSql] `COLLATE collation_name`
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql
+    Collate(Ident),
 }
 
 impl fmt::Display for AlterDatabaseOperation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AlterDatabaseOperation::RenameTo { new_name } => write!(f, "RENAME TO {new_name}"),
+            AlterDatabaseOperation::SetOptions {
+                options,
+                termination,
+            } => {
+                write!(f, "SET {}", display_comma_separated(options))?;
+                if let Some(termination) = termination {
+                    write!(f, " WITH {termination}")?;
+                }
+                Ok(())
+            }
+            AlterDatabaseOperation::ModifyName { new_name } => {
+                write!(f, "MODIFY NAME = {new_name}")
+            }
+            AlterDatabaseOperation::Collate(collation) => write!(f, "COLLATE {collation}"),
         }
     }
 }
@@ -5561,7 +5599,85 @@ impl fmt::Display for AlterDatabase {
 
 impl Spanned for AlterDatabase {
     fn span(&self) -> Span {
-        self.name.span()
+        self.alter_token.0.span.union(&self.end_token.0.span)
+    }
+}
+
+/// A [MsSql] `ALTER DATABASE ... SET` option, such as `SINGLE_USER`,
+/// `READ_COMMITTED_SNAPSHOT ON`, `COMPATIBILITY_LEVEL = 150`,
+/// `TARGET_RECOVERY_TIME = 60 SECONDS` or
+/// `QUERY_STORE = ON ( OPERATION_MODE = READ_WRITE )`.
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-set-options
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct AlterDatabaseSetOption {
+    /// The option name.
+    pub name: Ident,
+    /// Whether the value follows `=`.
+    pub has_eq: bool,
+    /// The option value, if any.
+    pub value: Option<Expr>,
+    /// A unit after the value, such as `SECONDS` or `DAYS`.
+    pub unit: Option<Ident>,
+    /// Parenthesized sub-options after the value.
+    pub sub_options: Vec<AlterDatabaseSetOption>,
+}
+
+impl fmt::Display for AlterDatabaseSetOption {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.name)?;
+        if let Some(value) = &self.value {
+            let eq = if self.has_eq { " =" } else { "" };
+            write!(f, "{eq} {value}")?;
+        }
+        if let Some(unit) = &self.unit {
+            write!(f, " {unit}")?;
+        }
+        if !self.sub_options.is_empty() {
+            write!(f, " ({})", display_comma_separated(&self.sub_options))?;
+        }
+        Ok(())
+    }
+}
+
+/// How [MsSql] `ALTER DATABASE ... SET ... WITH` treats open transactions.
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-set-options
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum AlterDatabaseTermination {
+    /// `ROLLBACK AFTER number [ SECONDS ]`
+    RollbackAfter {
+        /// The number of seconds.
+        seconds: Expr,
+        /// Whether the `SECONDS` keyword was written.
+        seconds_keyword: bool,
+    },
+    /// `ROLLBACK IMMEDIATE`
+    RollbackImmediate,
+    /// `NO_WAIT`
+    NoWait,
+}
+
+impl fmt::Display for AlterDatabaseTermination {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AlterDatabaseTermination::RollbackAfter {
+                seconds,
+                seconds_keyword,
+            } => {
+                write!(f, "ROLLBACK AFTER {seconds}")?;
+                if *seconds_keyword {
+                    f.write_str(" SECONDS")?;
+                }
+                Ok(())
+            }
+            AlterDatabaseTermination::RollbackImmediate => f.write_str("ROLLBACK IMMEDIATE"),
+            AlterDatabaseTermination::NoWait => f.write_str("NO_WAIT"),
+        }
     }
 }
 

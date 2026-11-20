@@ -408,4 +408,8 @@ impl Dialect for GenericDialect {
     fn supports_create_database_file_specs(&self) -> bool {
         true
     }
+
+    fn supports_alter_database_set_options(&self) -> bool {
+        true
+    }
 }

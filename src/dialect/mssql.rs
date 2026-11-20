@@ -169,6 +169,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql>
+    fn supports_alter_database_set_options(&self) -> bool {
+        true
+    }
+
     /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql>
     fn supports_create_view_attributes(&self) -> bool {
         true

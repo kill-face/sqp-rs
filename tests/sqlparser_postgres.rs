@@ -14416,12 +14416,14 @@ fn parse_alter_database_rename() {
             operation: AlterDatabaseOperation::RenameTo {
                 new_name: Ident::with_quote('"', "Weird"),
             },
+            alter_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         })
     );
     assert_eq!(
         Parser::parse_sql(&PostgreSqlDialect {}, "ALTER DATABASE app.d RENAME TO e").unwrap()[0]
             .span(),
-        Span::new(Location::new(1, 16), Location::new(1, 21))
+        Span::new(Location::new(1, 1), Location::new(1, 33))
     );
     for (sql, error) in [
         ("ALTER DATABASE", "Expected: identifier, found: EOF"),

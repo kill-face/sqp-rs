@@ -12991,7 +12991,7 @@ impl<'a> Parser<'a> {
             }
             Keyword::TYPE => self.parse_alter_type(),
             Keyword::COLLATION => self.parse_alter_collation().map(Into::into),
-            Keyword::DATABASE => self.parse_alter_database().map(Into::into),
+            Keyword::DATABASE => self.parse_alter_database(alter_token).map(Into::into),
             Keyword::EXTENSION => self.parse_alter_extension().map(Into::into),
             Keyword::TABLE => {
                 let stmt = self.parse_alter_table(None)?;
@@ -13659,17 +13659,127 @@ impl<'a> Parser<'a> {
     /// Parse a [Statement::AlterDatabase].
     ///
     /// [PostgreSQL Documentation](https://www.postgresql.org/docs/current/sql-alterdatabase.html)
-    pub fn parse_alter_database(&mut self) -> Result<AlterDatabase, ParserError> {
+    /// [MsSql Documentation](https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql)
+    pub fn parse_alter_database(
+        &mut self,
+        alter_token: TokenWithSpan,
+    ) -> Result<AlterDatabase, ParserError> {
         let name = self.parse_object_name(false)?;
+        let mssql = self.dialect.supports_alter_database_set_options();
         let operation = if self.parse_keywords(&[Keyword::RENAME, Keyword::TO]) {
             AlterDatabaseOperation::RenameTo {
                 new_name: self.parse_identifier()?,
             }
+        } else if mssql && self.parse_keyword(Keyword::SET) {
+            let options = self.parse_comma_separated(Parser::parse_alter_database_set_option)?;
+            let termination = if self.parse_keyword(Keyword::WITH) {
+                Some(
+                    if self.parse_keywords(&[Keyword::ROLLBACK, Keyword::AFTER]) {
+                        AlterDatabaseTermination::RollbackAfter {
+                            seconds: self.parse_prefix()?,
+                            seconds_keyword: self.parse_keyword(Keyword::SECONDS),
+                        }
+                    } else if self.parse_keywords(&[Keyword::ROLLBACK, Keyword::IMMEDIATE]) {
+                        AlterDatabaseTermination::RollbackImmediate
+                    } else if self.parse_keyword(Keyword::NO_WAIT) {
+                        AlterDatabaseTermination::NoWait
+                    } else {
+                        return self.expected_ref(
+                            "ROLLBACK AFTER, ROLLBACK IMMEDIATE or NO_WAIT",
+                            self.peek_token_ref(),
+                        );
+                    },
+                )
+            } else {
+                None
+            };
+            AlterDatabaseOperation::SetOptions {
+                options,
+                termination,
+            }
+        } else if mssql && self.parse_keywords(&[Keyword::MODIFY, Keyword::NAME]) {
+            self.expect_token(&Token::Eq)?;
+            AlterDatabaseOperation::ModifyName {
+                new_name: self.parse_identifier()?,
+            }
+        } else if mssql && self.parse_keyword(Keyword::COLLATE) {
+            AlterDatabaseOperation::Collate(self.parse_identifier()?)
         } else {
             return self.expected_ref("RENAME TO after ALTER DATABASE", self.peek_token_ref());
         };
 
-        Ok(AlterDatabase { name, operation })
+        Ok(AlterDatabase {
+            name,
+            operation,
+            alter_token: AttachedToken(alter_token),
+            end_token: self.last_consumed_token(),
+        })
+    }
+
+    /// Parse a [MsSql] `ALTER DATABASE ... SET` option.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-set-options
+    fn parse_alter_database_set_option(&mut self) -> Result<AlterDatabaseSetOption, ParserError> {
+        let name = self.parse_identifier()?;
+        let has_eq = self.consume_token(&Token::Eq);
+        // A value written without `=`, as in `RECOVERY SIMPLE`, is a number or a
+        // word, but not a keyword that starts the next clause or statement.
+        let bare_value = match &self.peek_token_ref().token {
+            Token::Number(..) => true,
+            Token::Word(w) => {
+                let keyword = w.keyword;
+                let dialect = self.dialect;
+                matches!(keyword, Keyword::ON | Keyword::OFF | Keyword::FULL)
+                    || (keyword != Keyword::WITH
+                        && dialect.is_select_item_alias(false, &keyword, self))
+            }
+            _ => false,
+        };
+        let value = if has_eq || bare_value {
+            Some(self.parse_alter_database_set_value()?)
+        } else {
+            None
+        };
+        let unit = match &self.peek_token_ref().token {
+            Token::Word(w)
+                if value.is_some()
+                    && matches!(
+                        w.keyword,
+                        Keyword::SECONDS | Keyword::MINUTES | Keyword::HOURS | Keyword::DAYS
+                    ) =>
+            {
+                Some(self.parse_identifier()?)
+            }
+            _ => None,
+        };
+        let sub_options = if self.consume_token(&Token::LParen) {
+            let sub_options =
+                self.parse_comma_separated(Parser::parse_alter_database_set_option)?;
+            self.expect_token(&Token::RParen)?;
+            sub_options
+        } else {
+            vec![]
+        };
+        Ok(AlterDatabaseSetOption {
+            name,
+            has_eq,
+            value,
+            unit,
+            sub_options,
+        })
+    }
+
+    /// Parse the value of an `ALTER DATABASE ... SET` option: a keyword such as
+    /// `ON`, `OFF` or `SIMPLE` as an identifier, or an expression.
+    fn parse_alter_database_set_value(&mut self) -> Result<Expr, ParserError> {
+        match &self.peek_token_ref().token {
+            Token::Word(w) if w.quote_style.is_none() => {
+                let ident = w.clone().into_ident(self.peek_token_ref().span);
+                self.advance_token();
+                Ok(Expr::Identifier(ident))
+            }
+            _ => self.parse_prefix(),
+        }
     }
 
     /// Parse a [Statement::AlterOperator]

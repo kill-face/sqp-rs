@@ -747,6 +747,7 @@ define_keywords!(
     NOTIFY,
     NOTNULL,
     NOWAIT,
+    NO_WAIT,
     NO_WRITE_TO_BINLOG,
     NTH_VALUE,
     NTILE,

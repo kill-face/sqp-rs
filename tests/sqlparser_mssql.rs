@@ -4083,3 +4083,52 @@ fn parse_create_database_files() {
         Parser::parse_sql(&*dialect, "CREATE DATABASE db1 ON (NAME = d1)").unwrap_err();
     }
 }
+
+#[test]
+fn parse_alter_database_set_options() {
+    let sql = "ALTER DATABASE db1 SET SINGLE_USER WITH ROLLBACK IMMEDIATE";
+    let Statement::AlterDatabase(alter) = ms_and_generic().verified_stmt(sql) else {
+        unreachable!()
+    };
+    let AlterDatabaseOperation::SetOptions {
+        options,
+        termination,
+    } = alter.operation
+    else {
+        unreachable!()
+    };
+    assert_eq!(options[0].name, Ident::new("SINGLE_USER"));
+    assert_eq!(options[0].value, None);
+    assert_eq!(
+        termination,
+        Some(AlterDatabaseTermination::RollbackImmediate)
+    );
+
+    for sql in [
+        "ALTER DATABASE db1 SET READ_COMMITTED_SNAPSHOT ON",
+        "ALTER DATABASE db1 SET COMPATIBILITY_LEVEL = 150",
+        "ALTER DATABASE db1 SET RECOVERY SIMPLE, PAGE_VERIFY CHECKSUM",
+        "ALTER DATABASE db1 SET RECOVERY FULL",
+        "ALTER DATABASE CURRENT SET TARGET_RECOVERY_TIME = 60 SECONDS",
+        "ALTER DATABASE db1 SET QUERY_STORE = ON (OPERATION_MODE = READ_WRITE, MAX_STORAGE_SIZE_MB = 100)",
+        "ALTER DATABASE db1 SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON)",
+        "ALTER DATABASE db1 SET OFFLINE WITH ROLLBACK AFTER 30 SECONDS",
+        "ALTER DATABASE db1 SET OFFLINE WITH ROLLBACK AFTER 30",
+        "ALTER DATABASE db1 SET MULTI_USER WITH NO_WAIT",
+        "ALTER DATABASE db1 MODIFY NAME = db2",
+        "ALTER DATABASE db1 COLLATE Latin1_General_CI_AS",
+    ] {
+        ms_and_generic().verified_stmt(sql);
+    }
+
+    let stmts = tsql()
+        .parse_sql_statements("ALTER DATABASE db1 SET RECOVERY SIMPLE\nSELECT 1")
+        .unwrap();
+    assert_eq!(stmts.len(), 2);
+
+    ms().parse_sql_statements("ALTER DATABASE db1 SET OFFLINE WITH ROLLBACK")
+        .unwrap_err();
+    for dialect in all_dialects_where(|d| !d.supports_alter_database_set_options()).dialects {
+        Parser::parse_sql(&*dialect, "ALTER DATABASE db1 MODIFY NAME = db2").unwrap_err();
+    }
+}

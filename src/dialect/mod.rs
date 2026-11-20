@@ -1437,6 +1437,13 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support `ALTER DATABASE ... SET option [, ...]`,
+    /// `MODIFY NAME = new_name` and `COLLATE collation`?
+    /// e.g. `ALTER DATABASE d SET SINGLE_USER WITH ROLLBACK IMMEDIATE`
+    fn supports_alter_database_set_options(&self) -> bool {
+        false
+    }
+
     /// Does the dialect support `VARYING`, `NULL` / `NOT NULL` and an `OUT` /
     /// `OUTPUT` mode after a procedure parameter's data type?
     /// e.g. `CREATE PROCEDURE p @a INT NULL = 0 OUTPUT AS ...`
