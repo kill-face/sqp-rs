@@ -16598,7 +16598,8 @@ impl<'a> Parser<'a> {
 
             let settings = self.parse_settings()?;
 
-            let fetch = if self.parse_keyword(Keyword::FETCH) {
+            let fetch = if self.peek_fetch_clause() {
+                self.advance_token();
                 Some(self.parse_fetch()?)
             } else {
                 None
@@ -22076,6 +22077,58 @@ impl<'a> Parser<'a> {
             OffsetRows::None
         };
         Ok(Offset { value, rows })
+    }
+
+    /// Whether the next tokens start a query's `FETCH` clause rather than a
+    /// cursor `FETCH` statement (`FETCH NEXT FROM c`, `FETCH c INTO x`),
+    /// which can follow a query when semicolons are optional.
+    ///
+    /// The query clause is recognised by its documented shape, the union of
+    /// `FETCH { FIRST | NEXT } [ count ] { ROW | ROWS } { ONLY | WITH TIES }`
+    /// (ANSI, T-SQL, PostgreSQL) and Snowflake's
+    /// `FETCH [ { FIRST | NEXT } ] count [ { ROW | ROWS } ] [ ONLY ]`, whose
+    /// count may also be `NULL` or `''`:
+    /// - a literal count (number, string, `NULL`, placeholder or
+    ///   parenthesized expression) starts the clause, unless `FROM` / `IN`
+    ///   follows it (PostgreSQL's `FETCH 5 FROM c`);
+    /// - a count that is a word (a T-SQL variable or a column) starts the
+    ///   clause only when `ROW`, `ROWS` or `PERCENT` follows it, as every
+    ///   grammar that allows such a count requires; otherwise the word is a
+    ///   cursor name or a cursor direction (`PRIOR`, `ABSOLUTE`, `FROM`, ...).
+    ///
+    /// <https://learn.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql#syntax>
+    /// <https://www.postgresql.org/docs/current/sql-select.html#SQL-LIMIT>
+    /// <https://docs.snowflake.com/en/sql-reference/constructs/limit>
+    /// <https://learn.microsoft.com/en-us/sql/t-sql/language-elements/fetch-transact-sql>
+    /// <https://www.postgresql.org/docs/current/sql-fetch.html>
+    fn peek_fetch_clause(&self) -> bool {
+        let [fetch, first, second, third] = self.peek_tokens_ref();
+        let is_word = |token: &TokenWithSpan, keywords: &[Keyword]| matches!(&token.token, Token::Word(w) if w.quote_style.is_none() && keywords.contains(&w.keyword));
+        if !is_word(fetch, &[Keyword::FETCH]) {
+            return false;
+        }
+        let (count, after) = if is_word(first, &[Keyword::FIRST, Keyword::NEXT]) {
+            if is_word(second, &[Keyword::ROW, Keyword::ROWS]) {
+                // `FETCH FIRST ROW ONLY`: the count is optional.
+                return true;
+            }
+            (second, third)
+        } else {
+            (first, second)
+        };
+        match &count.token {
+            Token::Number(..)
+            | Token::SingleQuotedString(_)
+            | Token::NationalStringLiteral(_)
+            | Token::DollarQuotedString(_)
+            | Token::Placeholder(_)
+            | Token::LParen => !is_word(after, &[Keyword::FROM, Keyword::IN]),
+            Token::Word(w) if w.quote_style.is_none() && w.keyword == Keyword::NULL => {
+                !is_word(after, &[Keyword::FROM, Keyword::IN])
+            }
+            Token::Word(_) => is_word(after, &[Keyword::ROW, Keyword::ROWS, Keyword::PERCENT]),
+            _ => false,
+        }
     }
 
     /// Parse a FETCH clause

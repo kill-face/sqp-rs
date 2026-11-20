@@ -24175,3 +24175,77 @@ fn parse_fetch_without_direction_and_into_list() {
     parse_sql_statements("FETCH NEXT FROM").unwrap_err();
     parse_sql_statements("FETCH c INTO").unwrap_err();
 }
+
+#[test]
+fn parse_fetch_statement_after_query() {
+    // A cursor FETCH statement after a query without a semicolon is its own
+    // statement, in each documented cursor form, for every dialect.
+    let no_semicolons = TestedDialects::new_with_options(
+        all_dialects().dialects,
+        ParserOptions {
+            require_semicolon_stmt_delimiter: false,
+            ..ParserOptions::default()
+        },
+    );
+    for fetch in [
+        "FETCH NEXT FROM c",
+        "FETCH PRIOR FROM c",
+        "FETCH ABSOLUTE 3 FROM c",
+        "FETCH RELATIVE 3 IN c",
+        "FETCH FROM c",
+        "FETCH 5 FROM c",
+        "FETCH ALL IN c",
+        "FETCH FORWARD 2 FROM c",
+        "FETCH c INTO x",
+    ] {
+        let sql = format!("SELECT a FROM t ORDER BY a\n{fetch}");
+        let stmts = no_semicolons
+            .parse_sql_statements(&sql)
+            .unwrap_or_else(|e| panic!("{sql}: {e}"));
+        assert!(
+            matches!(stmts[..], [Statement::Query(_), Statement::Fetch { .. }]),
+            "{sql}: {stmts:?}"
+        );
+    }
+
+    // The query clause in the standard form, for every dialect.
+    for sql in [
+        "SELECT a FROM t FETCH FIRST 10 ROWS ONLY",
+        "SELECT a FROM t FETCH FIRST ROWS ONLY",
+        "SELECT a FROM t FETCH FIRST 10 PERCENT ROWS WITH TIES",
+        "SELECT a FROM t OFFSET 2 ROWS FETCH FIRST 10 ROWS ONLY",
+    ] {
+        let Statement::Query(query) = all_dialects().verified_stmt(sql) else {
+            unreachable!()
+        };
+        assert!(query.fetch.is_some(), "{sql}");
+    }
+
+    // Snowflake's form: FIRST / NEXT and ROW / ROWS are optional, and the
+    // count may be NULL or an empty string, meaning no limit.
+    // https://docs.snowflake.com/en/sql-reference/constructs/limit
+    let snowflake = TestedDialects::new(vec![Box::new(SnowflakeDialect {})]);
+    for (sql, canonical) in [
+        (
+            "SELECT a FROM t FETCH 2",
+            "SELECT a FROM t FETCH FIRST 2 ROWS ONLY",
+        ),
+        (
+            "SELECT a FROM t FETCH NULL",
+            "SELECT a FROM t FETCH FIRST NULL ROWS ONLY",
+        ),
+        (
+            "SELECT a FROM t FETCH ''",
+            "SELECT a FROM t FETCH FIRST '' ROWS ONLY",
+        ),
+        (
+            "SELECT a FROM t FETCH NEXT NULL ROWS",
+            "SELECT a FROM t FETCH FIRST NULL ROWS ONLY",
+        ),
+    ] {
+        let Statement::Query(query) = snowflake.one_statement_parses_to(sql, canonical) else {
+            unreachable!()
+        };
+        assert!(query.fetch.is_some(), "{sql}");
+    }
+}
