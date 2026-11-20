@@ -9256,66 +9256,75 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse `FETCH [direction] { FROM | IN } cursor INTO target;` statement.
+    /// Parse a `FETCH` statement, after the `FETCH` keyword:
+    ///
+    /// ```sql
+    /// FETCH [ direction ] [ { FROM | IN } ] cursor [ INTO target [, ...] ]
+    /// ```
+    ///
+    /// [PostgreSQL](https://www.postgresql.org/docs/current/sql-fetch.html)
+    /// [MsSql](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/fetch-transact-sql)
+    /// [MySQL](https://dev.mysql.com/doc/refman/8.4/en/fetch.html)
+    /// [Snowflake](https://docs.snowflake.com/en/sql-reference/snowflake-scripting/fetch)
     pub fn parse_fetch_statement(&mut self) -> Result<Statement, ParserError> {
         let direction = if self.parse_keyword(Keyword::NEXT) {
-            FetchDirection::Next
+            Some(FetchDirection::Next)
         } else if self.parse_keyword(Keyword::PRIOR) {
-            FetchDirection::Prior
+            Some(FetchDirection::Prior)
         } else if self.parse_keyword(Keyword::FIRST) {
-            FetchDirection::First
+            Some(FetchDirection::First)
         } else if self.parse_keyword(Keyword::LAST) {
-            FetchDirection::Last
+            Some(FetchDirection::Last)
         } else if self.parse_keyword(Keyword::ABSOLUTE) {
-            FetchDirection::Absolute {
-                limit: self.parse_number_value()?,
-            }
+            Some(FetchDirection::Absolute {
+                limit: self.parse_prefix()?,
+            })
         } else if self.parse_keyword(Keyword::RELATIVE) {
-            FetchDirection::Relative {
-                limit: self.parse_number_value()?,
-            }
+            Some(FetchDirection::Relative {
+                limit: self.parse_prefix()?,
+            })
         } else if self.parse_keyword(Keyword::FORWARD) {
             if self.parse_keyword(Keyword::ALL) {
-                FetchDirection::ForwardAll
+                Some(FetchDirection::ForwardAll)
             } else {
-                FetchDirection::Forward {
+                Some(FetchDirection::Forward {
                     // TODO: Support optional
                     limit: Some(self.parse_number_value()?),
-                }
+                })
             }
         } else if self.parse_keyword(Keyword::BACKWARD) {
             if self.parse_keyword(Keyword::ALL) {
-                FetchDirection::BackwardAll
+                Some(FetchDirection::BackwardAll)
             } else {
-                FetchDirection::Backward {
+                Some(FetchDirection::Backward {
                     // TODO: Support optional
                     limit: Some(self.parse_number_value()?),
-                }
+                })
             }
         } else if self.parse_keyword(Keyword::ALL) {
-            FetchDirection::All
-        } else {
-            FetchDirection::Count {
+            Some(FetchDirection::All)
+        } else if let Token::Number(_, _) = self.peek_token_ref().token {
+            Some(FetchDirection::Count {
                 limit: self.parse_number_value()?,
-            }
+            })
+        } else {
+            None
         };
 
-        let position = if self.peek_keyword(Keyword::FROM) {
-            self.expect_keyword(Keyword::FROM)?;
-            FetchPosition::From
-        } else if self.peek_keyword(Keyword::IN) {
-            self.expect_keyword(Keyword::IN)?;
-            FetchPosition::In
+        let position = if self.parse_keyword(Keyword::FROM) {
+            Some(FetchPosition::From)
+        } else if self.parse_keyword(Keyword::IN) {
+            Some(FetchPosition::In)
         } else {
-            return parser_err!("Expected FROM or IN", self.peek_token_ref().span.start);
+            None
         };
 
         let name = self.parse_identifier()?;
 
         let into = if self.parse_keyword(Keyword::INTO) {
-            Some(self.parse_object_name(false)?)
+            self.parse_comma_separated(|p| p.parse_object_name(false))?
         } else {
-            None
+            vec![]
         };
 
         Ok(Statement::Fetch {

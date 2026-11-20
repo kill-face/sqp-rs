@@ -3903,3 +3903,25 @@ fn parse_mssql_declare_cursor_options() {
         .unwrap();
     assert_eq!(stmts.len(), 2);
 }
+
+#[test]
+fn parse_mssql_fetch() {
+    for sql in [
+        "FETCH NEXT FROM c INTO @a, @b",
+        "FETCH ABSOLUTE @n FROM c INTO @a",
+        "FETCH RELATIVE -1 FROM c",
+        "FETCH LAST FROM @c",
+        "FETCH c INTO @a",
+    ] {
+        ms().verified_stmt(sql);
+    }
+    let sql = r#"OPEN c
+FETCH NEXT FROM c INTO @a, @b
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    FETCH NEXT FROM c INTO @a, @b
+END
+CLOSE c
+DEALLOCATE c"#;
+    assert_eq!(tsql().parse_sql_statements(sql).unwrap().len(), 5);
+}

@@ -4456,12 +4456,19 @@ pub enum Statement {
     Fetch {
         /// Cursor name
         name: Ident,
-        /// The fetch direction (e.g., `FORWARD`, `BACKWARD`).
-        direction: FetchDirection,
-        /// The fetch position (e.g., `ALL`, `NEXT`, `ABSOLUTE`).
-        position: FetchPosition,
-        /// Optional target table to fetch rows into.
-        into: Option<ObjectName>,
+        /// The fetch direction (e.g., `NEXT`, `ABSOLUTE 2`, `FORWARD ALL`),
+        /// `None` when omitted.
+        direction: Option<FetchDirection>,
+        /// The `FROM` or `IN` keyword before the cursor name, `None` when
+        /// omitted.
+        position: Option<FetchPosition>,
+        /// Targets to fetch rows into: a table, or variables as in
+        /// [MsSql], [MySQL] and [Snowflake].
+        ///
+        /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/fetch-transact-sql
+        /// [MySQL]: https://dev.mysql.com/doc/refman/8.4/en/fetch.html
+        /// [Snowflake]: https://docs.snowflake.com/en/sql-reference/snowflake-scripting/fetch
+        into: Vec<ObjectName>,
     },
     /// ```sql
     /// FLUSH [NO_WRITE_TO_BINLOG | LOCAL] flush_option [, flush_option] ... | tables_option
@@ -5672,10 +5679,16 @@ impl fmt::Display for Statement {
                 position,
                 into,
             } => {
-                write!(f, "FETCH {direction} {position} {name}")?;
-
-                if let Some(into) = into {
-                    write!(f, " INTO {into}")?;
+                f.write_str("FETCH")?;
+                if let Some(direction) = direction {
+                    write!(f, " {direction}")?;
+                }
+                if let Some(position) = position {
+                    write!(f, " {position}")?;
+                }
+                write!(f, " {name}")?;
+                if !into.is_empty() {
+                    write!(f, " INTO {}", display_comma_separated(into))?;
                 }
 
                 Ok(())
@@ -7511,13 +7524,19 @@ pub enum FetchDirection {
     Last,
     /// Fetch an absolute row by index.
     Absolute {
-        /// The absolute index value.
-        limit: ValueWithSpan,
+        /// The absolute index: a possibly signed number, or in [MsSql] a
+        /// variable.
+        ///
+        /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/fetch-transact-sql
+        limit: Expr,
     },
     /// Fetch a row relative to the current position.
     Relative {
-        /// The relative offset value.
-        limit: ValueWithSpan,
+        /// The relative offset: a possibly signed number, or in [MsSql] a
+        /// variable.
+        ///
+        /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/fetch-transact-sql
+        limit: Expr,
     },
     /// Fetch all rows.
     All,
@@ -7549,14 +7568,8 @@ impl fmt::Display for FetchDirection {
             FetchDirection::Prior => f.write_str("PRIOR")?,
             FetchDirection::First => f.write_str("FIRST")?,
             FetchDirection::Last => f.write_str("LAST")?,
-            FetchDirection::Absolute { limit } => {
-                f.write_str("ABSOLUTE ")?;
-                f.write_str(&limit.to_string())?;
-            }
-            FetchDirection::Relative { limit } => {
-                f.write_str("RELATIVE ")?;
-                f.write_str(&limit.to_string())?;
-            }
+            FetchDirection::Absolute { limit } => write!(f, "ABSOLUTE {limit}")?,
+            FetchDirection::Relative { limit } => write!(f, "RELATIVE {limit}")?,
             FetchDirection::All => f.write_str("ALL")?,
             FetchDirection::Forward { limit } => {
                 f.write_str("FORWARD")?;

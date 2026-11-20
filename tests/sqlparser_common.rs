@@ -24135,3 +24135,41 @@ fn parse_break_continue() {
     dialects.parse_sql_statements("BREAK").unwrap_err();
     dialects.parse_sql_statements("CONTINUE").unwrap_err();
 }
+
+#[test]
+fn parse_fetch_without_direction_and_into_list() {
+    for sql in [
+        "FETCH c",
+        "FETCH FROM c",
+        "FETCH NEXT FROM c INTO a, b",
+        "FETCH c INTO a",
+        "FETCH ABSOLUTE -2 FROM c",
+        "FETCH RELATIVE 3 IN c",
+        "FETCH PRIOR c",
+    ] {
+        verified_stmt(sql);
+    }
+    assert_eq!(
+        verified_stmt("FETCH c INTO a, b"),
+        Statement::Fetch {
+            name: Ident::new("c"),
+            direction: None,
+            position: None,
+            into: vec![
+                ObjectName::from(vec![Ident::new("a")]),
+                ObjectName::from(vec![Ident::new("b")])
+            ],
+        }
+    );
+    let Statement::Fetch { direction, .. } = verified_stmt("FETCH RELATIVE -1 FROM c") else {
+        unreachable!()
+    };
+    assert!(matches!(
+        direction,
+        Some(FetchDirection::Relative {
+            limit: Expr::UnaryOp { .. }
+        })
+    ));
+    parse_sql_statements("FETCH NEXT FROM").unwrap_err();
+    parse_sql_statements("FETCH c INTO").unwrap_err();
+}
