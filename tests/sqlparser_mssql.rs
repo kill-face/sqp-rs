@@ -1578,7 +1578,7 @@ fn test_mssql_cursor() {
 
 #[test]
 fn test_mssql_while_statement() {
-    let while_single_statement = "WHILE 1 = 0 PRINT 'Hello World';";
+    let while_single_statement = "WHILE 1 = 0 PRINT 'Hello World'";
     let stmt = ms().verified_stmt(while_single_statement);
     assert_eq!(
         stmt,
@@ -3672,5 +3672,42 @@ fn parse_mssql_select_compound_assignment() {
     assert_eq!(
         select.projection[0].span(),
         Span::new(Location::new(1, 8), Location::new(1, 15))
+    );
+}
+
+#[test]
+fn parse_mssql_while_single_statement_body() {
+    let stmts = ms_and_generic()
+        .parse_sql_statements("WHILE @n < 10 SET @n = @n + 1; SELECT @n")
+        .unwrap();
+    let [Statement::While(w), Statement::Query(_)] = &stmts[..] else {
+        panic!("{stmts:?}")
+    };
+    assert!(matches!(
+        w.while_block.statements()[..],
+        [Statement::Set(_)]
+    ));
+
+    let stmts = tsql()
+        .parse_sql_statements(
+            r#"WHILE @n < 10
+  SET @n = @n + 1
+SELECT @n"#,
+        )
+        .unwrap();
+    assert!(matches!(
+        stmts[..],
+        [Statement::While(_), Statement::Query(_)]
+    ));
+
+    ms_and_generic().verified_stmt("WHILE @i < 3 WHILE @j < 3 SET @j = @j + 1");
+    ms_and_generic().verified_stmt("WHILE 1 = 1 BEGIN WHILE 2 = 2 SELECT 1; SELECT 2; END");
+    ms().verified_stmt("IF 1 = 1 WHILE @i < 3 SET @i = @i + 1; ELSE PRINT 'x';");
+
+    assert_eq!(
+        ms_and_generic().parse_sql_statements("WHILE @n < 10"),
+        Err(ParserError::ParserError(
+            "Expected: an SQL statement, found: EOF".to_string()
+        ))
     );
 }
