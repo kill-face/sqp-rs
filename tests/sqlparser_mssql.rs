@@ -4037,3 +4037,49 @@ fn parse_create_and_alter_user_logins() {
         Parser::parse_sql(&*dialect, "CREATE USER u FOR LOGIN lg").unwrap_err();
     }
 }
+
+#[test]
+fn parse_create_database_files() {
+    let sql = "CREATE DATABASE db1 ON PRIMARY (NAME = N'd1', FILENAME = N'C:\\data\\d1.mdf') LOG ON (NAME = N'l1', FILENAME = N'C:\\data\\l1.ldf')";
+    let Statement::CreateDatabase { files, .. } = ms_and_generic().verified_stmt(sql) else {
+        unreachable!()
+    };
+    let files = files.unwrap();
+    assert!(files.primary);
+    assert_eq!(files.files.len(), 1);
+    assert_eq!(files.log_files.len(), 1);
+
+    let sql = "CREATE DATABASE db1 CONTAINMENT = PARTIAL ON (NAME = d1, FILENAME = 'd1.mdf', SIZE = 10 MB, MAXSIZE = UNLIMITED, FILEGROWTH = 10%), (NAME = d2, FILENAME = 'd2.ndf'), FILEGROUP fg1 DEFAULT (NAME = d3, FILENAME = 'd3.ndf', SIZE = 1 GB), (NAME = d4, FILENAME = 'd4.ndf'), FILEGROUP fg2 CONTAINS FILESTREAM (NAME = fs, FILENAME = 'fs') LOG ON (NAME = l1, FILENAME = 'l1.ldf', FILEGROWTH = 512 KB) WITH NESTED_TRIGGERS = ON, LEDGER = OFF";
+    let Statement::CreateDatabase {
+        containment,
+        files,
+        with_options,
+        ..
+    } = ms_and_generic().verified_stmt(sql)
+    else {
+        unreachable!()
+    };
+    assert_eq!(containment, Some(Ident::new("PARTIAL")));
+    let files = files.unwrap();
+    assert_eq!(files.files.len(), 2);
+    assert_eq!(files.filegroups.len(), 2);
+    assert_eq!(files.filegroups[0].files.len(), 2);
+    assert!(files.filegroups[0].default);
+    assert_eq!(
+        files.files[0].options[2].unit,
+        Some(DatabaseFileSizeUnit::Mb)
+    );
+    assert_eq!(with_options.len(), 2);
+
+    ms().one_statement_parses_to(
+        "CREATE DATABASE db1 ON (NAME = d1, FILENAME = 'd1.mdf', SIZE = 10MB)",
+        "CREATE DATABASE db1 ON (NAME = d1, FILENAME = 'd1.mdf', SIZE = 10 MB)",
+    );
+    ms().verified_stmt("CREATE DATABASE db1 WITH DEFAULT_LANGUAGE = us_english");
+
+    ms().parse_sql_statements("CREATE DATABASE db1 ON PRIMARY")
+        .unwrap_err();
+    for dialect in all_dialects_where(|d| !d.supports_create_database_file_specs()).dialects {
+        Parser::parse_sql(&*dialect, "CREATE DATABASE db1 ON (NAME = d1)").unwrap_err();
+    }
+}

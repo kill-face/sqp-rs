@@ -36,12 +36,13 @@ use super::{
     ConditionalStatements, ConflictTarget, ConnectByKind, ConstraintCharacteristics,
     ContinueStatement, CopySource, CreateFunction, CreateFunctionBody, CreateIndex,
     CreateProcedureBody, CreateRule, CreateRuleAction, CreateTable, CreateTableOptions,
-    CreateTrigger, CreateUserMapping, Cte, DataSpace, Declare, DeclareAssignment, Delete, DoOption,
-    DoStatement, DoUpdate, DropRule, ExceptSelectItem, ExcludeConstraintElement, ExcludeSelectItem,
-    Expr, ExprWithAlias, Fetch, ForValues, FromTable, Function, FunctionArg, FunctionArgExpr,
-    FunctionArgumentClause, FunctionArgumentList, FunctionArguments, GroupByExpr, HavingBound,
-    IfStatement, IlikeSelectItem, InTarget, IndexColumn, Insert, Interpolate, InterpolateExpr,
-    Join, JoinConstraint, JoinOperator, JsonPath, JsonPathElem, LateralView, LimitClause,
+    CreateTrigger, CreateUserMapping, Cte, DataSpace, DatabaseFileGroup, DatabaseFileOption,
+    DatabaseFileSpec, Declare, DeclareAssignment, Delete, DoOption, DoStatement, DoUpdate,
+    DropRule, ExceptSelectItem, ExcludeConstraintElement, ExcludeSelectItem, Expr, ExprWithAlias,
+    Fetch, ForValues, FromTable, Function, FunctionArg, FunctionArgExpr, FunctionArgumentClause,
+    FunctionArgumentList, FunctionArguments, GroupByExpr, HavingBound, IfStatement,
+    IlikeSelectItem, InTarget, IndexColumn, Insert, Interpolate, InterpolateExpr, Join,
+    JoinConstraint, JoinOperator, JsonPath, JsonPathElem, LateralView, LimitClause,
     MatchRecognizePattern, Measure, Merge, MergeAction, MergeClause, MergeInsertExpr,
     MergeInsertKind, MergeUpdateExpr, MergeUpdateKind, NamedParenthesizedList,
     NamedWindowDefinition, NextValueFor, ObjectName, ObjectNamePart, Offset, OnConflict,
@@ -310,7 +311,6 @@ impl Spanned for Values {
 /// - [Statement::ShowTables]
 /// - [Statement::ShowCollation]
 /// - [Statement::Comment]
-/// - [Statement::CreateDatabase]
 /// - [Statement::DropTrigger]
 /// - [Statement::CreateMacro]
 /// - [Statement::CreateStage]
@@ -511,7 +511,11 @@ impl Spanned for Statement {
                 end_token,
                 ..
             } => create_token.0.span.union(&end_token.0.span),
-            Statement::CreateDatabase { .. } => Span::empty(),
+            Statement::CreateDatabase {
+                create_token,
+                end_token,
+                ..
+            } => create_token.0.span.union(&end_token.0.span),
             Statement::CreateFunction(create_function) => create_function.span(),
             Statement::CreateDomain { .. } => Span::empty(),
             Statement::CreateTrigger(create_trigger) => create_trigger.span(),
@@ -759,6 +763,50 @@ impl Spanned for ReturnStatement {
             Some(ReturnStatementValue::Expr(expr)) => return_token.0.span.union(&expr.span()),
             None => return_token.0.span,
         }
+    }
+}
+
+/// # partial span
+///
+/// Misses a trailing unit keyword (`MB`, ...); the enclosing
+/// [DatabaseFileSpec] covers it.
+impl Spanned for DatabaseFileOption {
+    fn span(&self) -> Span {
+        let DatabaseFileOption {
+            name,
+            value,
+            unit: _,
+        } = self;
+        name.span.union(&value.span())
+    }
+}
+
+impl Spanned for DatabaseFileSpec {
+    fn span(&self) -> Span {
+        let DatabaseFileSpec {
+            options: _, // inside the parentheses
+            opening_paren_token,
+            closing_paren_token,
+        } = self;
+        opening_paren_token
+            .0
+            .span
+            .union(&closing_paren_token.0.span)
+    }
+}
+
+/// # partial span
+///
+/// Misses the leading `FILEGROUP` keyword.
+impl Spanned for DatabaseFileGroup {
+    fn span(&self) -> Span {
+        let DatabaseFileGroup {
+            name,
+            contains: _,
+            default: _,
+            files,
+        } = self;
+        union_spans(iter::once(name.span).chain(files.iter().map(|f| f.span())))
     }
 }
 
@@ -4388,6 +4436,27 @@ SETTINGS update_parallel_mode = 'auto'"#;
                 "ALTER USER u WITH LOGIN = lg",
                 "CREATE USER u WITHOUT LOGIN"
             ]
+        );
+    }
+
+    #[test]
+    fn test_create_database_spans() {
+        let sql = "CREATE DATABASE db1\n    ON PRIMARY (NAME = d1, FILENAME = 'd1.mdf', SIZE = 10 MB)\n    LOG ON (NAME = l1, FILENAME = 'l1.ldf');\nCREATE DATABASE db2";
+        let stmts = mssql_statements(sql);
+        assert_eq!(
+            statement_texts(sql, &stmts),
+            [
+                "CREATE DATABASE db1\n    ON PRIMARY (NAME = d1, FILENAME = 'd1.mdf', SIZE = 10 MB)\n    LOG ON (NAME = l1, FILENAME = 'l1.ldf')",
+                "CREATE DATABASE db2"
+            ]
+        );
+        let Statement::CreateDatabase { files, .. } = &stmts[0] else {
+            panic!("expected CREATE DATABASE, got {stmts:?}");
+        };
+        let files = files.as_ref().unwrap();
+        assert_eq!(
+            spanned_text(sql, files.files[0].span()),
+            "(NAME = d1, FILENAME = 'd1.mdf', SIZE = 10 MB)"
         );
     }
 

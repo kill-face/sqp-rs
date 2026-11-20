@@ -16,7 +16,7 @@
 // under the License.
 
 #[cfg(not(feature = "std"))]
-use alloc::{format, string::String, vec::Vec};
+use alloc::{format, string::String, vec, vec::Vec};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -24,8 +24,10 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "visitor")]
 use sqlparser_derive::{Visit, VisitMut};
 
+use crate::ast::helpers::attached_token::AttachedToken;
 use crate::ast::{
-    CatalogSyncNamespaceMode, ContactEntry, ObjectName, Statement, StorageSerializationPolicy, Tag,
+    CatalogSyncNamespaceMode, ContactEntry, DatabaseFiles, Ident, ObjectName, SqlOption, Statement,
+    StorageSerializationPolicy, Tag,
 };
 use crate::parser::ParserError;
 
@@ -103,6 +105,18 @@ pub struct CreateDatabaseBuilder {
     pub with_tags: Option<Vec<Tag>>,
     /// Optional contact entries associated with the database.
     pub with_contacts: Option<Vec<ContactEntry>>,
+    /// [MsSql] `CONTAINMENT = { NONE | PARTIAL }`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql
+    pub containment: Option<Ident>,
+    /// [MsSql] `ON` clause listing the database files.
+    pub files: Option<DatabaseFiles>,
+    /// [MsSql] `WITH option [, ...]`.
+    pub with_options: Vec<SqlOption>,
+    /// The `CREATE` keyword.
+    pub create_token: AttachedToken,
+    /// The statement's last token.
+    pub end_token: AttachedToken,
 }
 
 impl CreateDatabaseBuilder {
@@ -135,6 +149,11 @@ impl CreateDatabaseBuilder {
             catalog_sync_namespace_flatten_delimiter: None,
             with_tags: None,
             with_contacts: None,
+            containment: None,
+            files: None,
+            with_options: vec![],
+            create_token: AttachedToken::empty(),
+            end_token: AttachedToken::empty(),
         }
     }
 
@@ -301,6 +320,11 @@ impl CreateDatabaseBuilder {
             catalog_sync_namespace_flatten_delimiter: self.catalog_sync_namespace_flatten_delimiter,
             with_tags: self.with_tags,
             with_contacts: self.with_contacts,
+            containment: self.containment,
+            files: self.files,
+            with_options: self.with_options,
+            create_token: self.create_token,
+            end_token: self.end_token,
         }
     }
 }
@@ -333,6 +357,11 @@ impl TryFrom<Statement> for CreateDatabaseBuilder {
                 catalog_sync_namespace_flatten_delimiter,
                 with_tags,
                 with_contacts,
+                containment,
+                files,
+                with_options,
+                create_token,
+                end_token,
             } => Ok(Self {
                 db_name,
                 if_not_exists,
@@ -356,6 +385,11 @@ impl TryFrom<Statement> for CreateDatabaseBuilder {
                 catalog_sync_namespace_flatten_delimiter,
                 with_tags,
                 with_contacts,
+                containment,
+                files,
+                with_options,
+                create_token,
+                end_token,
             }),
             _ => Err(ParserError::ParserError(format!(
                 "Expected create database statement, but received: {stmt}"

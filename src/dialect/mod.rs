@@ -1430,6 +1430,13 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support the file, filegroup and `WITH` option clauses of
+    /// `CREATE DATABASE`?
+    /// e.g. `CREATE DATABASE d ON (NAME = f, FILENAME = 'f.mdf') LOG ON (...)`
+    fn supports_create_database_file_specs(&self) -> bool {
+        false
+    }
+
     /// Does the dialect support `VARYING`, `NULL` / `NOT NULL` and an `OUT` /
     /// `OUTPUT` mode after a procedure parameter's data type?
     /// e.g. `CREATE PROCEDURE p @a INT NULL = 0 OUTPUT AS ...`

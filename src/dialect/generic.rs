@@ -404,4 +404,8 @@ impl Dialect for GenericDialect {
     fn supports_user_login_mapping(&self) -> bool {
         true
     }
+
+    fn supports_create_database_file_specs(&self) -> bool {
+        true
+    }
 }

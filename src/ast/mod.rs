@@ -4862,6 +4862,18 @@ pub enum Statement {
         with_tags: Option<Vec<Tag>>,
         /// Optional contact entries for the database.
         with_contacts: Option<Vec<ContactEntry>>,
+        /// [MsSql] `CONTAINMENT = { NONE | PARTIAL }`.
+        ///
+        /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql
+        containment: Option<Ident>,
+        /// [MsSql] `ON` clause listing the database files.
+        files: Option<DatabaseFiles>,
+        /// [MsSql] `WITH option [, ...]`.
+        with_options: Vec<SqlOption>,
+        /// The `CREATE` keyword.
+        create_token: AttachedToken,
+        /// The statement's last token.
+        end_token: AttachedToken,
     },
     /// ```sql
     /// CREATE FUNCTION
@@ -5864,6 +5876,11 @@ impl fmt::Display for Statement {
                 catalog_sync_namespace_flatten_delimiter,
                 with_tags,
                 with_contacts,
+                containment,
+                files,
+                with_options,
+                create_token: _,
+                end_token: _,
             } => {
                 write!(
                     f,
@@ -5873,6 +5890,13 @@ impl fmt::Display for Statement {
                     if_not_exists = if *if_not_exists { "IF NOT EXISTS " } else { "" },
                     name = db_name,
                 )?;
+
+                if let Some(containment) = containment {
+                    write!(f, " CONTAINMENT = {containment}")?;
+                }
+                if let Some(files) = files {
+                    write!(f, " {files}")?;
+                }
 
                 if let Some(l) = location {
                     write!(f, " LOCATION '{l}'")?;
@@ -5944,6 +5968,9 @@ impl fmt::Display for Statement {
 
                 if let Some(contacts) = with_contacts {
                     write!(f, " WITH CONTACT ({})", display_comma_separated(contacts))?;
+                }
+                if !with_options.is_empty() {
+                    write!(f, " WITH {}", display_comma_separated(with_options))?;
                 }
                 Ok(())
             }
@@ -12399,6 +12426,159 @@ impl fmt::Display for ExportData {
         }
     }
 }
+/// The [MsSql] `ON` clause of `CREATE DATABASE`, which lists the database's
+/// data files, filegroups and log files:
+///
+/// ```sql
+/// ON [ PRIMARY ] <filespec> [ ,...n ] [ , <filegroup> [ ,...n ] ]
+///     [ LOG ON <filespec> [ ,...n ] ]
+/// ```
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct DatabaseFiles {
+    /// Whether the first files are marked `PRIMARY`.
+    pub primary: bool,
+    /// The data files of the primary filegroup.
+    pub files: Vec<DatabaseFileSpec>,
+    /// The other filegroups.
+    pub filegroups: Vec<DatabaseFileGroup>,
+    /// The files after `LOG ON`.
+    pub log_files: Vec<DatabaseFileSpec>,
+}
+
+impl fmt::Display for DatabaseFiles {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("ON")?;
+        if self.primary {
+            f.write_str(" PRIMARY")?;
+        }
+        if !self.files.is_empty() {
+            write!(f, " {}", display_comma_separated(&self.files))?;
+        }
+        if !self.filegroups.is_empty() {
+            if !self.files.is_empty() {
+                f.write_str(",")?;
+            }
+            write!(f, " {}", display_comma_separated(&self.filegroups))?;
+        }
+        if !self.log_files.is_empty() {
+            write!(f, " LOG ON {}", display_comma_separated(&self.log_files))?;
+        }
+        Ok(())
+    }
+}
+
+/// A [MsSql] database file specification:
+/// `( NAME = logical_file_name, FILENAME = 'os_file_name' [, SIZE = size [ KB | MB | GB | TB ] ] ... )`
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql#filespec
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct DatabaseFileSpec {
+    /// The file's options, such as `NAME`, `FILENAME`, `SIZE`, `MAXSIZE` and
+    /// `FILEGROWTH`.
+    pub options: Vec<DatabaseFileOption>,
+    /// The opening parenthesis.
+    pub opening_paren_token: AttachedToken,
+    /// The closing parenthesis.
+    pub closing_paren_token: AttachedToken,
+}
+
+impl fmt::Display for DatabaseFileSpec {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({})", display_comma_separated(&self.options))
+    }
+}
+
+/// An option of a [DatabaseFileSpec], such as `SIZE = 10 MB`.
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct DatabaseFileOption {
+    /// The option name.
+    pub name: Ident,
+    /// The option value.
+    pub value: Expr,
+    /// The unit of a size or growth value: `KB`, `MB`, `GB`, `TB` or `%`.
+    pub unit: Option<DatabaseFileSizeUnit>,
+}
+
+impl fmt::Display for DatabaseFileOption {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} = {}", self.name, self.value)?;
+        match &self.unit {
+            Some(DatabaseFileSizeUnit::Percent) => f.write_str("%"),
+            Some(unit) => write!(f, " {unit}"),
+            None => Ok(()),
+        }
+    }
+}
+
+/// The unit of a [DatabaseFileOption] size or growth value.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum DatabaseFileSizeUnit {
+    /// `KB`
+    Kb,
+    /// `MB`
+    Mb,
+    /// `GB`
+    Gb,
+    /// `TB`
+    Tb,
+    /// `%`
+    Percent,
+}
+
+impl fmt::Display for DatabaseFileSizeUnit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match self {
+            DatabaseFileSizeUnit::Kb => "KB",
+            DatabaseFileSizeUnit::Mb => "MB",
+            DatabaseFileSizeUnit::Gb => "GB",
+            DatabaseFileSizeUnit::Tb => "TB",
+            DatabaseFileSizeUnit::Percent => "%",
+        })
+    }
+}
+
+/// A [MsSql] filegroup in `CREATE DATABASE`:
+/// `FILEGROUP name [ [ CONTAINS FILESTREAM ] [ DEFAULT ] | CONTAINS MEMORY_OPTIMIZED_DATA ] <filespec> [ ,...n ]`
+///
+/// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql#filegroup
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct DatabaseFileGroup {
+    /// The filegroup name.
+    pub name: Ident,
+    /// `CONTAINS FILESTREAM` or `CONTAINS MEMORY_OPTIMIZED_DATA`, as the
+    /// keyword after `CONTAINS`.
+    pub contains: Option<Ident>,
+    /// `DEFAULT`
+    pub default: bool,
+    /// The filegroup's files.
+    pub files: Vec<DatabaseFileSpec>,
+}
+
+impl fmt::Display for DatabaseFileGroup {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "FILEGROUP {}", self.name)?;
+        if let Some(contains) = &self.contains {
+            write!(f, " CONTAINS {contains}")?;
+        }
+        if self.default {
+            f.write_str(" DEFAULT")?;
+        }
+        write!(f, " {}", display_comma_separated(&self.files))
+    }
+}
+
 /// A `CREATE LOGIN` statement.
 ///
 /// ```sql

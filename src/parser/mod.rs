@@ -5837,7 +5837,7 @@ impl<'a> Parser<'a> {
         } else if self.parse_keyword(Keyword::VIRTUAL) {
             self.parse_create_virtual_table()
         } else if self.parse_keyword(Keyword::DATABASE) {
-            self.parse_create_database()
+            self.parse_create_database(create_token)
         } else if self.parse_keyword(Keyword::ROLE) {
             self.parse_create_role(RoleKeyword::Role).map(Into::into)
         } else if self.dialect.supports_create_group() && self.parse_keyword(Keyword::GROUP) {
@@ -6375,9 +6375,24 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a `CREATE DATABASE` statement.
-    pub fn parse_create_database(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse_create_database(
+        &mut self,
+        create_token: TokenWithSpan,
+    ) -> Result<Statement, ParserError> {
         let ine = self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let db_name = self.parse_object_name(false)?;
+        let file_specs = self.dialect.supports_create_database_file_specs();
+        let containment = if file_specs && self.parse_keyword(Keyword::CONTAINMENT) {
+            self.expect_token(&Token::Eq)?;
+            Some(self.parse_identifier()?)
+        } else {
+            None
+        };
+        let files = if file_specs && self.parse_keyword(Keyword::ON) {
+            Some(self.parse_database_files()?)
+        } else {
+            None
+        };
         let mut location = None;
         let mut managed_location = None;
         loop {
@@ -6423,6 +6438,12 @@ impl<'a> Parser<'a> {
             }
         }
 
+        let with_options = if file_specs && self.parse_keyword(Keyword::WITH) {
+            self.parse_comma_separated(Parser::parse_sql_option)?
+        } else {
+            vec![]
+        };
+
         Ok(Statement::CreateDatabase {
             db_name,
             if_not_exists: ine,
@@ -6446,6 +6467,109 @@ impl<'a> Parser<'a> {
             catalog_sync_namespace_flatten_delimiter: None,
             with_tags: None,
             with_contacts: None,
+            containment,
+            files,
+            with_options,
+            create_token: AttachedToken(create_token),
+            end_token: self.last_consumed_token(),
+        })
+    }
+
+    /// Parse the [MsSql] `ON` clause of `CREATE DATABASE`, after `ON`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql
+    fn parse_database_files(&mut self) -> Result<DatabaseFiles, ParserError> {
+        let primary = self.parse_keyword(Keyword::PRIMARY);
+        let mut files = vec![];
+        let mut filegroups = vec![];
+        loop {
+            if self.parse_keyword(Keyword::FILEGROUP) {
+                filegroups.push(self.parse_database_file_group()?);
+            } else if filegroups.is_empty() && self.peek_token_ref().token == Token::LParen {
+                files.push(self.parse_database_file_spec()?);
+            } else {
+                return self.expected_ref("( or FILEGROUP", self.peek_token_ref());
+            }
+            if !self.consume_token(&Token::Comma) {
+                break;
+            }
+        }
+        let log_files = if self.parse_keywords(&[Keyword::LOG, Keyword::ON]) {
+            self.parse_comma_separated(Parser::parse_database_file_spec)?
+        } else {
+            vec![]
+        };
+        Ok(DatabaseFiles {
+            primary,
+            files,
+            filegroups,
+            log_files,
+        })
+    }
+
+    /// Parse a [MsSql] filegroup in `CREATE DATABASE`, after `FILEGROUP`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql#filegroup
+    fn parse_database_file_group(&mut self) -> Result<DatabaseFileGroup, ParserError> {
+        let name = self.parse_identifier()?;
+        let contains = if self.parse_keyword(Keyword::CONTAINS) {
+            Some(self.parse_identifier()?)
+        } else {
+            None
+        };
+        let default = self.parse_keyword(Keyword::DEFAULT);
+        // A filegroup's files continue the comma-separated list it is in.
+        let mut files = vec![self.parse_database_file_spec()?];
+        while self.peek_token_ref().token == Token::Comma
+            && self.peek_nth_token_ref(1).token == Token::LParen
+        {
+            self.advance_token();
+            files.push(self.parse_database_file_spec()?);
+        }
+        Ok(DatabaseFileGroup {
+            name,
+            contains,
+            default,
+            files,
+        })
+    }
+
+    /// Parse a [MsSql] database file specification, `( NAME = ..., FILENAME = ... )`.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql#filespec
+    fn parse_database_file_spec(&mut self) -> Result<DatabaseFileSpec, ParserError> {
+        let open = self.expect_token(&Token::LParen)?;
+        let options = self.parse_comma_separated(|p| {
+            let name = p.parse_identifier()?;
+            p.expect_token(&Token::Eq)?;
+            let value = p.parse_prefix()?;
+            let unit = if p.consume_token(&Token::Mod) {
+                Some(DatabaseFileSizeUnit::Percent)
+            } else {
+                match &p.peek_token_ref().token {
+                    Token::Word(w) if w.quote_style.is_none() => {
+                        let unit = match w.value.to_uppercase().as_str() {
+                            "KB" => Some(DatabaseFileSizeUnit::Kb),
+                            "MB" => Some(DatabaseFileSizeUnit::Mb),
+                            "GB" => Some(DatabaseFileSizeUnit::Gb),
+                            "TB" => Some(DatabaseFileSizeUnit::Tb),
+                            _ => None,
+                        };
+                        if unit.is_some() {
+                            p.advance_token();
+                        }
+                        unit
+                    }
+                    _ => None,
+                }
+            };
+            Ok(DatabaseFileOption { name, value, unit })
+        })?;
+        let close = self.expect_token(&Token::RParen)?;
+        Ok(DatabaseFileSpec {
+            options,
+            opening_paren_token: AttachedToken(open),
+            closing_paren_token: AttachedToken(close),
         })
     }
 
