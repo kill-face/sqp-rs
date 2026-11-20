@@ -3925,3 +3925,12 @@ CLOSE c
 DEALLOCATE c"#;
     assert_eq!(tsql().parse_sql_statements(sql).unwrap().len(), 5);
 }
+
+#[test]
+fn parse_mssql_offset_fetch_variables() {
+    ms().verified_stmt("SELECT a FROM t ORDER BY a OFFSET @skip ROWS FETCH FIRST @take ROWS ONLY");
+    ms().one_statement_parses_to(
+        "SELECT a FROM t ORDER BY a OFFSET 0 ROWS FETCH NEXT (@take) ROWS ONLY",
+        "SELECT a FROM t ORDER BY a OFFSET 0 ROWS FETCH FIRST (@take) ROWS ONLY",
+    );
+}

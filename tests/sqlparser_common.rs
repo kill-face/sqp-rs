@@ -24249,3 +24249,16 @@ fn parse_fetch_statement_after_query() {
         assert!(query.fetch.is_some(), "{sql}");
     }
 }
+
+#[test]
+fn parse_fetch_clause_quantity_expression() {
+    let Statement::Query(query) =
+        verified_stmt("SELECT a FROM t ORDER BY a OFFSET 1 ROWS FETCH FIRST (1 + 1) ROWS ONLY")
+    else {
+        unreachable!()
+    };
+    assert!(matches!(
+        query.fetch.unwrap().quantity,
+        Some(Expr::Nested(_))
+    ));
+}

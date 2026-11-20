@@ -22141,7 +22141,7 @@ impl<'a> Parser<'a> {
         {
             (None, false)
         } else {
-            let quantity = Expr::Value(self.parse_value()?);
+            let quantity = self.parse_expr()?;
             let percent = self.parse_keyword(Keyword::PERCENT);
             let _ = self.parse_one_of_keywords(&[Keyword::ROW, Keyword::ROWS]);
             (Some(quantity), percent)
