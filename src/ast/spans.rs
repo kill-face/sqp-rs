@@ -512,6 +512,7 @@ impl Spanned for Statement {
                 or_alter: _,
                 name,
                 params,
+                params_parenthesized: _,
                 language,
                 body,
                 create_token,
@@ -4342,6 +4343,19 @@ SETTINGS update_parallel_mode = 'auto'"#;
 
         let sql = "CREATE PROC p AS SELECT 1";
         assert_eq!(statement_texts(sql, &mssql_statements(sql)), [sql]);
+
+        let sql = "CREATE PROCEDURE p @a INT,\n    @b INT = 1\nAS\n    SELECT @a";
+        let stmts = mssql_statements(sql);
+        assert_eq!(statement_texts(sql, &stmts), [sql]);
+        let Statement::CreateProcedure { params, .. } = &stmts[0] else {
+            panic!("expected CREATE PROCEDURE, got {stmts:?}");
+        };
+        let params: Vec<_> = params
+            .iter()
+            .flatten()
+            .map(|p| spanned_text(sql, p.span()))
+            .collect();
+        assert_eq!(params, ["@a INT", "@b INT = 1"]);
 
         let sql = "CREATE FUNCTION dbo.f (@a INT, @b DECIMAL(10, 2) = 0)\nRETURNS INT\nAS\nBEGIN\n    RETURN @a\nEND";
         let stmts = mssql_statements(sql);

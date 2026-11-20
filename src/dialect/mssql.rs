@@ -137,6 +137,11 @@ impl Dialect for MsSqlDialect {
         true
     }
 
+    /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql>
+    fn supports_procedure_params_without_parentheses(&self) -> bool {
+        true
+    }
+
     /// See <https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql>
     fn supports_create_view_attributes(&self) -> bool {
         true

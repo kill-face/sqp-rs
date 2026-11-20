@@ -4769,8 +4769,13 @@ pub enum Statement {
         or_alter: bool,
         /// Procedure name.
         name: ObjectName,
-        /// Parenthesized parameter list, `None` when absent.
+        /// Parameter list, `None` when absent.
         params: Option<Vec<ProcedureParam>>,
+        /// Whether `params` is enclosed in parentheses. [MsSql] declares
+        /// parameters without them.
+        ///
+        /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql
+        params_parenthesized: bool,
         /// Optional language identifier.
         language: Option<Ident>,
         /// Procedure body.
@@ -5809,6 +5814,7 @@ impl fmt::Display for Statement {
                 name,
                 or_alter,
                 params,
+                params_parenthesized,
                 language,
                 body,
                 create_token: _,
@@ -5820,8 +5826,12 @@ impl fmt::Display for Statement {
                     name = name
                 )?;
 
-                if let Some(p) = params {
-                    write!(f, " ({})", display_comma_separated(p))?;
+                match params {
+                    Some(p) if *params_parenthesized => {
+                        write!(f, " ({})", display_comma_separated(p))?
+                    }
+                    Some(p) => write!(f, " {}", display_comma_separated(p))?,
+                    None => {}
                 }
 
                 if let Some(language) = language {

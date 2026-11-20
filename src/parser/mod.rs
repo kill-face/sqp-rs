@@ -23039,9 +23039,21 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `CREATE PROCEDURE` statement.
+    ///
+    /// [MsSql] declares parameters without parentheses.
+    ///
+    /// [MsSql]: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql
     pub fn parse_create_procedure(&mut self, or_alter: bool) -> Result<Statement, ParserError> {
         let name = self.parse_object_name(false)?;
-        let params = self.parse_optional_procedure_parameters()?;
+        let params_parenthesized = self.peek_token_ref().token == Token::LParen;
+        let params = if !params_parenthesized
+            && self.dialect.supports_procedure_params_without_parentheses()
+            && matches!(&self.peek_token_ref().token, Token::Word(w) if w.value.starts_with('@'))
+        {
+            Some(self.parse_comma_separated(Parser::parse_procedure_param)?)
+        } else {
+            self.parse_optional_procedure_parameters()?
+        };
 
         let mut language = if self.parse_keyword(Keyword::LANGUAGE) {
             Some(self.parse_identifier()?)
@@ -23075,6 +23087,7 @@ impl<'a> Parser<'a> {
             name,
             or_alter,
             params,
+            params_parenthesized,
             language,
             body,
             create_token: AttachedToken::empty(),

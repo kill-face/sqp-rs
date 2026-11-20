@@ -1412,6 +1412,12 @@ pub trait Dialect: Debug + Any {
         false
     }
 
+    /// Does the dialect support procedure parameters without parentheses?
+    /// e.g. `CREATE PROCEDURE p @a INT, @b INT = 1 AS ...`
+    fn supports_procedure_params_without_parentheses(&self) -> bool {
+        false
+    }
+
     /// Does the dialect support view attributes in `CREATE VIEW`?
     /// e.g. `CREATE VIEW v WITH SCHEMABINDING AS SELECT 1`
     fn supports_create_view_attributes(&self) -> bool {

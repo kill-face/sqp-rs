@@ -209,6 +209,7 @@ fn parse_create_procedure() {
                     end_token: AttachedToken::empty(),
                 }
             ]),
+            params_parenthesized: true,
             name: ObjectName::from(vec![Ident {
                 value: "test".into(),
                 quote_style: None,
@@ -3710,4 +3711,47 @@ SELECT @n"#,
             "Expected: an SQL statement, found: EOF".to_string()
         ))
     );
+}
+
+#[test]
+fn parse_create_procedure_params_without_parentheses() {
+    let sql = "CREATE PROCEDURE dbo.p @a INT, @b NVARCHAR(10) = N'x' AS BEGIN SELECT @a; END";
+    let Statement::CreateProcedure {
+        params,
+        params_parenthesized,
+        ..
+    } = ms_and_generic().verified_stmt(sql)
+    else {
+        unreachable!()
+    };
+    assert!(!params_parenthesized);
+    assert_eq!(
+        params
+            .unwrap()
+            .iter()
+            .map(|p| p.name.value.as_str())
+            .collect::<Vec<_>>(),
+        ["@a", "@b"]
+    );
+    ms().verified_stmt("CREATE OR ALTER PROCEDURE p @t dbo.tt READONLY AS SELECT 1;");
+
+    let Statement::CreateProcedure {
+        params_parenthesized,
+        ..
+    } = ms().verified_stmt("CREATE PROCEDURE p (@a INT) AS SELECT @a;")
+    else {
+        unreachable!()
+    };
+    assert!(params_parenthesized);
+
+    let stmts = tsql()
+        .parse_sql_statements("CREATE PROCEDURE p\n    @a INT\nAS\n    SELECT @a")
+        .unwrap();
+    assert_eq!(stmts.len(), 1);
+
+    for dialect in
+        all_dialects_where(|d| !d.supports_procedure_params_without_parentheses()).dialects
+    {
+        Parser::parse_sql(&*dialect, "CREATE PROCEDURE p @a INT AS SELECT 1").unwrap_err();
+    }
 }
